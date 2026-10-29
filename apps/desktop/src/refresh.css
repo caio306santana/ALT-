@@ -1,0 +1,352 @@
+/* 0.4 visual refresh: calmer surfaces, a labeled sidebar and readable sizes.
+   Loaded last; keeps the owner's accent/secondary colors, themes and toggles. */
+.app {
+  --surface: rgba(17, 18, 26, 0.72);
+  --surface-2: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.08);
+  --text-muted: #9a98a8;
+  --hover: rgba(255, 255, 255, 0.06);
+  --control-radius: min(var(--radius), 12px);
+  background: linear-gradient(
+    160deg,
+    rgba(11, 12, 18, var(--surface-alpha)),
+    rgba(14, 12, 20, var(--surface-alpha))
+  );
+  border-color: color-mix(in srgb, var(--accent) 22%, #2a2c38);
+}
+.app.light {
+  --surface: rgba(255, 255, 255, 0.75);
+  --surface-2: rgba(0, 0, 0, 0.035);
+  --border: rgba(40, 20, 50, 0.12);
+  --text-muted: #6f6478;
+  --hover: rgba(0, 0, 0, 0.05);
+  background: rgba(247, 244, 249, var(--surface-alpha));
+}
+.app:after {
+  opacity: 0.35;
+}
+
+/* Title bar: brand stays, the extra caption goes. */
+.app .titlebar {
+  height: 46px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+.app .workspace {
+  height: calc(100% - 46px);
+}
+.app .brand {
+  letter-spacing: 3px;
+  font-size: 13px;
+}
+.app .edition {
+  display: none;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 236px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: hidden;
+  transition: width 0.16s ease;
+}
+.sidebar.collapsed {
+  width: 58px;
+}
+.app .side-item {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: inherit;
+  opacity: 0.86;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+.side-item svg {
+  flex-shrink: 0;
+}
+.side-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-item:hover:not(:disabled) {
+  background: var(--hover);
+  opacity: 1;
+}
+.side-item.selected {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: color-mix(in srgb, var(--accent) 70%, currentColor);
+  opacity: 1;
+}
+.side-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.app .sidebar.collapsed .side-item {
+  justify-content: center;
+  padding: 0;
+}
+.sidebar.collapsed .side-item > span {
+  display: none;
+}
+.side-toggle {
+  width: 36px;
+  margin-bottom: 4px;
+  justify-content: center;
+  padding: 0;
+}
+.sidebar.collapsed .side-toggle {
+  width: 100%;
+}
+.side-item.new-chat {
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  opacity: 1;
+}
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.side-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 14px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.side-heading {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  padding: 4px 11px 6px;
+}
+.side-item.recent {
+  min-height: 31px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+.side-bottom {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.side-profile .avatar {
+  width: 24px;
+  height: 24px;
+  margin-left: -3px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+}
+@media (max-width: 760px) {
+  .sidebar,
+  .sidebar.open {
+    width: 58px;
+  }
+  .app .sidebar .side-item {
+    justify-content: center;
+    padding: 0;
+  }
+  .sidebar .side-item > span,
+  .sidebar .side-recent {
+    display: none;
+  }
+}
+
+/* One quiet header per page */
+.app .sectionbar {
+  height: auto;
+  min-height: 58px;
+  padding: 12px 24px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+.app .sectionbar:after {
+  display: none;
+}
+.app .sectionbar h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.section-hint {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.app .small-tag {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+.app .page-scroll {
+  background: transparent;
+}
+.app .page-intro {
+  font-size: 14px;
+  color: inherit;
+}
+.app .page-intro span,
+.app .setting-note {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.app .security-hero h2 {
+  font-size: 18px;
+}
+.app .welcome .eyebrow {
+  display: none;
+}
+
+/* Controls: one shape, readable text, the owner's radius */
+.app .primary,
+.app .secondary,
+.app .send,
+.app .model-pill,
+.app .permission-card,
+.app .info-card,
+.app .chat-action-card,
+.app .command-shortcuts button,
+.app .settings-tabs button,
+.app input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+.app select,
+.app textarea {
+  border-radius: var(--control-radius);
+  clip-path: none;
+}
+.app .primary,
+.app .secondary,
+.app .text-button,
+.app .command-shortcuts button {
+  font-size: 12.5px;
+  letter-spacing: 0;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+.app .primary,
+.app .secondary,
+.app .command-shortcuts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
+}
+.app .primary {
+  box-shadow: none;
+}
+.app .secondary,
+.app .command-shortcuts button {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: inherit;
+  box-shadow: none;
+}
+.app .secondary:hover:not(:disabled),
+.app .command-shortcuts button:hover {
+  background: var(--hover);
+}
+.app .info-card,
+.app .permission-card,
+.app .chat-action-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.app .permission-card strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app .permission-card.chosen {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.app .manual-tools,
+.app .identity-cards {
+  border-left-width: 1px;
+}
+.app details > summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.app .icon-btn {
+  border-radius: var(--control-radius);
+}
+
+/* Status bar: smaller footprint, readable */
+.app .statusbar {
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  border-top: 1px solid var(--border);
+  background: transparent;
+}
+
+/* Effects stay optional and subtle */
+.app:not(.no-effects) .primary,
+.app:not(.no-effects) .send {
+  box-shadow: 0 0 calc(var(--glow) / 2) color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.no-animation .sidebar,
+.no-animation .side-item {
+  transition: none;
+}
+
+/* Free-standing fields (search, project name) match the rest of the forms. */
+.app input:not([type]),
+.app input[type="text"],
+.app input[type="search"] {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.app input:not([type]):focus,
+.app input[type="text"]:focus,
+.app textarea:focus,
+.app select:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.app .permission-card {
+  min-height: 0;
+  padding: 16px 18px;
+}
+.app .projects-panel .button-row {
+  align-items: center;
+}

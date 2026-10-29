@@ -123,14 +123,9 @@ export function TasksPanel({
   }
   return (
     <div className="page-scroll">
-      <p className="page-intro">
-        Tarefas com várias ações.
-        <br />
-        <span>
-          A ALT planeja com o modelo local, você revisa e cada ação segue suas
-          regras e aprovações. Pausar não desfaz nada; retomar não repete ações
-          já concluídas.
-        </span>
+      <p className="setting-note">
+        Cada ação segue suas regras e aprovações. Pausar não desfaz nada;
+        retomar não repete ações já concluídas.
       </p>
       <div className="feature-form">
         <label>

@@ -2,6 +2,7 @@
 import asyncio
 import hashlib
 import json
+import re
 import time
 from uuid import uuid4
 from pydantic import BaseModel,ConfigDict,Field
@@ -76,6 +77,12 @@ class TaskManager:
         if not run['window_id']:names=[t for t in names if not t.startswith('windows_')]
         if not run['scope_id']:names=[t for t in names if t not in FILE_TOOLS]
         if not self.tools.desktop:names=[t for t in names if not t.startswith('browser_')]
+        # Small local models add unrelated steps when offered every tool; offer
+        # browser/web/app tools only when the goal is about them.
+        goal=run['goal'].casefold()
+        if not re.search(r'naveg|browser|clique|clicar|digite|formul',goal):names=[t for t in names if not t.startswith('browser_')]
+        if not re.search(r'pesquis|internet|site|p[áa]gina|http|link|baix|download|web|fonte',goal):names=[t for t in names if t not in ('web_search','read_webpage','open_url','download_file')]
+        if not re.search(r'abr|apli|app|programa|feche|fechar|calculadora|bloco de notas|notepad|pasta',goal):names=[t for t in names if t not in ('open_app','close_app','open_folder')]
         return names
 
     async def generate_plan(self,run,cancel,feedback=''):

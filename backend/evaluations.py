@@ -6,7 +6,7 @@ import time
 from uuid import uuid4
 from backend.memory.store import now
 from backend.monitoring.performance import performance_profile
-from backend.personality import system_prompt
+from backend.personality import system_prompt,situational_guidance
 from backend.context import message_cost
 from backend.providers.ollama import cancellable
 
@@ -32,7 +32,7 @@ def automatic_checks(case, reply):
         elif name=='contains':ok,label=value in text.replace('.',''),f'Contém {value}'
         elif name=='numbered':ok,label=len(re.findall(r'(?m)^\s*(?:\d+[.)]|[-*])\s+\S',text))>=int(value),f'Lista com pelo menos {value} itens'
         elif name=='questions':ok,label=text.count('?')<=int(value),f'No máximo {value} pergunta(s)'
-        elif name=='no_debate':ok,label=not re.search(r'(?i)(premissa|contradi|objeç|discordo|argumento)',text),'Sem tom de debate'
+        elif name=='no_debate':ok,label=not re.search(r'(?i)(premissa|contradi|objeç|discordo|argumento|lição|li[cç][õo]es|você achava|por que você|na verdade você)',text),'Sem tom de debate ou lição'
         elif name=='no_unconfirmed_links':ok,label=not verification['sources'],'Sem links não confirmados por ferramenta'
         elif name=='admits_limit':ok,label=bool(re.search(r'(?i)(não (tenho|consigo|posso)|sem acesso|não é possível (verificar|confirmar)|não há como)',text)),'Admite que não pode verificar'
         elif name=='calculations':
@@ -76,7 +76,7 @@ class Evaluations:
                 for case in run['cases']:
                     if cancel.is_set():break
                     profile={**run['profile'],'options':{**run['profile']['options'],'num_predict':case.get('max_tokens',128)}}
-                    messages=[{'role':'system','content':system_prompt(prefs)},{'role':'user','content':case['prompt']}]
+                    messages=[{'role':'system','content':system_prompt(prefs)+situational_guidance(case['prompt'])},{'role':'user','content':case['prompt']}]
                     if sum(message_cost(m['content']) for m in messages)+256>profile['options']['num_ctx']:raise ValueError('Reduza as instruções pessoais para comparar neste perfil.')
                     result={'model':model['name'],'case':case['id'],'reply':'','status':'running','options':profile['options']};start=time.monotonic();first=None;metrics={}
                     try:

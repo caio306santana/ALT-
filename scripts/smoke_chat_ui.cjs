@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 app.whenReady().then(async()=>{
- const win=new BrowserWindow({show:false,width:1080,height:860,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,preload:path.join(__dirname,'smoke_chat_ui_preload.cjs')}});
+ const win=new BrowserWindow({show:false,width:1080,height:860,webPreferences:{backgroundThrottling:false,sandbox:true,contextIsolation:true,nodeIntegration:false,preload:path.join(__dirname,'smoke_chat_ui_preload.cjs')}});
  const js=code=>win.webContents.executeJavaScript(code);
  async function until(code){for(let i=0;i<100;i++){if(await js(code))return;await delay(50);}throw new Error('UI condition timed out: '+code);}
  async function draft(value){await js(`(()=>{const el=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event('input',{bubbles:true}));})()`);}
@@ -33,6 +33,20 @@ app.whenReady().then(async()=>{
   await until(`!!document.querySelector('.context-indicator.over-limit')`);
   assert.equal(await js(`document.querySelector('button[aria-label="Enviar mensagem"]').disabled`),true);
   assert.equal(await js(`window.chatFixture.calls()`),1);
-  console.log(JSON.stringify({chat_ui:'ok',permission_label_matches_mode:true,approval_mode_change:true,draft_restored_on_transport_rejection:true,oversize_shown_before_send:true,settings_closed_on_start:true,screenshots:'synthetic hidden renderer only'}));
+  // Visual pass of the 0.4 layout: labeled sidebar, main panels, collapsed and light.
+  // Hidden windows only repaint on request; invalidate so each capture shows the current view.
+  const shot=async name=>{win.webContents.invalidate();await delay(300);fs.writeFileSync(path.join(root,'.local',name),(await win.webContents.capturePage()).toPNG());};
+  assert.ok(await js(`document.querySelectorAll('.sidebar .side-item.recent').length===1`),'Recent conversations should be listed in the sidebar');
+  await shot('ui-chat.png');
+  for(const [label,file,ready] of [['Tarefas','ui-tasks.png','.task-run'],['Memória','ui-memory.png','.projects-panel'],['Ferramentas','ui-tools.png','.permission-card']]){
+    await js(`document.querySelector('.side-nav button[aria-label="${label}"]').click()`);
+    await until(`!!document.querySelector('${ready}')`);await delay(150);await shot(file);
+  }
+  await js(`document.querySelector('.side-nav button[aria-label="Chat"]').click()`);
+  await js(`document.querySelector('.side-toggle').click()`);
+  await until(`!!document.querySelector('.sidebar.collapsed')`);await delay(250);await shot('ui-collapsed.png');
+  await js(`document.querySelector('.side-toggle').click()`);
+  await js(`document.querySelector('.app').classList.add('light')`);await delay(150);await shot('ui-light.png');
+  console.log(JSON.stringify({chat_ui:'ok',sidebar_views:true,permission_label_matches_mode:true,approval_mode_change:true,draft_restored_on_transport_rejection:true,oversize_shown_before_send:true,settings_closed_on_start:true,screenshots:'synthetic hidden renderer only'}));
  }finally{win.destroy();app.quit();}
 }).catch(error=>{console.error(error);app.exit(1);});

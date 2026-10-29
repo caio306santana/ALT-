@@ -1,6 +1,17 @@
 """Provider-independent identity. Personality never changes execution permissions."""
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
+import re
+
+# Clear signs of a hard moment. Small models ignore the general "reduce irony"
+# rule, so the app adds an explicit instruction for that turn.
+DELICATE=re.compile(r'(?i)\b(perdi (meu|minha|o|a)|fui demitid|demiss[ãa]o|desempregad|luto|faleceu|morreu|falecimento|abalad|arrasad|deprimid|depress[ãa]o|ansios|crise de|desabaf|sozinh|chorand|chorei|sofrend|n[ãa]o aguento|me sinto (mal|p[ée]ssim|perdid)|t[ôo] mal|estou mal|termin(ei|ou) (o|meu|comigo))')
+
+def situational_guidance(text):
+    if not DELICATE.search(text or ''):return ''
+    return ('\nMOMENTO DELICADO DETECTADO NESTA MENSAGEM: acolha com calor e simplicidade. Sem ironia, sem humor, sem lições, '
+            'sem questionar premissas ou decisões da pessoa e sem perguntar "por que você achava...". Reconheça o sentimento, '
+            'ofereça presença e, se fizer sentido, uma única pergunta gentil ou um pequeno passo prático. Respeite se a pessoa só quer falar.\n')
 
 class Personality(BaseModel):
     model_config=ConfigDict(extra='forbid')

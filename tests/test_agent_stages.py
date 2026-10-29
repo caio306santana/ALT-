@@ -276,3 +276,27 @@ def test_documents_split_by_heading_and_use_embedding_prompts(tmp_path):
         found=client.post('/knowledge/search',json={'query':'detalhes da viagem'}).json()
         assert found[0]['title'].endswith('Viagem')
     assert any(t.startswith('title: notas.md · Viagem | text: ') for t in seen) and 'task: search result | query: detalhes da viagem' in seen
+
+def test_planner_is_offered_only_tools_the_goal_is_about(tmp_path):
+    app,provider,client=agent_client(tmp_path)
+    with client:
+        scope=client.get('/permissions').json()['scopes'][0]['id']
+        def offered(goal):
+            run=client.post('/tasks',json={'goal':goal,'model':'fixture:4b','scope_id':scope}).json()
+            wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
+            return provider.profiles[-1]['format']['properties']['steps']['items']['properties']['action']['properties']['tool']['enum']
+        local=offered('Calcule 12*12 e grave em quadrado.txt')
+        assert 'calculate' in local and 'write_text' in local
+        assert not any(t.startswith('browser_') or t in ('web_search','download_file','open_app') for t in local)
+        assert {'web_search','read_webpage','download_file'}<=set(offered('Pesquise na internet o preço e salve em nota.txt'))
+
+def test_delicate_messages_get_explicit_care_instruction(tmp_path):
+    app,provider,client=agent_client(tmp_path)
+    with client:
+        cid=conversation(client)
+        client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Perdi meu emprego hoje e estou abalado.'})
+        assert 'MOMENTO DELICADO' in provider.contexts[-1][1][0]['content']
+        client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Quanto é 17 vezes 19?'})
+        assert 'MOMENTO DELICADO' not in provider.contexts[-1][1][0]['content']
+    cases={c['id']:c for c in CASES}
+    assert not all(c['ok'] for c in automatic_checks(cases['support'],'A lição é clara: por que você achava que era seguro?'))

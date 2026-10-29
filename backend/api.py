@@ -13,7 +13,7 @@ from backend.providers.ollama import Ollama, ProviderError, cancellable
 from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
 from backend.monitoring.performance import performance_profile
-from backend.personality import Personality,system_prompt
+from backend.personality import Personality,system_prompt,situational_guidance
 from backend.memory.library import MemoryLibrary
 from backend.tools.service import ToolService
 from backend.security.consent import ConsentReceipts
@@ -212,7 +212,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             definition=spec[0]['function']['parameters']['properties']['tool']['enum']
             definition[:]=[name for name in definition if tools.policy.decision(name)!='deny']
             if not definition:spec=None
-        prompt=system_prompt(prefs,memory,tools=bool(spec));tool_context=''
+        prompt=system_prompt(prefs,memory,tools=bool(spec));tool_context=situational_guidance(body.content)
+        if not spec:prompt+=tool_context
         if spec:
             scopes=[{'id':s['id'],'nome':s.get('label') or Path(s['path']).name} for s in status['scopes'][:4]]
             tool_context+='\nEscopos locais disponíveis: '+json.dumps(scopes,ensure_ascii=False,separators=(',',':'))
