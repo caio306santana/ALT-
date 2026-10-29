@@ -32,6 +32,7 @@ const allowed = [
   ["GET", /^\/(health|models|settings|system|conversations)$/],
   ["POST", /^\/(conversations|actions\/stop|actions\/resume)$/],
   ["GET", /^\/conversations\/[a-f0-9-]+\/messages$/],
+  ["GET", /^\/conversations\/[a-f0-9-]+\/actions$/],
   ["DELETE", /^\/conversations\/[a-f0-9-]+$/],
   ["POST", /^\/chat\/cancel\/[a-f0-9-]+$/],
   ["PUT", /^\/settings$/],
@@ -270,9 +271,37 @@ ipcMain.handle("api:request", async (event, method, route, body) => {
   payloadSize(body);
   if (!allowed.some(([m, re]) => method === m && re.test(route)))
     throw new Error("Operação não permitida");
+  if (method === "POST" && /^\/tools\/approve\/[a-f0-9-]+$/.test(route)) {
+    const id = route.split("/").pop();
+    const preview = await (
+      await request("GET", "/tools/proposal/" + id)
+    ).json();
+    if (preview.critical) {
+      const consent = await dialog.showMessageBox(win, {
+        type: "warning",
+        buttons: ["Cancelar", "Confirmar gravação"],
+        defaultId: 0,
+        cancelId: 0,
+        message: "Confirmar gravação no perfil pessoal do Windows?",
+        detail:
+          String(preview.path) +
+          "\n\n" +
+          String(preview.diff || "Novo arquivo").slice(0, 2500),
+      });
+      if (consent.response !== 1)
+        throw new Error("Gravação cancelada pelo usuário.");
+      await request("POST", "/tools/confirm/" + id);
+    }
+  }
   if (method === "PUT" && route === "/settings") {
     const oldShortcut = activeShortcut;
-    if(typeof body.shortcut!=='string'||!Number.isFinite(body.scale)||body.scale<.8||body.scale>1.3)throw new Error('Preferências de janela inválidas');
+    if (
+      typeof body.shortcut !== "string" ||
+      !Number.isFinite(body.scale) ||
+      body.scale < 0.8 ||
+      body.scale > 1.3
+    )
+      throw new Error("Preferências de janela inválidas");
     bindShortcut(body.shortcut || "Control+Shift+Space");
     try {
       const result = await (await request(method, route, body)).json();
@@ -305,6 +334,40 @@ ipcMain.handle("workspace:choose", async (event) => {
   });
   if (confirmation.response !== 1) return null;
   return (await request("POST", "/scopes", { path: selected })).json();
+});
+ipcMain.handle("windows:grant", async (event, level, scopeId) => {
+  validate(event);
+  if (![3, 4].includes(level)) throw new Error("Modo inválido");
+  const current = await (await request("GET", "/permissions")).json();
+  const scope = current.scopes.find((s) => s.id === scopeId);
+  if (level === 3 && !scope)
+    throw new Error("Escolha uma pasta autorizada primeiro.");
+  const detail =
+    level === 4
+      ? "Por 10 minutos: leitura automática de arquivos texto no seu perfil pessoal e pastas escolhidas. Abrir aplicativos, navegação e gravações continuam supervisionados. Gravações no perfil exigem confirmação adicional. Credenciais, AppData, sistema, shell arbitrário e privilégios administrativos ficam excluídos. STOP e Revogar encerram a sessão."
+      : `Por 10 minutos: cálculo e leitura automática apenas em ${scope.path}. Gravações e consultas externas ainda pedem aprovação.`;
+  const confirmation = await dialog.showMessageBox(win, {
+    type: "warning",
+    buttons: [
+      "Cancelar",
+      level === 4 ? "Autorizar controle amplo" : "Autorizar leitura limitada",
+    ],
+    defaultId: 0,
+    cancelId: 0,
+    message:
+      level === 4
+        ? "Autorizar controle amplo supervisionado do Windows?"
+        : "Autorizar sessão de leitura limitada?",
+    detail,
+  });
+  if (confirmation.response !== 1) return current;
+  return (
+    await request("POST", "/permissions/grant", {
+      level,
+      scope_ids: scope ? [scope.id] : [],
+      duration: 600,
+    })
+  ).json();
 });
 ipcMain.handle("memory:export", async (event) => {
   validate(event);

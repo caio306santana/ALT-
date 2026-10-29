@@ -21,6 +21,20 @@ Personalidade aprovada: **calma na forma de falar; provocadora, irônica e desaf
 
 ## Próximos passos imediatos
 
+### Ampliação pedida pelo usuário durante a revisão
+
+O usuário achou o painel de ferramentas simples e pediu opção de autorização ampla do Windows, botão Perfil funcional, aparência mais cyberpunk, pesquisa/navegação e uso das ferramentas pelo chat. Explicado: ALT-AI é o produto/persona/memória/agente próprio; Qwen 3.5 4B é o modelo de terceiros instalado, não um modelo treinado do zero. Não afirmar que o modelo Qwen se tornou proprietário.
+
+Implementar agora: modos 3 (leitura limitada autorizada) e 4 (controle amplo supervisionado com confirmação nativa, prazo, escopo explícito e revogação); perfil pessoal acessível; renovação visual; pesquisa/leitura pública com fontes reais e proteção contra rede local/SSRF; propostas de ferramentas pelo chat e retorno de resultados ao modelo. Não dar shell arbitrário ou desativar proteções. Não chamar de controle ilimitado do sistema se as ferramentas ainda forem limitadas.
+
+Implementação dessa ampliação já escrita: modo 3 de leitura da pasta escolhida e modo 4 amplo **do perfil pessoal**, com confirmação nativa, duração 10 min, arquivos sensíveis/AppData/sistema excluídos, gravações no perfil com segunda confirmação. Perfil clicável com nome local opcional, acesso à personalidade/memória/autorizações e explicação ALT versus modelo. CSS cyberpunk próprio com recortes, HUD, rosa/ciano, sem assets protegidos. Ferramentas reais `web_search` e `read_webpage` com fontes; GET HTTPS público com DNS fixado no IP público resolvido, TLS, limite de bytes/redirecionamentos, sem cookies/proxy/JavaScript/binários. Pesquisa pública Bing RSS e leitura docs.ollama.com testadas com sucesso. Não confundir isso com navegador interativo logado.
+
+Chat Qwen/Ollama agora declara uma função estruturada somente para intenções de ação relevantes, cria propostas revisáveis e emite cartões; somente leitura/cálculo dentro de autorização 3/4 podem executar automaticamente. Pesquisa/abertura/gravação continuam supervisionadas. Resultado pode ser analisado pelo modelo por ID, ligado à conversa. Cartões/resultados persistem no SQLite; contexto de nuvem continua exigindo prévia exata. Codex nesta prévia é conversa/código com ferramentas próprias desligadas, não usa os executores locais da ALT automaticamente.
+
+Validação atual: **56 testes backend passaram, 1 foi ignorado porque este usuário Windows não pode criar symlinks**; teste Node de assinatura passou; TypeScript/Vite passou após novos painéis. Teste real da chamada de ferramenta pelo Qwen está em andamento (`scripts/smoke_agent.py`), sem executar consulta externa automaticamente. Recompilar pacote final após conclusão, atualizar README/HANDOFF/SECURITY/ROADMAP, inspecionar visualmente e publicar release 0.2 privada. A compilação intermediária anterior já terminou e não foi publicada.
+
+O pacote 0.2 está sendo compilado em uma sessão de ferramenta, mas **não publicar esse build intermediário** antes de incorporar a ampliação, testar e recompilar. A janela de desenvolvimento 0.2 foi reaberta e o usuário está interagindo com ela; Computer Use tem detectado entrada do usuário, evitar disputar cliques. O usuário confirmou que o perfil circular A estava sem ação; corrigir para abrir um painel real.
+
 1. Interface para personalidade/temas/layout/atalhos, memória e seleção de contexto, painel de ferramentas/permissões, configurações de provedores e prévia de nuvem, Game Mode.
 2. Ampliar ponte Electron com allowlists e diálogos nativos para pasta/exportação/cofre. Nunca permitir renderer escolher endpoint arbitrário, executável ou path de gravação do main process.
 3. Testes novos de credenciais, expiração/replay/alteração de contexto, orçamento, scopes/traversal/junctions, escrita concorrente, STOP e Game Mode.

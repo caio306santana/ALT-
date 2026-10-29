@@ -566,7 +566,11 @@ type Proposal = {
     creates_file?: boolean;
   };
 };
-export function ToolsPanel({ notify, onError }: Feedback) {
+export function ToolsPanel({
+  notify,
+  onError,
+  onCommand,
+}: Feedback & { onCommand: (text: string) => void }) {
   const [permissions, setPermissions] = useState<Permissions | null>(null),
     [tool, setTool] = useState("calculate"),
     [scope, setScope] = useState(""),
@@ -574,7 +578,8 @@ export function ToolsPanel({ notify, onError }: Feedback) {
     [content, setContent] = useState(""),
     [expression, setExpression] = useState(""),
     [application, setApplication] = useState("notepad"),
-    [url, setUrl] = useState("");
+    [url, setUrl] = useState(""),
+    [query, setQuery] = useState("");
   const [proposal, setProposal] = useState<Proposal | null>(null),
     [result, setResult] = useState<unknown>(null),
     [history, setHistory] = useState<
@@ -607,6 +612,7 @@ export function ToolsPanel({ notify, onError }: Feedback) {
           expression,
           app: application,
           url,
+          query,
         }),
       );
     } catch (e) {
@@ -638,17 +644,17 @@ export function ToolsPanel({ notify, onError }: Feedback) {
     <div className="page-scroll">
       <div className="security-hero">
         <Shield size={30} />
-        <h2>Ações com limites claros.</h2>
+        <h2>Seu comando. Seu alcance.</h2>
         <p>
-          Escolha uma ferramenta, revise a proposta e aprove. O texto de uma IA
-          não concede permissão.
+          Peça à ALT no chat. Aqui você define o alcance da sessão, acompanha
+          ações e pode revogar o acesso.
         </p>
       </div>
       <div className="subheading">
         <span>
           Modo:{" "}
-          {permissions?.level === 2
-            ? `Assistido · ${Math.ceil(permissions.expires_in / 60)} min restantes`
+          {permissions && permissions.level >= 2
+            ? `${["", "", "Assistido", "Leitura autorizada", "Windows supervisionado"][permissions.level]} · ${Math.ceil(permissions.expires_in / 60)} min restantes`
             : "Observação"}
         </span>
         <button
@@ -666,135 +672,240 @@ export function ToolsPanel({ notify, onError }: Feedback) {
             : "Ativar assistido por 15 min"}
         </button>
       </div>
-      <div className="feature-form">
-        <label>
-          Pasta autorizada
-          <select
-            value={scope}
-            onChange={(e) => {
-              setScope(e.target.value);
-              setProposal(null);
+      <div className="permission-grid">
+        {[
+          {
+            level: 1,
+            title: "Observação",
+            tag: "01 / OBSERVE",
+            text: "Conversar e propor. Nenhuma ação executada.",
+          },
+          {
+            level: 2,
+            title: "Assistido",
+            tag: "02 / ASSIST",
+            text: "Até 15 min. Você aprova cada ação.",
+          },
+          {
+            level: 3,
+            title: "Leitura autorizada",
+            tag: "03 / SCOPED",
+            text: "Até 10 min. Cálculos e leitura na pasta escolhida podem continuar sem novos cliques.",
+          },
+          {
+            level: 4,
+            title: "Controle amplo Windows",
+            tag: "04 / SUPERVISED",
+            text: "Até 10 min. Perfil pessoal e pastas escolhidas; gravações, aplicativos e navegação supervisionados.",
+          },
+        ].map((mode) => (
+          <button
+            key={mode.level}
+            className={`permission-card ${permissions?.level === mode.level ? "chosen" : ""}`}
+            onClick={() => {
+              if (mode.level <= 2)
+                api("PUT", "/permissions", { level: mode.level })
+                  .then(() => refresh())
+                  .catch(onError);
+              else
+                window.alt
+                  .grantWindows(mode.level as 3 | 4, scope)
+                  .then(async (result) => {
+                    await refresh();
+                    if (mode.level === 4 && (result as Permissions).level===4) setScope("windows-profile");
+                  })
+                  .catch(onError);
             }}
           >
-            {permissions?.scopes.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.path}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span className="eyebrow">{mode.tag}</span>
+            <strong>{mode.title}</strong>
+            <p>{mode.text}</p>
+            {permissions?.level === mode.level && <Check size={15} />}
+          </button>
+        ))}
+      </div>
+      <p className="setting-note">
+        O modo amplo não inclui credenciais, AppData, arquivos de sistema, shell
+        arbitrário ou elevação de privilégios. Você verá o escopo antes de
+        autorizar.
+      </p>
+      <div className="command-shortcuts">
         <button
-          className="secondary"
           onClick={() =>
-            window.alt
-              .chooseWorkspace()
-              .then(() => refresh())
-              .catch(onError)
+            onCommand(
+              "Pesquise na internet a documentação oficial do Ollama e me mostre as fontes.",
+            )
           }
         >
-          <FolderOpen size={14} />
-          Escolher outra pasta
+          Pesquisar na internet ↗
         </button>
-        <label>
-          Ferramenta
-          <select
-            value={tool}
-            onChange={(e) => {
-              setTool(e.target.value);
-              setProposal(null);
-            }}
-          >
-            {[
-              { id: "calculate", name: "Calcular expressão" },
-              { id: "list_files", name: "Listar pasta" },
-              { id: "read_text", name: "Ler texto" },
-              { id: "write_text", name: "Criar / editar texto" },
-              { id: "open_folder", name: "Abrir pasta" },
-              { id: "open_app", name: "Abrir aplicativo autorizado" },
-              { id: "open_url", name: "Abrir página HTTPS" },
-            ].map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {["list_files", "read_text", "write_text", "open_folder"].includes(
-          tool,
-        ) && (
+        <button onClick={() => onCommand("Abra o Bloco de Notas.")}>
+          Abrir um aplicativo ↗
+        </button>
+        <button
+          onClick={() => onCommand("Liste os arquivos da pasta autorizada.")}
+        >
+          Explorar uma pasta ↗
+        </button>
+      </div>
+      <details className="manual-tools">
+        <summary>Controles manuais e configuração de pastas</summary>
+        <div className="feature-form">
           <label>
-            Caminho relativo
-            <input
-              value={path}
-              placeholder="Ex.: projeto/notas.md; vazio usa a pasta raiz"
-              onChange={(e) => {
-                setPath(e.target.value);
-                setProposal(null);
-              }}
-            />
-          </label>
-        )}
-        {tool === "write_text" && (
-          <label>
-            Conteúdo novo
-            <textarea
-              rows={7}
-              value={content}
-              maxLength={30000}
-              onChange={(e) => {
-                setContent(e.target.value);
-                setProposal(null);
-              }}
-            />
-          </label>
-        )}
-        {tool === "calculate" && (
-          <label>
-            Expressão
-            <input
-              value={expression}
-              placeholder="Ex.: (120 + 35) * 2"
-              maxLength={200}
-              onChange={(e) => {
-                setExpression(e.target.value);
-                setProposal(null);
-              }}
-            />
-          </label>
-        )}
-        {tool === "open_app" && (
-          <label>
-            Aplicativo
+            Pasta autorizada
             <select
-              value={application}
+              value={scope}
               onChange={(e) => {
-                setApplication(e.target.value);
+                setScope(e.target.value);
                 setProposal(null);
               }}
             >
-              <option value="notepad">Bloco de Notas</option>
-              <option value="calculator">Calculadora</option>
+              {permissions?.scopes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.path}
+                </option>
+              ))}
             </select>
           </label>
-        )}
-        {tool === "open_url" && (
+          <button
+            className="secondary"
+            onClick={() =>
+              window.alt
+                .chooseWorkspace()
+                .then(() => refresh())
+                .catch(onError)
+            }
+          >
+            <FolderOpen size={14} />
+            Escolher outra pasta
+          </button>
+          <button
+            className="text-button"
+            disabled={!scope || scope === "windows-profile"}
+            onClick={() =>
+              api("DELETE", `/scopes/${scope}`)
+                .then(() => refresh())
+                .catch(onError)
+            }
+          >
+            Remover autorização desta pasta
+          </button>
           <label>
-            URL HTTPS
-            <input
-              value={url}
-              placeholder="https://…"
-              maxLength={2000}
+            Ferramenta
+            <select
+              value={tool}
               onChange={(e) => {
-                setUrl(e.target.value);
+                setTool(e.target.value);
                 setProposal(null);
               }}
-            />
+            >
+              {[
+                { id: "calculate", name: "Calcular expressão" },
+                { id: "list_files", name: "Listar pasta" },
+                { id: "read_text", name: "Ler texto" },
+                { id: "write_text", name: "Criar / editar texto" },
+                { id: "open_folder", name: "Abrir pasta" },
+                { id: "open_app", name: "Abrir aplicativo autorizado" },
+                { id: "open_url", name: "Abrir página HTTPS" },
+                { id: "web_search", name: "Pesquisar na internet" },
+                { id: "read_webpage", name: "Ler página pública" },
+              ].map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
           </label>
-        )}
-        <button className="primary" disabled={busy} onClick={propose}>
-          Revisar proposta
-        </button>
-      </div>
+          {["list_files", "read_text", "write_text", "open_folder"].includes(
+            tool,
+          ) && (
+            <label>
+              Caminho relativo
+              <input
+                value={path}
+                placeholder="Ex.: projeto/notas.md; vazio usa a pasta raiz"
+                onChange={(e) => {
+                  setPath(e.target.value);
+                  setProposal(null);
+                }}
+              />
+            </label>
+          )}
+          {tool === "write_text" && (
+            <label>
+              Conteúdo novo
+              <textarea
+                rows={7}
+                value={content}
+                maxLength={30000}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  setProposal(null);
+                }}
+              />
+            </label>
+          )}
+          {tool === "calculate" && (
+            <label>
+              Expressão
+              <input
+                value={expression}
+                placeholder="Ex.: (120 + 35) * 2"
+                maxLength={200}
+                onChange={(e) => {
+                  setExpression(e.target.value);
+                  setProposal(null);
+                }}
+              />
+            </label>
+          )}
+          {tool === "open_app" && (
+            <label>
+              Aplicativo
+              <select
+                value={application}
+                onChange={(e) => {
+                  setApplication(e.target.value);
+                  setProposal(null);
+                }}
+              >
+                <option value="notepad">Bloco de Notas</option>
+                <option value="calculator">Calculadora</option>
+              </select>
+            </label>
+          )}
+          {(tool === "open_url" || tool === "read_webpage") && (
+            <label>
+              URL HTTPS
+              <input
+                value={url}
+                placeholder="https://…"
+                maxLength={2000}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setProposal(null);
+                }}
+              />
+            </label>
+          )}
+          {tool === "web_search" && (
+            <label>
+              Assunto da pesquisa
+              <input
+                value={query}
+                maxLength={300}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setProposal(null);
+                }}
+              />
+            </label>
+          )}
+          <button className="primary" disabled={busy} onClick={propose}>
+            Revisar proposta
+          </button>
+        </div>
+      </details>
       {proposal && (
         <div className="proposal-card">
           <h3>Uma aprovação. Uma ação.</h3>
@@ -813,7 +924,7 @@ export function ToolsPanel({ notify, onError }: Feedback) {
           <div className="button-row">
             <button
               className="primary"
-              disabled={busy || permissions?.level !== 2}
+              disabled={busy || !permissions || permissions.level < 2}
               onClick={approve}
             >
               <Check size={14} />
@@ -829,7 +940,7 @@ export function ToolsPanel({ notify, onError }: Feedback) {
               Recusar
             </button>
           </div>
-          {permissions?.level !== 2 && (
+          {(!permissions || permissions.level < 2) && (
             <p className="setting-note">
               Ative o modo assistido para executar.
             </p>

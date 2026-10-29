@@ -38,6 +38,7 @@
     "appId": "com.altai.desktop",
     "productName": "ALT-AI",
     "asar": true,
+    "electronFuses": {"runAsNode":false,"enableNodeOptionsEnvironmentVariable":false,"enableNodeCliInspectArguments":false,"enableEmbeddedAsarIntegrityValidation":true,"onlyLoadAppFromAsar":true},
     "directories": {
       "output": "release"
     },

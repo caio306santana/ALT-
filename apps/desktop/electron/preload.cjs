@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld("alt", {
   installOllama: () => ipcRenderer.invoke("setup:ollama"),
   ollamaWebsite: () => ipcRenderer.invoke("setup:website"),
   chooseWorkspace: () => ipcRenderer.invoke("workspace:choose"),
+  grantWindows: (level, scopeId) =>
+    ipcRenderer.invoke("windows:grant", level, scopeId),
   exportMemories: () => ipcRenderer.invoke("memory:export"),
   setAnthropicKey: (key) => ipcRenderer.invoke("credentials:anthropic", key),
   layout: (options) => ipcRenderer.invoke("window:layout", options),

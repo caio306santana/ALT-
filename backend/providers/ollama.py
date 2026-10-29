@@ -78,6 +78,7 @@ class Ollama:
                     'options':profile['options'], 'keep_alive':profile['keep_alive']
                 }
                 if model.startswith('qwen3.5:'): payload['think']=False
+                if profile.get('tools'):payload['tools']=profile['tools']
                 async with client.stream('POST', self.base_url+'/api/chat', json=payload) as response:
                     if response.status_code != 200:
                         await response.aread()

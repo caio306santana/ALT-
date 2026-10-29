@@ -16,19 +16,21 @@ from uuid import uuid4
 from pydantic import BaseModel,Field,ConfigDict
 from typing import Literal
 from backend.memory.store import now
+from backend.tools.research import read_page,search_web
 
 TEXT_EXTENSIONS={'.txt','.md','.json','.csv','.ts','.tsx','.js','.jsx','.py','.css','.html','.yaml','.yml','.sql','.toml'}
-SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials','credentials.json','id_rsa','id_ed25519'}
+SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials','credentials.json','id_rsa','id_ed25519','appdata','ntuser.dat','ntuser.ini','secrets.txt','passwords.txt','senhas.txt'}
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','read_text','write_text','open_folder','open_app','open_url']
+    tool:Literal['calculate','list_files','read_text','write_text','open_folder','open_app','open_url','web_search','read_webpage']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
     expression:str=Field(default='',max_length=200)
     app:Literal['notepad','calculator']='notepad'
     url:str=Field(default='',max_length=2000)
+    query:str=Field(default='',max_length=300)
 
 def calculate(expression):
     try:tree=ast.parse(expression,mode='eval')
@@ -56,11 +58,12 @@ def calculate(expression):
 class ToolService:
     def __init__(self,store,engine,data_dir):
         self.store,self.engine=store,engine
-        self.level=1;self.until=0;self.pending={}
+        self.level=1;self.until=0;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         store.db.executescript('''
           CREATE TABLE IF NOT EXISTS scopes(id TEXT PRIMARY KEY,path TEXT NOT NULL UNIQUE,created TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS actions(id TEXT PRIMARY KEY,tool TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,result TEXT,created TEXT NOT NULL,updated TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS action_context(id TEXT PRIMARY KEY,conversation_id TEXT NOT NULL);
         ''')
         store.db.commit()
         store.write("UPDATE actions SET status='interrupted' WHERE status IN ('proposed','running')")
@@ -68,13 +71,35 @@ class ToolService:
 
     def status(self):
         if self.until<time.monotonic():self.level=1
-        return {'level':self.level,'expires_in':max(0,int(self.until-time.monotonic())) if self.level==2 else 0,'scopes':self.store.rows('SELECT * FROM scopes ORDER BY created'),'tools':['calculate','list_files','read_text','write_text','open_folder','open_app','open_url']}
+        scopes=self.store.rows('SELECT * FROM scopes ORDER BY created')
+        if self.level==4:scopes.append({'id':'windows-profile','path':str(Path.home()),'label':'Perfil pessoal Windows · sessão supervisionada'})
+        return {'level':self.level,'expires_in':max(0,int(self.until-time.monotonic())) if self.level>=2 else 0,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':['calculate','list_files','read_text','write_text','open_folder','open_app','open_url','web_search','read_webpage'],'windows_scope':'Perfil pessoal e pastas escolhidas; credenciais, AppData, sistema, shell e privilégios administrativos excluídos.'}
 
     def set_level(self,level):
         if level not in (1,2):raise ValueError('Níveis 3 e 4 ainda indisponíveis.')
+        if level>1 and self.engine.stopped:raise PermissionError('Retome as ações antes de conceder permissões.')
         self.level=level;self.until=time.monotonic()+900 if level==2 else 0
         self.store.audit('permission_level',str(level))
         return self.status()
+
+    def grant(self,level,scope_ids,duration=600):
+        if level not in (3,4):raise ValueError('Modo inválido.')
+        if self.engine.stopped:raise PermissionError('Retome as ações antes de conceder permissões.')
+        valid={s['id'] for s in self.store.rows('SELECT id FROM scopes')}
+        if any(sid not in valid for sid in scope_ids):raise ValueError('Escopo não encontrado.')
+        self.revoke();self.level=level;self.until=time.monotonic()+max(60,min(1800,duration));self.auto_scopes=set(scope_ids)
+        if level==4:self.auto_scopes.add('windows-profile')
+        self.store.audit('supervised_session_granted',json.dumps({'level':level,'scopes':sorted(self.auto_scopes),'duration':duration}))
+        return self.status()
+
+    def can_auto(self,body):
+        level=self.status()['level']
+        return level in (3,4) and (body.tool=='calculate' or body.tool in ('list_files','read_text') and body.scope_id in self.auto_scopes)
+
+    def describe(self,aid):
+        entry=self.pending.get(aid)
+        if not entry or entry[0]<time.monotonic():raise ValueError('Proposta expirada.')
+        return self.previews[aid]
 
     def add_scope(self,path,internal=False):
         path=Path(path)
@@ -97,7 +122,13 @@ class ToolService:
                     raise ValueError('Links simbólicos e junctions não são permitidos no escopo de arquivos.')
 
     def scoped(self,sid,relative):
-        roots=self.store.rows('SELECT path FROM scopes WHERE id=?',(sid,))
+        if sid=='windows-profile':
+            if self.status()['level']!=4:raise PermissionError('A sessão ampla do Windows expirou ou foi revogada.')
+            roots=[{'path':str(Path.home())}]
+            if Path(relative).is_absolute():
+                try:relative=str(Path(relative).relative_to(Path.home()))
+                except ValueError:raise ValueError('O controle amplo cobre o perfil pessoal. Escolha outra pasta explicitamente para acessar fora dele.')
+        else:roots=self.store.rows('SELECT path FROM scopes WHERE id=?',(sid,))
         if not roots:raise ValueError('Selecione uma pasta autorizada.')
         root=Path(roots[0]['path'])
         windows=PureWindowsPath(relative)
@@ -118,7 +149,7 @@ class ToolService:
         if not path.is_file() or path.stat().st_size>120000:raise ValueError('Escolha um arquivo de texto de até 120 KB.')
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
-    def proposal(self,body):
+    def proposal(self,body,conversation_id=''):
         if self.engine.stopped:raise PermissionError('Ações suspensas.')
         payload=body.model_dump();preview={'tool':body.tool};fingerprint=None
         if body.tool in ('list_files','read_text','write_text','open_folder'):
@@ -139,14 +170,26 @@ class ToolService:
             url=urllib.parse.urlsplit(body.url)
             if url.scheme!='https' or not url.hostname or url.username or url.password or any(c.isspace() for c in body.url):raise ValueError('Use uma URL HTTPS válida, sem credenciais.')
             preview['url']=body.url
+        elif body.tool=='web_search':
+            if not body.query.strip():raise ValueError('Informe o assunto da pesquisa.')
+            preview['query']=body.query;preview['external_notice']='Esta consulta será enviada a um mecanismo de pesquisa público.'
+        elif body.tool=='read_webpage':
+            parsed=urllib.parse.urlsplit(body.url)
+            if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password:raise ValueError('Use uma URL HTTPS pública, sem credenciais.')
+            preview['url']=body.url;preview['external_notice']='A página será consultada sem cookies ou sessões pessoais.'
+        preview['critical']=body.tool=='write_text' and body.scope_id=='windows-profile'
         aid=str(uuid4())
         self.pending[aid]=(time.monotonic()+300,payload,fingerprint)
+        self.previews[aid]=preview
         if len(self.pending)>100:self.pending.pop(next(iter(self.pending)))
         self.store.write('INSERT INTO actions VALUES(?,?,?,?,?,?,?)',(aid,body.tool,json.dumps(payload), 'proposed',None,now(),now()))
+        self.store.write('INSERT INTO action_context VALUES(?,?)',(aid,conversation_id))
         return {'id':aid,'preview':preview,'expires_in':300,'requires_approval':True}
 
     async def approve(self,aid):
-        if self.status()['level']!=2:raise PermissionError('Ative o modo assistido para aprovar esta ação.')
+        if self.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
+        preview=self.describe(aid)
+        if preview.get('critical') and aid not in self.critical_confirmed:raise PermissionError('Gravação ampla exige confirmação adicional na janela nativa.')
         entry=self.pending.pop(aid,None)
         if not entry or entry[0]<time.monotonic():raise ValueError('Proposta expirada ou já utilizada.')
         event=self.engine.begin('tool:'+aid)
@@ -158,11 +201,13 @@ class ToolService:
             return {'id':aid,'status':'complete','result':result}
         except Exception:
             self.store.write("UPDATE actions SET status='error',updated=? WHERE id=?",(now(),aid));raise
-        finally:self.engine.active.pop('tool:'+aid,None)
+        finally:self.engine.active.pop('tool:'+aid,None);self.previews.pop(aid,None);self.critical_confirmed.discard(aid)
 
     def execute(self,body,fingerprint,event):
         if event.is_set() or self.engine.stopped:raise PermissionError('Ação interrompida.')
         if body.tool=='calculate':return {'value':calculate(body.expression)}
+        if body.tool=='web_search':return search_web(body.query)
+        if body.tool=='read_webpage':return read_page(body.url)
         if body.tool in ('list_files','read_text','write_text','open_folder'):
             path=self.scoped(body.scope_id,body.path)
             if body.tool=='list_files':
@@ -170,7 +215,8 @@ class ToolService:
                 for p in sorted(path.iterdir(),key=lambda p:p.name.lower()):
                     if len(entries)>=200:break
                     try:
-                        self.scoped(body.scope_id,str(p.relative_to(Path(self.store.rows('SELECT path FROM scopes WHERE id=?',(body.scope_id,))[0]['path']))))
+                        base=Path.home() if body.scope_id=='windows-profile' else Path(self.store.rows('SELECT path FROM scopes WHERE id=?',(body.scope_id,))[0]['path'])
+                        self.scoped(body.scope_id,str(p.relative_to(base)))
                         entries.append({'name':p.name,'directory':p.is_dir(),'bytes':p.stat().st_size if p.is_file() else None})
                     except (OSError,ValueError):continue
                 return {'entries':entries,'limit':200}
@@ -189,12 +235,12 @@ class ToolService:
                     if temporary.exists():temporary.unlink()
                 return {'path':str(path),'bytes':path.stat().st_size}
             if os.name!='nt':raise ValueError('Abertura de pastas disponível no Windows.')
-            os.startfile(str(path));return {'opened':str(path)}
+            os.startfile(str(path));return {'open_requested':str(path)}
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
             executable=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32'/('notepad.exe' if body.app=='notepad' else 'calc.exe')
-            subprocess.Popen([str(executable)],creationflags=subprocess.CREATE_NO_WINDOW)
-            return {'opened':body.app}
+            process=subprocess.Popen([str(executable)],creationflags=subprocess.CREATE_NO_WINDOW)
+            return {'launch_requested':body.app,'pid':process.pid}
         if body.tool=='open_url':
             opened=webbrowser.open(body.url)
             if not opened:raise ValueError('O sistema não confirmou a abertura do navegador.')
@@ -202,10 +248,19 @@ class ToolService:
         raise ValueError('Ferramenta indisponível.')
 
     def revoke(self):
-        self.level=1;self.until=0;self.pending.clear()
+        self.level=1;self.until=0;self.pending.clear();self.previews.clear();self.critical_confirmed.clear();self.auto_scopes.clear()
         self.store.write("UPDATE actions SET status='cancelled' WHERE status='proposed'")
         for key,event in self.engine.active.items():
             if key.startswith('tool:'):event.set()
 
     def history(self):
         return self.store.rows('SELECT id,tool,status,result,created,updated FROM actions ORDER BY created DESC LIMIT 100')
+
+    def conversation_actions(self,cid):
+        rows=self.store.rows('SELECT a.* FROM actions a JOIN action_context c ON c.id=a.id WHERE c.conversation_id=? ORDER BY a.created',(cid,))
+        result=[]
+        for row in rows:
+            payload=json.loads(row['payload'])
+            preview=self.previews.get(row['id']) or {key:value for key,value in payload.items() if key in ('tool','path','query','url','app','expression') and value}
+            result.append({'id':row['id'],'preview':preview,'state':'proposed' if row['status']=='proposed' else 'complete' if row['status']=='complete' else 'rejected' if row['status']=='rejected' else 'error','result':json.loads(row['result']) if row['result'] else None})
+        return result

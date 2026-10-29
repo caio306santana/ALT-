@@ -13,6 +13,11 @@ class PermissionBody(BaseModel):
 class ScopeBody(BaseModel):
     model_config=ConfigDict(extra='forbid')
     path:str=Field(min_length=1,max_length=1000)
+class GrantBody(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    level:Literal[3,4]
+    scope_ids:list[str]=Field(default_factory=list,max_length=20)
+    duration:int=Field(default=600,ge=60,le=1800)
 class KeyBody(BaseModel):
     model_config=ConfigDict(extra='forbid')
     key:str=Field(min_length=1,max_length=500)
@@ -56,6 +61,8 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
     async def permissions():return tools.status()
     @router.put('/permissions')
     async def permissions_set(body:PermissionBody):return tools.set_level(body.level)
+    @router.post('/permissions/grant')
+    async def grant(body:GrantBody):return tools.grant(body.level,body.scope_ids,body.duration)
     @router.post('/permissions/revoke')
     async def revoke():tools.revoke();return tools.status()
     # Only the main-process folder picker may call this route; omitted from renderer API allowlist.
@@ -68,11 +75,18 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
     async def propose(body:ToolProposal):return tools.proposal(body)
     @router.post('/tools/approve/{aid}')
     async def approve(aid:str):return await tools.approve(aid)
+    @router.get('/tools/proposal/{aid}')
+    async def proposal_detail(aid:str):return tools.describe(aid)
+    @router.post('/tools/confirm/{aid}')
+    async def critical_confirm(aid:str):
+        tools.describe(aid);tools.critical_confirmed.add(aid);return {'confirmed':True}
     @router.post('/tools/reject/{aid}')
     async def reject(aid:str):
         tools.pending.pop(aid,None);store.write("UPDATE actions SET status='rejected' WHERE id=? AND status='proposed'",(aid,));return {'ok':True}
     @router.get('/tools/history')
     async def tool_history():return tools.history()
+    @router.get('/conversations/{cid}/actions')
+    async def conversation_actions(cid:str):return tools.conversation_actions(cid)
     @router.get('/audit')
     async def audit():return store.rows('SELECT * FROM audit ORDER BY id DESC LIMIT 200')
 

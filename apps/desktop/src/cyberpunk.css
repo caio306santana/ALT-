@@ -1,0 +1,465 @@
+.app {
+  background:
+    radial-gradient(
+      ellipse at 0 100%,
+      color-mix(in srgb, var(--accent) 10%, transparent),
+      transparent 50%
+    ),
+    linear-gradient(
+      130deg,
+      rgba(5, 9, 15, var(--surface-alpha)),
+      rgba(13, 9, 20, var(--surface-alpha))
+    );
+  border-color: color-mix(in srgb, var(--accent) 36%, #3a4053);
+}
+.titlebar {
+  background: linear-gradient(90deg, #070c16e8, #10101ae8);
+  border-bottom-color: color-mix(in srgb, var(--accent) 30%, #1c2638);
+}
+.brand {
+  font-family: Consolas, "Segoe UI", monospace;
+  letter-spacing: 5px;
+  font-weight: 600;
+}
+.brand-slash {
+  box-shadow: 0 0 19px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.edition,
+.eyebrow {
+  font-family: Consolas, monospace;
+  letter-spacing: 1.8px;
+}
+.sectionbar {
+  background: linear-gradient(100deg, #0a101ce6, #0c1018e6);
+  position: relative;
+}
+.sectionbar:after {
+  content: "";
+  position: absolute;
+  left: 27px;
+  bottom: 0;
+  width: 90px;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 var(--glow) var(--accent);
+}
+.sectionbar h1 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+}
+.page-scroll {
+  background:
+    linear-gradient(120deg, #080e18ed, #0d0b15ed),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      #65caff05 40px
+    );
+  position: relative;
+}
+.rail {
+  background: linear-gradient(180deg, #080c15e8, #0b0a14e8);
+  border-right-color: #47516a40;
+}
+.rail button.selected {
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 21%, transparent),
+    color-mix(in srgb, var(--accent) 5%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.rail button.profile {
+  width: 34px;
+  height: 34px;
+  border-color: var(--secondary);
+  border-radius: 50%;
+  color: var(--secondary);
+  font-family: Consolas, monospace;
+  background: #0e1e29;
+  box-shadow: 0 0 15px color-mix(in srgb, var(--secondary) 10%, transparent);
+}
+.settings-panel {
+  background: linear-gradient(145deg, #0a101bf2, #0b0914f5);
+}
+.settings-tabs .selected {
+  border-radius: 2px;
+  border-left: 2px solid var(--accent);
+}
+.primary,
+.send {
+  border-radius: 3px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.secondary {
+  border-radius: 3px;
+  border-color: #594265;
+  background: linear-gradient(120deg, #1a1726, #11141e);
+  font-size: 10px;
+}
+.security-hero {
+  padding: 3px 0 18px;
+  border-bottom: 1px solid #31374c;
+  position: relative;
+}
+.security-hero > svg {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--secondary);
+}
+.security-hero h2 {
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.6px;
+}
+.security-hero p {
+  max-width: 600px;
+  color: #8e9ab3;
+  font-size: 12px;
+}
+.permission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0 17px;
+}
+.permission-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  justify-content: flex-start;
+  gap: 11px;
+  position: relative;
+  padding: 20px 17px;
+  min-height: 158px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 13px) 0,
+    100% 13px,
+    100% 100%,
+    13px 100%,
+    0 calc(100% - 13px)
+  );
+  background: linear-gradient(135deg, #172130, #10111e);
+  border: 1px solid #394456;
+  color: #dbe4ee;
+}
+.permission-card .eyebrow {
+  font-size: 8px;
+  color: var(--secondary);
+}
+.permission-card strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.permission-card p {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #8e9bb3;
+  margin: 0;
+}
+.permission-card > svg {
+  position: absolute;
+  top: 15px;
+  right: 14px;
+  color: var(--accent);
+}
+.permission-card:hover {
+  background: linear-gradient(135deg, #202a3c, #191020);
+}
+.permission-card.chosen {
+  border-color: var(--accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 13%, #141b28),
+    #101422
+  );
+}
+.permission-card.chosen strong {
+  color: var(--accent);
+}
+.command-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+}
+.command-shortcuts button {
+  border: 1px solid #284558;
+  background: #0c1d29aa;
+  color: #7ac8e5;
+  padding: 10px 12px;
+  font-size: 10px;
+  border-radius: 2px;
+}
+.manual-tools {
+  border: 1px solid #313e52;
+  border-left: 2px solid var(--secondary);
+  padding: 16px;
+  margin: 24px 0;
+  background: #0b111c;
+}
+.manual-tools > summary {
+  font-size: 11px;
+  color: #9eabc2;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+}
+.manual-tools[open] > summary {
+  margin-bottom: 20px;
+}
+.manual-tools .feature-form {
+  gap: 15px;
+}
+.feature-form
+  input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+.feature-form textarea,
+.feature-search,
+.feature-form select {
+  border-radius: 3px;
+  background: #0d1220;
+  border-color: #34445a;
+}
+.feature-form > label {
+  color: #a3b0c7;
+  font-size: 10px;
+  letter-spacing: 0.15px;
+}
+.identity-hero {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 13px 0 30px;
+  border-bottom: 1px solid #344358;
+}
+.identity-sigil {
+  height: 110px;
+  width: 110px;
+  flex-shrink: 0;
+  border: 1px solid var(--accent);
+  clip-path: polygon(
+    15px 0,
+    100% 0,
+    100% calc(100% - 15px),
+    calc(100% - 15px) 100%,
+    0 100%,
+    0 15px
+  );
+  background:
+    repeating-linear-gradient(
+      0deg,
+      #ff005707,
+      #ff005707 2px,
+      transparent 3px,
+      transparent 5px
+    ),
+    linear-gradient(135deg, #321228, #091827);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  font-family: Consolas, monospace;
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: #f9e8ee;
+}
+.identity-sigil > span {
+  position: absolute;
+  bottom: 14px;
+  left: 21px;
+  right: 21px;
+  height: 2px;
+  background: var(--secondary);
+  box-shadow: 0 0 var(--glow) var(--secondary);
+}
+.identity-hero h2 {
+  font-family: Consolas, "Segoe UI", monospace;
+  font-size: 34px;
+  letter-spacing: 4px;
+  font-weight: 400;
+  margin: 12px 0 7px;
+}
+.identity-hero p {
+  font-size: 12px;
+  color: #9aabc3;
+  margin: 0 0 17px;
+}
+.identity-badge {
+  font:
+    8px Consolas,
+    monospace;
+  color: var(--secondary);
+  letter-spacing: 1.5px;
+  border: 1px solid #25556b;
+  padding: 5px 8px;
+}
+.profile-editor {
+  margin: 25px 0;
+  padding: 20px;
+  border: 1px solid #354357;
+  background: #0c1321;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+.identity-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+.identity-cards > button {
+  display: flex;
+  text-align: left;
+  justify-content: flex-start;
+  padding: 20px 16px;
+  gap: 16px;
+  background: linear-gradient(100deg, #111c2c, #100f1c);
+  border: 1px solid #35445a;
+  border-left: 2px solid var(--accent);
+}
+.identity-cards > button > svg:first-child {
+  color: var(--secondary);
+}
+.identity-cards > button > svg:last-child {
+  margin-left: auto;
+  color: #61728d;
+}
+.identity-cards strong {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  margin-bottom: 7px;
+  font-weight: 500;
+}
+.identity-cards small {
+  display: block;
+  font-size: 10px;
+  color: #8699b4;
+  line-height: 1.7;
+}
+.engine-identity {
+  padding: 20px 0;
+  margin-top: 18px;
+}
+.engine-identity > strong {
+  display: block;
+  font-size: 13px;
+  color: var(--secondary);
+  margin: 13px 0;
+}
+.engine-identity p {
+  font-size: 10px;
+  line-height: 1.9;
+  color: #7e92b0;
+}
+.chat-action-card {
+  border: 1px solid #34516a;
+  border-left: 2px solid var(--secondary);
+  background: linear-gradient(120deg, #0e1c29, #11101c);
+  padding: 17px;
+  margin: 20px 0;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+.chat-action-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--secondary);
+}
+.chat-action-heading strong {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  font-weight: 500;
+}
+.chat-action-heading .small-tag {
+  margin-left: auto;
+  font-size: 7px;
+  white-space: nowrap;
+}
+.chat-action-card > p {
+  font-size: 11px;
+  color: #a0b2ca;
+  overflow-wrap: anywhere;
+}
+.chat-action-card pre {
+  font:
+    10px/1.8 Consolas,
+    monospace;
+  white-space: pre-wrap;
+  max-height: 250px;
+  overflow: auto;
+  color: #9ab9cc;
+  overflow-wrap: anywhere;
+}
+.chat-action-card summary {
+  font-size: 10px;
+  color: #8bb2c7;
+  cursor: pointer;
+  margin: 15px 0;
+}
+.light .page-scroll {
+  background: #f2edf5;
+}
+.light .permission-card,
+.light .manual-tools,
+.light .profile-editor,
+.light .identity-cards > button,
+.light .chat-action-card {
+  background: #e9e2ef;
+  border-color: #b8b0c7;
+  color: #302a3b;
+}
+.light .titlebar,
+.light .settings-panel,
+.light .rail,
+.light .sectionbar {
+  background: #e9e3ef;
+  color: #302a3b;
+}
+.light .permission-card p,
+.light .security-hero p,
+.light .engine-identity p,
+.light .identity-cards small,
+.light .chat-action-card > p {
+  color: #6d6681;
+}
+.light
+  .feature-form
+  input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+.light .feature-form textarea,
+.light .feature-form select {
+  background: #f8f5fb;
+  color: #292336;
+}
+.light .identity-hero h2 {
+  color: #302038;
+}
+@media (max-width: 960px) {
+  .permission-grid {
+    gap: 8px;
+  }
+  .permission-card {
+    padding: 15px 12px;
+  }
+  .permission-card strong {
+    font-size: 11px;
+  }
+  .permission-card p {
+    font-size: 9px;
+  }
+  .identity-hero {
+    gap: 16px;
+  }
+  .identity-sigil {
+    height: 80px;
+    width: 80px;
+  }
+  .identity-hero h2 {
+    font-size: 26px;
+  }
+}

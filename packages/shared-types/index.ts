@@ -24,8 +24,8 @@ export interface Model {
   name: string;
   size: number;
   details?: { parameter_size?: string; quantization_level?: string };
-  provider?:string;
-  location?:'local'|'cloud';
+  provider?: string;
+  location?: "local" | "cloud";
 }
 export interface Preferences {
   accent: string;
@@ -37,22 +37,63 @@ export interface Preferences {
   animations: boolean;
   model: string;
   performance: "auto" | "notebook" | "desktop";
-  personality:Personality;
-  secondary:string;
-  appearance:'dark'|'light';
-  scale:number;
-  chat_opacity:number;
-  effects:boolean;
-  radius:number;
-  shortcut:string;
-  always_on_top:boolean;
+  personality: Personality;
+  secondary: string;
+  appearance: "dark" | "light";
+  scale: number;
+  chat_opacity: number;
+  effects: boolean;
+  radius: number;
+  shortcut: string;
+  always_on_top: boolean;
+  user_name: string;
 }
-export interface Personality {name:string;tone:string;irony:number;challenge:number;warmth:number;formality:number;instructions:string}
-export interface Memory {id:string;title:string;content:string;category:'preferência'|'projeto'|'decisão'|'contexto';enabled:boolean;created:string;updated:string}
-export interface ProviderStatus {id:string;name:string;available:boolean;location:string;billing:string;reason:string}
-export interface CloudPreview {provider:ProviderStatus;messages:{role:string;content:string}[];consent_receipt:string;estimated_usd:number|null;billing_notice:string;context_truncated:boolean}
+export interface Personality {
+  name: string;
+  tone: string;
+  irony: number;
+  challenge: number;
+  warmth: number;
+  formality: number;
+  instructions: string;
+}
+export interface Memory {
+  id: string;
+  title: string;
+  content: string;
+  category: "preferência" | "projeto" | "decisão" | "contexto";
+  enabled: boolean;
+  created: string;
+  updated: string;
+}
+export interface ProviderStatus {
+  id: string;
+  name: string;
+  available: boolean;
+  location: string;
+  billing: string;
+  reason: string;
+}
+export interface CloudPreview {
+  provider: ProviderStatus;
+  messages: { role: string; content: string }[];
+  consent_receipt: string;
+  estimated_usd: number | null;
+  billing_notice: string;
+  context_truncated: boolean;
+}
 export type StreamEvent = {
-  type: "start" | "delta" | "error" | "done" | "progress";
+  type:
+    | "start"
+    | "delta"
+    | "error"
+    | "done"
+    | "progress"
+    | "tool_proposal"
+    | "tool_result";
+  proposal?: { id: string; preview: Record<string, unknown> };
+  action_id?: string;
+  result?: unknown;
   text?: string;
   message_id?: string;
   message?: string;

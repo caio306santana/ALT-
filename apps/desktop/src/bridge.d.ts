@@ -17,6 +17,7 @@ declare global {
       installOllama(): Promise<{ ok: boolean; message: string }>;
       ollamaWebsite(): Promise<void>;
       chooseWorkspace(): Promise<unknown>;
+      grantWindows(level: 3 | 4, scopeId: string): Promise<unknown>;
       exportMemories(): Promise<{ saved: boolean }>;
       setAnthropicKey(
         key: string,
@@ -26,9 +27,7 @@ declare global {
         height: number;
         position: string;
       }): Promise<unknown>;
-      gameMode(
-        enabled: boolean,
-      ): Promise<{
+      gameMode(enabled: boolean): Promise<{
         enabled: boolean;
         message: string;
         model_unloaded?: boolean;

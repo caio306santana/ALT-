@@ -1,6 +1,15 @@
 name: Build Windows preview
 on:
   workflow_dispatch:
+    inputs:
+      sign_windows:
+        description: 'Assinar Authenticode (exige certificado configurado nos secrets)'
+        type: boolean
+        default: false
+      sign_manifest:
+        description: 'Gerar manifesto Ed25519 (exige chave privada original nos secrets)'
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -19,8 +28,21 @@ jobs:
       - run: python -m venv .venv
       - run: .\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
       - run: npm.cmd test
-      - run: npm.cmd run dist
+      - if: ${{ !inputs.sign_windows }}
+        run: npm.cmd run dist
+      - if: ${{ inputs.sign_windows }}
+        run: npm.cmd run dist:signed
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      - if: ${{ inputs.sign_manifest }}
+        run: npm.cmd run release:manifest
+        env:
+          ALT_UPDATE_PRIVATE_KEY: ${{ secrets.ALT_UPDATE_PRIVATE_KEY }}
       - uses: actions/upload-artifact@v4
         with:
           name: ALT-AI-Windows-x64
-          path: release/ALT-AI-Setup-*.exe
+          path: |
+            release/ALT-AI-Setup-*.exe
+            release/ALT-AI-*-update.json
+            release/SHA256SUMS.txt

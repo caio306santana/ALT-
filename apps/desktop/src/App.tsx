@@ -50,6 +50,8 @@ import type {
   CloudPreview,
 } from "../../../packages/shared-types";
 import { themes } from "../../../packages/design-tokens/themes";
+import { ProfilePanel } from "./components/ProfilePanel";
+import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import {
   AdvancedAppearance,
   PersonalityPanel,
@@ -78,13 +80,21 @@ const defaults: Preferences = {
   radius: 13,
   shortcut: "Control+Shift+Space",
   always_on_top: false,
+  user_name: "",
 };
 const api = <T,>(method: string, path: string, body?: unknown) =>
   window.alt.request<T>(method, path, body);
 const bytes = (value: number | undefined | null) =>
   value == null ? "Indisponível" : `${(value / 1024 ** 3).toFixed(1)} GB`;
 type View =
-  "chat" | "models" | "history" | "monitor" | "security" | "memory" | "tools";
+  | "chat"
+  | "models"
+  | "history"
+  | "monitor"
+  | "security"
+  | "memory"
+  | "tools"
+  | "profile";
 type SystemData = {
   cpu: { name: string; percent: number; logical_cores: number };
   ram: { used: number; total: number; available: number; percent: number };
@@ -135,6 +145,11 @@ export default function App() {
     current = useRef(""),
     textarea = useRef<HTMLTextAreaElement>(null);
   const timerDeadline = useRef(0);
+  const [chatActions, setChatActions] = useState<ChatAction[]>([]),
+    [pendingAnalysis, setPendingAnalysis] = useState<{
+      id: string;
+      content: string;
+    } | null>(null);
   const [memoryIds, setMemoryIds] = useState<string[]>([]),
     [cloudPreview, setCloudPreview] = useState<CloudPreview | null>(null),
     [gameMode, setGameMode] = useState(false);
@@ -190,7 +205,9 @@ export default function App() {
     const data = await api<Message[]>("GET", `/conversations/${id}/messages`);
     setCid(id);
     setMemoryIds([]);
+    setChatActions([]);
     setMessages(data);
+    setChatActions(await api<ChatAction[]>('GET',`/conversations/${id}/actions`));
     setView("chat");
     setError("");
   }
@@ -199,6 +216,7 @@ export default function App() {
     const data = await api<Conversation>("POST", "/conversations");
     setCid(data.id);
     setMemoryIds([]);
+    setChatActions([]);
     setMessages([]);
     setView("chat");
     setError("");
@@ -227,6 +245,7 @@ export default function App() {
         await refresh();
         if (list.length) {
           setCid(list[0].id);
+          setChatActions(await api<ChatAction[]>('GET',`/conversations/${list[0].id}/actions`));
           setMessages(
             await api<Message[]>(
               "GET",
@@ -315,8 +334,11 @@ export default function App() {
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setPrefs((old) => ({ ...old, [key]: value }));
   }
-  async function send(consentReceipt = "") {
-    const text = input.trim();
+  async function send(
+    consentReceipt = "",
+    analysis?: { id: string; content: string },
+  ) {
+    const text = analysis?.content || input.trim();
     if (!text || busy) return;
     if (stopped) {
       setError("Retome as ações antes de enviar uma mensagem.");
@@ -340,12 +362,15 @@ export default function App() {
         setCid(id);
       }
       if (prefs.model.startsWith("cloud:") && !consentReceipt) {
+        setPendingAnalysis(analysis || null);
+        if (analysis) setInput(text);
         setCloudPreview(
           await api<CloudPreview>("POST", "/chat/preview", {
             conversation_id: id,
             model: prefs.model,
             content: text,
             memory_ids: memoryIds,
+            tool_result_id: analysis?.id || "",
           }),
         );
         return;
@@ -380,8 +405,22 @@ export default function App() {
           content: text,
           memory_ids: memoryIds,
           consent_receipt: consentReceipt,
+          tool_result_id: analysis?.id || "",
         },
         (event: StreamEvent) => {
+          if (event.type === "tool_proposal" && event.proposal)
+            setChatActions((old) => [
+              ...old,
+              { ...event.proposal!, state: "proposed" },
+            ]);
+          if (event.type === "tool_result")
+            setChatActions((old) =>
+              old.map((action) =>
+                action.id === event.action_id
+                  ? { ...action, state: "complete", result: event.result }
+                  : action,
+              ),
+            );
           if (event.type === "delta")
             setMessages((old) =>
               old.map((m) =>
@@ -579,9 +618,15 @@ export default function App() {
             >
               <Settings size={21} />
             </button>
-            <div className="profile">
-              A<span />
-            </div>
+            <button
+              className="profile"
+              title="Seu perfil"
+              aria-label="Seu perfil"
+              onClick={() => setView("profile")}
+            >
+              {prefs.user_name?.slice(0, 1).toUpperCase() || "A"}
+              <span />
+            </button>
           </div>
         </aside>
         <main className="main">
@@ -601,7 +646,9 @@ export default function App() {
                           ? "MEMORY CORE"
                           : view === "tools"
                             ? "ASSISTED TOOLS"
-                            : "LOCAL HISTORY"}
+                            : view === "profile"
+                              ? "IDENTITY CORE"
+                              : "LOCAL HISTORY"}
               </span>
               <h1>
                 {view === "chat"
@@ -616,7 +663,9 @@ export default function App() {
                           ? "O que vale lembrar"
                           : view === "tools"
                             ? "Ferramentas assistidas"
-                            : "Você está no controle"}
+                            : view === "profile"
+                              ? "Seu perfil"
+                              : "Você está no controle"}
                 <span className="small-tag">
                   {prefs.model.startsWith("cloud:") && view === "chat"
                     ? "NUVEM"
@@ -820,6 +869,25 @@ export default function App() {
                           </div>
                         )}
                       </article>
+                    ))}
+                    {chatActions.map((action) => (
+                      <ChatActionCard
+                        key={action.id}
+                        action={action}
+                        onUpdate={(updated) =>
+                          setChatActions((old) =>
+                            old.map((a) => (a.id === updated.id ? updated : a)),
+                          )
+                        }
+                        onAnalyze={() =>
+                          send("", {
+                            id: action.id,
+                            content:
+                              "Analise este resultado confirmado da ferramenta. Se for uma pesquisa, explique e cite as URLs recuperadas.",
+                          })
+                        }
+                        onError={report}
+                      />
                     ))}
                     <div ref={end} />
                   </div>
@@ -1065,11 +1133,7 @@ export default function App() {
                         : `Ollama · Local · ${bytes(model.size)} em disco`}
                     </p>
                     <span>
-                      {model.details?.parameter_size ||
-                        "Parâmetros não informados"}{" "}
-                      ·{" "}
-                      {model.details?.quantization_level ||
-                        "Quantização não informada"}
+                      {model.location==='cloud'?'Conversa e código · ferramentas Windows no Qwen/Ollama':`${model.details?.parameter_size||'Parâmetros não informados'} · ${model.details?.quantization_level||'Quantização não informada'}`}
                     </span>
                   </div>
                   <span className="check-circle">
@@ -1288,7 +1352,27 @@ export default function App() {
             />
           )}
           {view === "tools" && (
-            <ToolsPanel notify={setNotice} onError={report} />
+            <ToolsPanel
+              notify={setNotice}
+              onError={report}
+              onCommand={(text) => {
+                setInput(text);
+                setView("chat");
+              }}
+            />
+          )}
+          {view === "profile" && (
+            <ProfilePanel
+              prefs={prefs}
+              onChange={setPrefs}
+              model={modelName}
+              onIdentity={() => {
+                setTab("Personalidade");
+                setSettingsOpen(true);
+              }}
+              onMemory={() => setView("memory")}
+              onTools={() => setView("tools")}
+            />
           )}
           {view === "security" && (
             <div className="page-scroll">
@@ -1778,14 +1862,22 @@ export default function App() {
             <div className="button-row">
               <button
                 className="secondary"
-                onClick={() => setCloudPreview(null)}
+                onClick={() => {
+                  setCloudPreview(null);
+                  setPendingAnalysis(null);
+                }}
               >
                 Cancelar
               </button>
               <button
                 className="primary"
                 disabled={busy}
-                onClick={() => send(cloudPreview.consent_receipt)}
+                onClick={() =>
+                  send(
+                    cloudPreview.consent_receipt,
+                    pendingAnalysis || undefined,
+                  )
+                }
               >
                 Autorizar este envio
               </button>

@@ -179,6 +179,7 @@ def test_codex_args_disable_tools_and_personal_discovery(tmp_path,monkeypatch):
     assert 'features.shell_tool=false' in args and 'features.hooks=false' in args
     assert 'features.plugins=false' in args and 'features.memories=false' in args
     assert 'permissions.alt_chat.network.enabled=false' in args
+    assert 'forced_login_method="chatgpt"' in args
     assert any('":root"="deny"' in value for value in args)
     monkeypatch.setenv('ALT_SESSION_TOKEN','PRIVATE');monkeypatch.setenv('ANTHROPIC_API_KEY','PRIVATE')
     assert 'ALT_SESSION_TOKEN' not in clean_env() and 'ANTHROPIC_API_KEY' not in clean_env()
@@ -214,3 +215,36 @@ def test_api_config_does_not_break_general_settings(tmp_path):
         assert client.get('/settings').status_code==200
         cid=conversation(client)
         assert client.post('/chat/preview',json={'conversation_id':cid,'model':'cloud:anthropic','content':'No network'}).status_code==409
+
+def test_oversized_selected_memory_never_silently_truncates_personality(tmp_path):
+    app,local,_,client=fixture_client(tmp_path)
+    with client:
+        settings=client.get('/settings').json();settings['performance']='notebook';client.put('/settings',json=settings)
+        memory=client.post('/memories',json={'title':'Grande','content':'A'*6000}).json()
+        cid=conversation(client)
+        response=client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Continue','memory_ids':[memory['id']]})
+        assert response.status_code==400 and 'contexto' in response.json()['detail']
+        assert local.contexts==[]
+        assert client.get(f'/conversations/{cid}/messages').json()==[]
+
+def test_expired_permission_and_expired_proposal_cannot_execute(tmp_path):
+    app,_,_,client=fixture_client(tmp_path)
+    with client:
+        client.put('/permissions',json={'level':2})
+        proposal=client.post('/tools/propose',json={'tool':'calculate','expression':'2+2'}).json()
+        app.state.tools.until=0
+        assert client.post('/tools/approve/'+proposal['id']).status_code==403
+        client.put('/permissions',json={'level':2})
+        pending=app.state.tools.pending[proposal['id']]
+        app.state.tools.pending[proposal['id']]=(0,pending[1],pending[2])
+        assert client.post('/tools/approve/'+proposal['id']).status_code==400
+
+def test_scope_rejects_existing_symbolic_link(tmp_path):
+    app,_,_,client=fixture_client(tmp_path)
+    outside=tmp_path/'outside';outside.mkdir();(outside/'secret.txt').write_text('private')
+    link=tmp_path/'workspace'/'linked'
+    try:link.symlink_to(outside,target_is_directory=True)
+    except OSError:pytest.skip('This Windows user cannot create symbolic links')
+    with client:
+        scope=client.get('/permissions').json()['scopes'][0]['id']
+        assert client.post('/tools/propose',json={'tool':'read_text','scope_id':scope,'path':'linked/secret.txt'}).status_code==400
