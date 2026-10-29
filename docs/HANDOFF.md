@@ -1,6 +1,10 @@
 # Continuidade — ALT-AI
 
-Última atualização: 29/10/2026. Prévia 0.1.0 — Fases 1 e 2 implementadas. Instalador gerado e aplicativo empacotado validado; publicação de release em andamento.
+Última atualização: 29/10/2026. Prévia 0.1.0 — Fases 1 e 2 implementadas. Instalador gerado, aplicativo empacotado validado e release publicada.
+
+Release: https://github.com/caio306santana/ALT-/releases/tag/v0.1.0
+
+Instalador e SHA256SUMS foram enviados e verificados na release privada. A tag aponta para o commit de entrega; alterações posteriores de documentação não modificam o binário.
 
 ## Escopo autorizado
 
@@ -35,10 +39,9 @@ Implementar Fases 1 e 2 do MASTER PROMPT: Electron/React/TypeScript, FastAPI, SQ
 
 ## Próximos passos imediatos
 
-1. Publicar release de prévia com instalador/SHA256, preservando visibilidade privada, e entregar links.
-2. Validar instalação no PC principal, modelo 4B e aceleração real da RX 7600. Testar Qwen 9B apenas após consentimento para download.
-3. Validar uso prolongado no notebook; Qwen 2B é alternativa opcional e ainda não testada aqui.
-4. Evoluir fases seguintes pelo ROADMAP, começando personalização/memória e investigação oficial de Codex/Claude, sem habilitar funções fictícias.
+1. Validar instalação no PC principal, modelo 4B e aceleração real da RX 7600. Testar Qwen 9B apenas após consentimento para download.
+2. Validar uso prolongado no notebook; Qwen 2B é alternativa opcional e ainda não testada aqui.
+3. Evoluir fases seguintes pelo ROADMAP, começando personalização/memória e investigação oficial de Codex/Claude, sem habilitar funções fictícias.
 
 ## Retomar no outro PC
 

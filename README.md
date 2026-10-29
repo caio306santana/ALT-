@@ -2,7 +2,7 @@
 
 Assistente pessoal Windows com interface Electron/React e inferência local pelo Ollama. Código completo para continuar o desenvolvimento em outro computador.
 
-**Estado: prévia 0.1.0 em validação.** Fases 1 e 2 implementadas; os demais recursos estão em [ROADMAP](docs/ROADMAP.md). Veja o estado exato e próximos passos em [HANDOFF](docs/HANDOFF.md).
+**Estado: prévia 0.1.0 com chat local e aplicativo empacotado validados neste notebook.** Instalação em Windows limpo e aceleração no PC principal ainda precisam de teste. Fases 1 e 2 implementadas; os demais recursos estão em [ROADMAP](docs/ROADMAP.md). Veja o estado exato e próximos passos em [HANDOFF](docs/HANDOFF.md).
 
 ## Instalar para usar
 
