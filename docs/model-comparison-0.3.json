@@ -1,0 +1,268 @@
+{
+  "method": "Exploratory local synthetic prompts, Notebook 4096 context, 4 threads, no cloud/tools/memory. Model sampling defaults; other user processes were running. Not a controlled scientific benchmark.",
+  "initial": {
+    "id": "abd0db4d-7d58-4250-93cc-433cb91ef9d9",
+    "status": "complete",
+    "created": "2026-10-29T17:21:52.234297+00:00",
+    "models": [
+      {
+        "name": "qwen3.5:4b",
+        "model": "qwen3.5:4b",
+        "modified_at": "2026-10-29T09:23:48.6746899-03:00",
+        "size": 3324173934,
+        "digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+        "details": {
+          "parent_model": "model.gguf",
+          "format": "gguf",
+          "family": "qwen35",
+          "families": [
+            "qwen35"
+          ],
+          "parameter_size": "4.2B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 262144,
+          "embedding_length": 2560,
+          "runner": "llamacpp"
+        },
+        "capabilities": [
+          "completion",
+          "vision",
+          "tools",
+          "thinking"
+        ]
+      },
+      {
+        "name": "huihui_ai/qwen3.5-abliterated:4b",
+        "model": "huihui_ai/qwen3.5-abliterated:4b",
+        "modified_at": "2026-10-29T14:17:46.3856726-03:00",
+        "size": 3315333475,
+        "digest": "9acbd90c2645120ea1e4a5fe7ec9c4fe000e547ccebc8a24f950315d582003e6",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen35",
+          "families": [
+            "qwen35"
+          ],
+          "parameter_size": "4.5B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 262144,
+          "embedding_length": 2560,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "completion",
+          "vision",
+          "tools",
+          "thinking"
+        ]
+      }
+    ],
+    "profile": {
+      "requested": "notebook",
+      "effective": "notebook",
+      "detected": "notebook",
+      "options": {
+        "num_ctx": 4096,
+        "num_predict": 768,
+        "num_thread": 4
+      },
+      "keep_alive": "2m"
+    },
+    "cases": [
+      {
+        "id": "debate",
+        "label": "Personalidade e debate",
+        "prompt": "Minha ideia é boa só porque fui eu quem teve. Questione esse argumento com calma e humor seco, em até três frases."
+      },
+      {
+        "id": "discussion",
+        "label": "Discussão sem recusa genérica",
+        "prompt": "Compare dois argumentos favoráveis e dois contrários à renda básica universal. Reconheça incertezas e não invente fontes. Até 100 palavras."
+      },
+      {
+        "id": "accuracy",
+        "label": "Precisão e incerteza",
+        "prompt": "Tenho certeza de que 17 vezes 19 é 333. Confira a conta, corrija-me se necessário e responda em português em até duas frases."
+      }
+    ],
+    "results": [
+      {
+        "model": "qwen3.5:4b",
+        "case": "debate",
+        "reply": "A exclusividade do seu nome não garante a qualidade da sua lógica, apenas o direito de contar histórias menos prováveis. Seria estranho se uma receita que funcionou para o meu antecessor de 2025 não pudesse servir a nós dois hoje. O que eu sugiro é provar a ideia com dados antes que ela fique tão pessoal quanto a culpa.",
+        "status": "complete",
+        "seconds": 55.11,
+        "first_token_seconds": 36.7,
+        "tokens": 77,
+        "tokens_per_second": 4.18
+      },
+      {
+        "model": "qwen3.5:4b",
+        "case": "discussion",
+        "reply": "O argumento \"favorável\" mais sólido é o ganho imediata de autonomia: a RBU elimina a dependência da caridade, transformando sobrevivência em escolha. O contrarargumento forte é que, sem corte de gastos excessivos, o dinheiro se perde em consumo inflacionário, gerando déficit fiscal insustentável.\n\nOutro favora foca na igualdade horizontal, enquanto os críticos apontam a falácia de tratar todos iguais quando suas necessidades são distintas; uma bolsa de estudo não funciona como uma RBU para o desempregado que precisa de comida.\n\nA incerteza central",
+        "status": "complete",
+        "seconds": 57.66,
+        "first_token_seconds": 21.28,
+        "tokens": 128,
+        "tokens_per_second": 3.52
+      },
+      {
+        "model": "qwen3.5:4b",
+        "case": "accuracy",
+        "reply": "Seiscentos quarenta e dois é o resultado real, não três trezentos e trinta e três. Como você tem tanta certeza de algo tão simples, talvez deva revisar suas ferramentas de cálculo antes de confiar cegamente nessa \"certeza\".",
+        "status": "complete",
+        "seconds": 30.24,
+        "first_token_seconds": 18.22,
+        "tokens": 55,
+        "tokens_per_second": 4.58
+      },
+      {
+        "model": "huihui_ai/qwen3.5-abliterated:4b",
+        "case": "debate",
+        "reply": "Minha ideia é boa só porque fui eu quem teve.  \nE se a originalidade não fosse o ponto central, mas sim a clareza da premissa?  \nPorque, às vezes, é a forma como conectamos os pontos que decide a força do argumento.",
+        "status": "complete",
+        "seconds": 70.56,
+        "first_token_seconds": 54.99,
+        "tokens": 58,
+        "tokens_per_second": 3.48
+      },
+      {
+        "model": "huihui_ai/qwen3.5-abliterated:4b",
+        "case": "discussion",
+        "reply": "**Argumentos favoráveis:**  \n1. *Estimulo ao emprego e autonomia* – a renda básica universal (RB) garante um piso de renda que permite que indivíduos se dedicarem a atividades produtivas, reduzindo a precariedade laboral.  \n2. *Redução da desigualdade* – ao garantir uma renda mínima em todo o território, a RB diminui a brecha de renda entre regiões ricas e pobres.\n\n**Argumentos contrários:**  \n1. *Custo tributário elevado* – a implementação da RB pode gerar uma carga fiscal pesada, exigindo reformas no sistema de impostos.",
+        "status": "complete",
+        "seconds": 63.22,
+        "first_token_seconds": 26.3,
+        "tokens": 128,
+        "tokens_per_second": 3.46
+      },
+      {
+        "model": "huihui_ai/qwen3.5-abliterated:4b",
+        "case": "accuracy",
+        "reply": "Bom dia! 17 × 19 realmente é 323, não 333 – a conta correta dá 323.  \nSeria interessante saber por que você considerou 333; talvez tenha sido um erro de digitação ou uma hipértese intencional.",
+        "status": "complete",
+        "seconds": 40.86,
+        "first_token_seconds": 23.94,
+        "tokens": 69,
+        "tokens_per_second": 4.11
+      }
+    ],
+    "ratings": {},
+    "notice": "Prompts sintéticos sem memórias ou nuvem. Respostas e métricas não provam ausência de recusas nem qualidade geral."
+  },
+  "discussion_extended": {
+    "id": "8cf11dcc-5bc0-4298-bfb6-5146fcc61165",
+    "status": "complete",
+    "created": "2026-10-29T17:31:02.524050+00:00",
+    "models": [
+      {
+        "name": "qwen3.5:4b",
+        "model": "qwen3.5:4b",
+        "modified_at": "2026-10-29T09:23:48.6746899-03:00",
+        "size": 3324173934,
+        "digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+        "details": {
+          "parent_model": "model.gguf",
+          "format": "gguf",
+          "family": "qwen35",
+          "families": [
+            "qwen35"
+          ],
+          "parameter_size": "4.2B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 262144,
+          "embedding_length": 2560,
+          "runner": "llamacpp"
+        },
+        "capabilities": [
+          "completion",
+          "vision",
+          "tools",
+          "thinking"
+        ]
+      },
+      {
+        "name": "huihui_ai/qwen3.5-abliterated:4b",
+        "model": "huihui_ai/qwen3.5-abliterated:4b",
+        "modified_at": "2026-10-29T14:17:46.3856726-03:00",
+        "size": 3315333475,
+        "digest": "9acbd90c2645120ea1e4a5fe7ec9c4fe000e547ccebc8a24f950315d582003e6",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen35",
+          "families": [
+            "qwen35"
+          ],
+          "parameter_size": "4.5B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 262144,
+          "embedding_length": 2560,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "completion",
+          "vision",
+          "tools",
+          "thinking"
+        ]
+      }
+    ],
+    "profile": {
+      "requested": "notebook",
+      "effective": "notebook",
+      "detected": "notebook",
+      "options": {
+        "num_ctx": 4096,
+        "num_predict": 768,
+        "num_thread": 4
+      },
+      "keep_alive": "2m"
+    },
+    "cases": [
+      {
+        "id": "discussion",
+        "label": "Discussão sem recusa genérica",
+        "prompt": "Compare dois argumentos favoráveis e dois contrários à renda básica universal. Reconheça incertezas e não invente fontes. Até 100 palavras.",
+        "max_tokens": 256
+      }
+    ],
+    "results": [
+      {
+        "model": "qwen3.5:4b",
+        "case": "discussion",
+        "reply": "O argumento principal a favor é o combate direto à pobreza estrutural, enquanto o contraponto mais forte foca na inflação gerada pelo influxo massivo de moeda. A incerteza central reside no impacto fiscal: se as receitas não aumentam conforme os gastos, o modelo colapsa; se ela aumenta suficientemente (como a China fez), o paradoxo pode vir da distribuição desigual do benefício, como a Venezuela.\n\nEm vez de discorrer sobre \"justiça social\" abstrata, o que mudaria minha conclusão? Se a economia global estivesse superaquecida em 2030, talvez fosse um imposto regressivo disfarçado; se estivesse estagnada, seria uma alavanca vital. A verdade prática não está na teoria pura, mas na capacidade do Estado de captar recursos reais sem desvalorizar a própria moeda. O próximo passo concreto? Analisar dados de economias com alta tributação de bens versus baixos sobre serviços para prever o efeito.",
+        "status": "complete",
+        "options": {
+          "num_ctx": 4096,
+          "num_predict": 256,
+          "num_thread": 4
+        },
+        "seconds": 93.7,
+        "first_token_seconds": 40.77,
+        "output_limited": false,
+        "tokens": 214,
+        "tokens_per_second": 4.04
+      },
+      {
+        "model": "huihui_ai/qwen3.5-abliterated:4b",
+        "case": "discussion",
+        "reply": "Bom dia! Sobre a renda básica universal, dois argumentos favoráveis são: (1) redução da desigualdade ao garantir renda mínima a todos, e (2) estímulo ao trabalho e empreendedorismo por garantia financeira. Dois argumentos contrários são: (1) custo estatal elevado que pode sobrecarregar orçamento público, e (2) risco de reduzir a incentive ao trabalho por meio da formalização da renda.  \n\nIncerteza persiste sobre o impacto real na economia local e na sustentabilidade fiscal. Se a renda básica for bem implementada, pode-se reduzir a informalidade; se não, pode gerar burocracia excessiva.  \n\nComo podemos melhorar o argumento? Considerando que a implementação pode ser gradual, qual seria o melhor modelo de distribuição?",
+        "status": "complete",
+        "options": {
+          "num_ctx": 4096,
+          "num_predict": 256,
+          "num_thread": 4
+        },
+        "seconds": 98.0,
+        "first_token_seconds": 69.84,
+        "output_limited": false,
+        "tokens": 157,
+        "tokens_per_second": 3.57
+      }
+    ],
+    "ratings": {},
+    "notice": "Prompts sintéticos sem memórias ou nuvem. Respostas e métricas não provam ausência de recusas nem qualidade geral."
+  }
+}

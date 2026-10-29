@@ -41,3 +41,15 @@ A versão 0.2 corrige o estouro de contexto ao analisar resultados: ajusta o tre
 Depois de atualizar o código ou instalar uma versão nova, encerre de verdade em Sobre → Sair da ALT-AI e reabra. O × apenas oculta na bandeja; não reinicia o backend. Uma janela antiga continua com o comportamento anterior até ser encerrada.
 
 Para atualizações verificadas, baixe o instalador e o manifesto da mesma release e use Sobre → Verificar atualização baixada. Versão igual/antiga ou conteúdo modificado é recusado. A primeira instalação 0.2 é manual; 0.1 ainda não tem esse verificador.
+
+## Controle, navegador e memória — 0.3
+
+Em Controle e regras, edite suas regras e decisões por capacidade e confirme a revisão nativa. Permitir automaticamente atua nos modos 3/4; Assistido continua pedindo revisão individual e Observação não executa. As regras e o modo ficam salvos sem contagem de minutos.
+
+No Navegador ALT, prepare a abertura, revise o cartão e aprove. A janela é separada do navegador pessoal. Depois de mudar de página/elementos, faça nova leitura antes de clicar/digitar. Campos protegidos precisam de preenchimento manual; não há automação de senhas/CAPTCHA ou download. STOP/Modo Jogo interrompem a navegação. Em erro de DNS/TLS, não contornar o bloqueio nem desativar proteção do Windows.
+
+Registre aplicativos pelo seletor .exe em Controle. Após atualização do executável, registre novamente se o hash mudou. A solicitação de fechamento é normal e só alcança processos rastreados pela ALT; apps que repassam a janela a outro processo podem não fechar. Não forçar encerramento de documentos.
+
+Em Memória, abra Resumo de continuidade, escolha conversa e modelo local, gere o rascunho, revise e salve. Uma conversa alterada exige resumo novo. Importação aceita JSON exportado da ALT; valida antes de inserir e ignora duplicatas. A recuperação automática é por termos relacionados, não busca semântica, e é ativada em Controle. O chat informa quais memórias entraram.
+
+Em Inteligências, o Laboratório compara modelos locais instalados com prompts sintéticos. Carregamento em CPU pode levar dezenas de segundos e a rodada pode durar minutos. Limite de saída atingido não é resposta completa: veja o indicador. Notas são suas, não classificação automática. Huihui foi baixado e testado neste PC com consentimento; no outro PC os pesos precisam de download separado.

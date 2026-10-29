@@ -1,27 +1,13 @@
-# ALT 0.3 — checkpoint de desenvolvimento
+# ALT 0.3 — estado da entrega
 
-Pedido: implementar painel de controle/regras, comparar modelos locais, navegador interativo/ferramentas Windows e memória de continuidade. Usuário autorizou explicitamente download/comparação Huihui Qwen 3.5 4B nesta rodada. Download concluído (3.315.333.475 bytes; digest 9acbd90c2645120ea1e4a5fe7ec9c4fe000e547ccebc8a24f950315d582003e6).
+Pedido atendido no código: Controle e regras, laboratório/comparação de modelos, navegador interativo/ferramentas Windows e memória de continuidade. Usuário autorizou download e comparação do Huihui Qwen 3.5 4B; modelo baixado e testado neste PC. Não houve API paga, nuvem ou outro download de modelo.
 
-Implementado:
-- Política persistente com regras de conversa, recuperação manual/automática de memória e decisões bloquear/perguntar/permitir por capacidade. Escrita via confirmação nativa fora do broker genérico. Regras/modelo/Windows/serviços e prompt efetivo visíveis.
-- Navegador Electron isolado em sessão temporária, HTTPS público via proxy CONNECT que valida DNS e fixa conexão no IP público; sem bypass de TLS/proxy loopback, downloads/permissões negados. Ler DOM, clicar, digitar com snapshot/IDs observados; rejeita elementos alterados e campos protegidos. Fila autenticada DesktopBridge consumida somente por Electron main.
-- Apps .exe registrados por seletor nativo, hash conferido, sem argumentos arbitrários; fechamento normal de processos rastreados, sem encerramento forçado. Busca recursiva em pastas com limite/cancelamento e exclusão de caminhos sensíveis.
-- Rascunho de continuidade gerado por modelo local e revisado antes de salvar; fingerprint rejeita conversa modificada. Importação JSON com validação atômica e deduplicação. Recuperação por termos, opt-in, ajustada ao contexto e visível; sem busca semântica.
-- Laboratório local: prompts iguais, respostas/métricas persistidas e notas humanas. Modelos de nuvem não aceitos. Resultado completo em .local/model-comparison-0.3.json (somente prompts sintéticos).
-- UI de Controle, Navegador, comparação em Inteligências e continuidade em Memória. Versão 0.3.0 no package/lock/health/rodapé.
+74 testes Python passaram; um symlink ignorado por privilégio Windows. Três testes Node passaram. TS/Vite/PyInstaller/NSIS concluíram; smoke do backend empacotado validou autenticação, memória, política, apps, fila desktop, importação e recuperação. Browser Electron oculto passou em HTTPS/DOM sintético e resumos reais foram revisados antes de salvar.
 
-Validação atual:
-- 74 testes Python passaram; um symlink ignorado por privilégio Windows. Três testes Node passaram (URLs/IPs, DNS misto/privado, assinatura).
-- Smoke real Electron oculto do próprio navegador passou: HTTPS docs.ollama.com via proxy, DOM leitura/clique/digitação em fixture sintética, snapshot antigo e senha recusados. Não é revisão visual da UI nem automação de conta do usuário.
-- Build TS/Vite mais recente em sessão 68782, conferir término.
-- Comparação real inicial completou 6 respostas em Notebook/CPU, mas ambas discussões chegaram ao limite 128 tokens. Qwen errou 17×19 (respondeu 642); Huihui respondeu 323. Não alegar vencedor geral ou ausência de recusas.
-- Repetição somente da discussão com 256 tokens em sessão 50861; vai salvar .local/model-comparison-0.3-discussion.json.
+Comparação exploratória completa em MODEL_COMPARISON_0.3.md e model-comparison-0.3.json: seis respostas iniciais, mais duas discussões com limite ampliado. Erros reais foram registrados. Não há vencedor geral, nota humana inventada ou garantia de ausência de recusas. Seu modelo padrão não foi trocado.
 
-Ainda falta antes da entrega:
-1. Conferir repetição da discussão, gerar relatório versionado com prompts/respostas/limites/tempos e fontes dos modelos; não inventar notas humanas.
-2. Teste real de resumo local com dados sintéticos, validar estado antes/depois de revisão.
-3. Acabamentos finais, validação TS, testes apropriados às últimas alterações. Não repetir downloads ou chamadas de nuvem.
-4. Atualizar README/SECURITY/ARCHITECTURE/ROADMAP/HANDOFF/RELEASE_NOTES e scripts smoke_packaged para 0.3. Recompilar frontend/backend, NSIS, smoke empacotado, Ed25519/SHA256 e publicar prévia privada 0.3.0.
-5. Conferência visual da interface depende de Computer Use (pipe nativo esteve indisponível na rodada anterior). Não afirmar que foi concluída. Windows limpo e PC principal continuam pendentes.
+Sobre e rodapé leem a versão do package.json. Pacote final 0.3 concluído e verificado: 129.517.936 bytes; SHA256 3365e2660c75c518d68af91d5bb4b669c2d4c991290f8cf04352782003b9dab0. Manifesto Ed25519 regenerado e verificado após reempacotamento. Publicação privada em andamento; confirmar assets/digest antes de declarar entrega publicada.
 
-Chave privada .local/update-private-key.pem permanece fora do Git. Não habilitar API paga nem alterar visibilidade do repositório. Todo o escopo 2/3/4/5 continua ativo até a entrega.
+Revisão visual completa da interface, Windows limpo e PC principal ainda pendentes. Limites do modelo/serviços e de implementação estão explícitos no painel e ROADMAP. Não confundir esta entrega com GUI Windows genérica ou todas as fases do MASTER PROMPT.
+
+Chave privada .local/update-private-key.pem fora do Git; manter backup privado para assinar no outro PC. Código e documentação devem ser mantidos no repositório privado, sem bancos/cofre/logs pessoais.

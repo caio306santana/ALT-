@@ -1,4 +1,4 @@
-﻿# ALT-AI 0.2
+# ALT-AI 0.3
 
 Assistente pessoal Windows com personalidade própria, memória editável e ferramentas reais. **Qwen é o modelo de terceiros que gera respostas locais; ALT-AI é o aplicativo/agente, a identidade, a memória e o controle das ferramentas. Não treinamos um modelo exclusivo do zero.**
 
@@ -28,16 +28,24 @@ O instalador desta prévia não tem certificado Authenticode. Há verificação 
 
 Claude por assinatura ainda não está integrado: a documentação oficial exige aprovação Anthropic para oferecer login/limites claude.ai em produtos terceiros. A alternativa disponível para configurar é a API paga, separada da assinatura. [Fonte oficial](https://code.claude.com/docs/en/agent-sdk/overview).
 
+## Novidades da 0.3
+
+- **Controle e regras:** instruções de conversa, recuperação manual/automática de memória e bloquear/perguntar/permitir por capacidade. Mostra prompt e limites do aplicativo/modelo/Windows/serviços. Alterar regras cancela propostas em andamento; autorizações continuam sem prazo.
+- **Navegador ALT:** janela/sessão separada com JavaScript, leitura de elementos, clique/digitação por snapshot e retorno. HTTPS público por proxy que valida DNS/IP e mantém TLS; sem sessão do seu navegador pessoal, downloads ou permissões especiais. Ações externas seguem suas regras.
+- **Windows:** registrar .exe pelo seletor nativo, conferir hash, abrir e solicitar fechamento normal de processos rastreados; buscar arquivos em subpastas autorizadas. Sem shell genérico ou encerramento forçado.
+- **Continuidade:** gerar rascunho local de conversa e revisar antes de salvar como memória; importar JSON com deduplicação e transação. Recuperação automática por termos é opt-in e mostra o que foi usado; não é busca semântica.
+- **Laboratório local:** comparar respostas/métricas dos modelos instalados e salvar suas notas. Qwen original/Huihui 4B foram testados com autorização. Resultados reais e limitações no [relatório](docs/MODEL_COMPARISON_0.3.md); não há promessa de ausência de recusas nem vencedor geral.
+
 ## Modos de autorização
 
 | Modo | Alcance real |
 |---|---|
 | Observação | Conversa e propostas; não executa ferramentas. |
 | Assistido | Sem prazo, até alterar ou revogar; aprovação individual de cada ação. |
-| Leitura autorizada | Sem prazo; cálculo e leitura/listagem na pasta escolhida podem executar automaticamente. Gravação e internet continuam supervisionadas. |
+| Leitura autorizada | Sem prazo; cálculo e leitura/listagem na pasta escolhida podem executar automaticamente. Outras capacidades seguem suas regras, com revisão por padrão. |
 | Controle amplo Windows | Sem prazo; perfil pessoal e pastas escolhidas. Credenciais, AppData, sistema, shell arbitrário e elevação de privilégios excluídos. Gravações no perfil têm confirmação adicional. |
 
-Modos permanecem salvos ao reabrir a ALT, até você alterar ou revogar. Modos 3/4 exigem confirmação nativa com escopo e persistência explícitos. Isso não é controle irrestrito de mouse/teclado ou de todos os programas do Windows. Ferramentas adicionais de GUI e mais aplicativos ficam no roadmap. STOP ALL ACTIONS e Modo Jogo revogam a autorização, cancelam propostas e invalidam consentimentos de nuvem; retomar não restaura o acesso anterior.
+Modos permanecem salvos ao reabrir a ALT, até você alterar ou revogar. Modos 3/4 exigem confirmação nativa com escopo e persistência explícitos. Decisões por capacidade em Controle e regras podem bloquear, preservar revisão ou permitir automaticamente dentro desse alcance; gravação no perfil e fechamento de apps mantêm revisão. Isso não é controle irrestrito de mouse/teclado ou de todos os programas do Windows. STOP ALL ACTIONS e Modo Jogo revogam a autorização, cancelam propostas e invalidam consentimentos de nuvem; retomar não restaura o acesso anterior.
 
 ## Pesquisa e navegação
 
@@ -78,6 +86,6 @@ Dados pessoais ficam em `%APPDATA%/ALT-AI/data/` (desenvolvimento pode usar alt-
 
 Encerre a ALT nos dois PCs antes de migrar os dados por um meio privado. Não envie bancos, logs, .env, chaves ou credenciais ao repositório. Para continuar programando, basta clonar o Git; .venv/node_modules são reconstruídos.
 
-Esta é uma prévia. PC Ryzen/RX 7600 e Windows limpo ainda precisam de validação física. Notebook CPU pode levar dezenas de segundos no primeiro pedido com personalidade/ferramentas; pedidos longos continuam mais lentos. Qwen 2B/9B, API Anthropic real, assinatura Authenticode, navegador interativo, controle GUI amplo, voz e iOS não foram validados/entregues como completos.
+Esta é uma prévia. PC Ryzen/RX 7600 e Windows limpo ainda precisam de validação física. Notebook CPU pode levar dezenas de segundos no primeiro pedido; pedidos longos continuam mais lentos. Navegador interativo é uma primeira implementação de janela única, sem automação de senha/CAPTCHA ou tarefas ilimitadas. Qwen 2B/9B, API Anthropic real, Authenticode, GUI Windows genérica, voz e iOS continuam pendentes.
 
-Consulte [HANDOFF](docs/HANDOFF.md), [PROGRESS-0.2](docs/PROGRESS-0.2.md), [ROADMAP](docs/ROADMAP.md) e [Segurança](docs/SECURITY.md).
+Consulte [HANDOFF](docs/HANDOFF.md), [PROGRESS-0.3](docs/PROGRESS-0.3.md), [ROADMAP](docs/ROADMAP.md) e [Segurança](docs/SECURITY.md).

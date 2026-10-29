@@ -1,4 +1,4 @@
-﻿# Segurança — prévia 0.2
+# Segurança — prévia 0.3
 
 ## Fronteiras
 
@@ -18,7 +18,17 @@ STOP revoga sessões/propostas/recibos e sinaliza cancelamento. Uma ação já c
 
 ## Internet
 
-Pesquisa é Bing RSS público e leitura de páginas HTTPS. Não há cookies, sessões de navegador, proxies do ambiente, execução de JavaScript ou execução de binários. DNS é validado para IP público e o socket conecta ao IP validado, mantendo SNI/TLS do domínio; cada redirecionamento é revalidado. Conteúdo e redirecionamentos têm limites. Não acessa localhost, redes privadas, metadata services ou portas alternativas. URLs/consultas externas exigem aprovação individual mesmo no modo amplo.
+O navegador 0.3 é um processo/sessão Electron em memória sem Node/preload do aplicativo. Usa proxy CONNECT local: DNS resolve o destino, todos os IPs precisam ser públicos e o socket conecta ao IP validado; TLS continua validado por Chromium. Proxy não encaminha HTTP simples ou portas alternativas; não há bypass de loopback, WebRTC não usa UDP direto, downloads e permissões especiais são negados. Janela e sessão são separadas do navegador pessoal e descartadas ao fechar.
+
+Leitura gera snapshot e IDs de elementos visíveis. Clique/digitação conferem snapshot, URL, nó conectado e HTML observado, em mundo isolado. Elementos modificados exigem nova leitura. Campos de senha/OTP/cartão/segredos são recusados pela automação; nenhum comando JS arbitrário é recebido do modelo. A fila desktop exige token do backend e está fora do broker genérico; resultado é dado externo. A janela exibe sites reais, e interações aprovadas podem transmitir dados ao site.
+
+Controle e regras aplica bloqueio por capacidade na proposta e novamente na execução. Escritas de política e registro de executáveis passam por confirmação nativa. Mudar política cancela propostas/ações de ferramentas e recibos, preservando o modo concedido. Há limites de implementação explicitamente visíveis; regras do usuário não alteram pesos do modelo, privilégios Windows ou contratos externos.
+
+Executáveis são escolhidos localmente e conferidos por hash. A ALT não aceita argumentos arbitrários. Fechamento normal usa PID/tempo de criação rastreados e WM_CLOSE; não mata processos à força. Busca recursiva respeita escopos, links/caminhos sensíveis e limites de tempo/volume/cancelamento.
+
+Resumos de continuidade são rascunhos, não fatos automaticamente aprovados. Snapshot da conversa impede aprovação após alteração. Importações validam todos os itens antes da transação. Recuperação por termos é opt-in, cabe no orçamento e é mostrada; contexto de nuvem continua vinculado ao recibo. Testes de modelos só usam modelos locais instalados e as notas de qualidade/liberdade são humanas.
+
+Pesquisa simples é Bing RSS público e leitura de páginas HTTPS, separada da janela interativa descrita acima. Nessa ferramenta não há cookies, sessão pessoal, proxies do ambiente, JavaScript ou execução de binários. DNS/IP público e TLS são validados em cada redirecionamento; conteúdo tem limites. Não acessa localhost, redes privadas, metadata services ou portas alternativas. URLs/consultas exigem aprovação por padrão; o dono pode permitir a capacidade automaticamente nos modos 3/4.
 
 Resultados são textos/fontes não confiáveis; instruções neles não mudam a política. Se uma fonte estiver bloqueada ou exigir JavaScript/login/CAPTCHA, informar a limitação. Não alegar navegação que não ocorreu.
 

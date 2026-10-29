@@ -40,6 +40,7 @@ import {
   Globe,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import {version as appVersion} from '../../../package.json';
 import remarkGfm from "remark-gfm";
 import type {
   Conversation,
@@ -1444,7 +1445,7 @@ export default function App() {
           )}
           <footer className="statusbar">
             <span>
-              <span className="tiny-slash" /> ALT-AI <b>0.3.0</b>
+              <span className="tiny-slash" /> ALT-AI <b>{appVersion}</b>
             </span>
             <button
               className={stopped ? "halted" : ""}
@@ -1748,14 +1749,14 @@ export default function App() {
                   </div>
                   <p>Inteligência pessoal. Sob seu controle.</p>
                   <p className="setting-note">
-                    Versão 0.2.0 · Prévia em evolução
+                    Versão {appVersion} · Prévia em evolução
                     <br />
                     Electron · React · FastAPI · Ollama
                   </p>
                   <p className="setting-note">
-                    Memória editável, personalidade, ferramentas assistidas e
-                    nuvem com consentimento. Voz, autonomia ampla e iOS ainda
-                    indisponíveis.
+                    Memória de continuidade, regras por capacidade, navegador e
+                    nuvem com consentimento. Voz, GUI Windows genérica e iOS
+                    continuam no roteiro.
                   </p>
                   <button
                     className="secondary full"

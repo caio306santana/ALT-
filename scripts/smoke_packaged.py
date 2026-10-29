@@ -31,8 +31,15 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             assert client.get(f'/conversations/{cid}/messages',headers=headers).json()==[]
             prefs=client.get('/settings',headers=headers).json()
             assert 'provocadora' in prefs['personality']['tone']
+            policy=client.get('/policy',headers=headers).json()
+            assert policy['policy']['memory_recall']=='manual' and policy['boundaries']
+            assert len(client.get('/programs',headers=headers).json())==2
+            assert client.get('/desktop/jobs',headers=headers).json()=={'job':None}
             memory=client.post('/memories',headers=headers,json={'title':'Synthetic package check','content':'Temporary fixture only'}).json()
             assert memory['id'] in [m['id'] for m in client.get('/memories',headers=headers).json()]
+            imported=client.post('/memories/import',headers=headers,json={'items':[{'title':'Aurora package fixture','content':'Aurora synthetic recall fixture.'}]}).json()
+            assert imported['imported']==1
+            assert client.get('/memories/search',headers=headers,params={'q':'Aurora'}).json()
             proposal=client.post('/tools/propose',headers=headers,json={'tool':'calculate','expression':'(10+5)*2'}).json()
             assert client.post('/tools/approve/'+proposal['id'],headers=headers).status_code==403
             client.put('/permissions',headers=headers,json={'level':2})
@@ -42,6 +49,6 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             client.post('/permissions/revoke',headers=headers)
             system=client.get('/system',headers=headers).json()
             assert system['ram']['total']>0
-            print(json.dumps({'packaged_backend':'ok','health':response.json(),'cpu':system['cpu']['name'],'profile':system.get('performance',{}).get('effective'),'authentication':'401 without token','conversation_storage':'ok','personality_memory_permissions_tools':'ok'},ensure_ascii=False))
+            print(json.dumps({'packaged_backend':'ok','health':response.json(),'cpu':system['cpu']['name'],'profile':system.get('performance',{}).get('effective'),'authentication':'401 without token','conversation_storage':'ok','personality_memory_permissions_tools':'ok','owner_policy_programs_browser_queue_import_recall':'ok'},ensure_ascii=False))
     finally:
         child.terminate();child.wait(timeout=10)

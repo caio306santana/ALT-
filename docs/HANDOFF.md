@@ -1,81 +1,59 @@
-# Continuidade — ALT-AI 0.2.0
+# Continuidade — ALT-AI 0.3.0
 
-Atualizado em 29/10/2026. Repositório privado: https://github.com/caio306santana/ALT-.git. Manter a visibilidade. Entrega: fontes completos e instalador Windows com Electron, backend e runtime Python. Node/Python só são necessários para desenvolver.
+Atualizado em 29/10/2026. Repositório privado: https://github.com/caio306santana/ALT-.git. Manter a visibilidade. Fontes completos e instalador Windows com Electron/FastAPI/runtime Python incluídos.
 
-## Pedidos e decisões
+## Escopo e decisões do usuário
 
-- Avançar personalização, memória, integrações oficiais, ferramentas Windows, desempenho e distribuição. Voz/iOS ficam no roteiro.
-- Personalidade aprovada: calma na forma de falar, provocadora, irônica e desafiadora nas ideias, com paciência. Editor continua disponível. Personalidade não altera permissões.
-- ALT é o produto/persona/memória/agente. Qwen 3.5 4B é o modelo de terceiros instalado; não existe modelo exclusivo treinado pela ALT.
-- Último pedido: autorizações **sem prazo, até alterar ou revogar**, inclusive ao reabrir o app. Implementado em tabela SQLite própria. STOP, Modo Jogo, Observação e remoção de escopo revogam o estado salvo; retomar não restaura acesso anterior. Propostas/recibos de nuvem continuam de uso único com validade de cinco minutos.
-- Instalação de dependências, Python/Ollama, download/teste Qwen 4B e publicação de fontes/instalador foram autorizados. Outros modelos exigem confirmação. Nenhuma API paga habilitada/testada com chave real.
-- Usuário pediu aviso aos 90% de créditos; agente não possui medição confiável da cota da conta. Fazer checkpoints sem inventar percentuais.
+O usuário pediu executar os passos 2, 3, 4 e 5 da próxima entrega: painel de regras sob seu controle, comparação de modelos locais, navegador interativo/ferramentas Windows e memória de continuidade. Quer liberdade de discussão e regras transparentes, definidas por ele. Não prometer que instruções do aplicativo removem comportamentos aprendidos dos pesos ou regras de serviços externos.
 
-## Implementado
+Personalidade mantida: calma na fala, provocadora, irônica e desafiadora nas ideias, com paciência. Editor disponível. ALT é o produto/persona/memória/agente; Qwen e Huihui são modelos de terceiros, não pesos exclusivos treinados por nós.
 
-Chat Ollama real: streaming, erros, cancelamento, histórico, recuperação após interrupção e think:false no Qwen. Perfis Notebook/Desktop e telemetria disponível.
+Autorizou dependências/Python/Ollama, Qwen original 4B e, nesta rodada, download e comparação de huihui_ai/qwen3.5-abliterated:4b (3.315.333.475 bytes). Não baixar outros modelos sem consentimento. Nenhuma API paga habilitada nem chamada de nuvem feita nesta rodada.
 
-Personalidade aplicada ao contexto local/nuvem; Perfil clicável e nome do usuário opcional. CSS cyberpunk original rosa/ciano com recortes/HUD. Aparência, temas, escala, opacidade, efeitos, bordas, atalho global, topo e janela configuráveis.
+Autorizações sem prazo, persistentes até alterar/revogar. STOP/Modo Jogo/Observação e remoção de escopo revogam o estado salvo. O usuário pediu checkpoints antes de esgotar cota; não há medição confiável da cota pelo agente.
 
-Memória explícita CRUD/busca/desativação/exportação JSON. Até 300 registros; selecionar até dez por envio, sujeito ao contexto. Sem extração automática ou busca semântica. Históricos e memórias não são criptografados.
+## Entregue no código 0.3
 
-Ferramentas estruturadas propostas no chat Qwen: calcular, listar/ler/gravar texto, abrir pasta, Notepad/Calculadora, URL, pesquisa e leitura pública. Cartões/resultados persistem ligados à conversa; análise usa trecho limitado do resultado.
+- Controle e regras: regras de conversa editáveis; bloquear/perguntar/permitir por capacidade; recuperação manual/automática de memórias. Escrita via canal nativo com revisão, fora do broker genérico. Mostra prompt efetivo e limites de modelo/aplicativo/Windows/serviços. Alterar política cancela propostas e ações de ferramentas em andamento, preservando o modo escolhido.
+- Permitir automaticamente atua nos modos 3/4 e escopos já autorizados. Observação não executa. Gravação no perfil e fechamento de apps mantêm revisão individual. Respostas de páginas/modelos nunca concedem autorização.
+- Navegador ALT real: janela Electron separada, sessão em memória, Node desligado/sandbox/contextIsolation, HTTPS público via proxy CONNECT que valida todos os IPs de DNS e fixa a conexão no IP público; Chromium valida TLS. Sem rede privada, downloads ou permissões de câmera/microfone.
+- Ler página/elementos, abrir/voltar, clicar/digitar por snapshot e ID observado. Elementos alterados e campos protegidos são recusados. Conteúdo de páginas é dado não confiável. Fila DesktopBridge autenticada consumida por Electron main; páginas e renderer não recebem token ou acesso ao IPC nativo. STOP/Modo Jogo interrompem o navegador.
+- Navegação pode ser usada pelo painel e por propostas do chat. O chat recebe uma observação recente limitada ao contexto; não há loop autônomo ilimitado. Uma janela/aba por vez. Interações podem enviar dados ao site e seguem as regras do usuário.
+- Aplicativos .exe cadastrados por seletor nativo e conferidos por hash antes de abrir; sem argumentos arbitrários. Solicitação de fechamento normal só de processos rastreados pela ALT, com PID/tempo de criação. Programas podem pedir para salvar; apps que transferem a janela a outro processo podem não ser rastreados. Nunca forçar encerramento de documentos.
+- Busca recursiva de arquivos em escopos, com cancelamento/tempo/quantidade limitados e exclusão de caminhos sensíveis. Leitura/gravação anteriores preservadas.
+- Rascunho de continuidade local com revisão/edição antes de salvar. Mudança de conversa invalida o rascunho. Origem em conversa/mensagens registrada. Não existe extração silenciosa automática.
+- Importar JSON exportado da ALT com validação antes de transação, deduplicação e preservação dos registros atuais. Recuperação por termos/acento normalizado; opt-in automático com ajuste ao contexto e identificação das memórias usadas. Não é busca vetorial/semântica. Prévia/recibo de nuvem inclui o contexto realmente enviado.
+- Laboratório local em Inteligências: um a três modelos instalados, mesmos casos, respostas/métricas/limite de saída, cancelamento/STOP e notas humanas editáveis. Não aceita modelos de nuvem nem inventa notas ou saldo. Mostra quando o limite de saída foi atingido.
+- Biblioteca de modelos inclui a variante Huihui autorizada. Não trocamos o padrão do usuário automaticamente. think:false também se aplica à variante Qwen 3.5.
 
-Modo 1 Observação; 2 Assistido com aprovação individual; 3 leitura autorizada de pasta; 4 amplo supervisionado do perfil pessoal e pastas escolhidas. Somente cálculo/leitura/listagem podem executar automaticamente em 3/4. Gravações e consultas externas continuam supervisionadas; perfil exige confirmação nativa adicional para gravação. Sem shell arbitrário, GUI genérica, credenciais/AppData/sistema ou elevação de privilégios.
+## Validação atual
 
-Pesquisa Bing RSS e páginas HTTPS: fontes, DNS/IP público fixado, TLS, limites de bytes/redirecionamentos/tipos. Sem cookies, sessões logadas, JavaScript ou execução de downloads. Não é navegador interativo.
+74 testes Python passaram; um symlink ignorado por privilégio Windows. Três testes Node passaram (URLs/IPs, CONNECT/DNS privado ou misto, assinatura). TS/Vite compilou. Smoke Electron oculto do próprio navegador passou: HTTPS docs.ollama.com via proxy, DOM sintético de leitura/clique/digitação, snapshot antigo e senha recusados. Não é controle da área de trabalho ou de contas pessoais, nem revisão visual completa da UI.
 
-Codex CLI oficial autenticado ChatGPT com prévia exata/recibo por envio. Scratch isolado, configuração/hooks/plugins/ferramentas pessoais desligados, permissões restritas. Sem fallback pago automático nem acesso automático aos executores locais ALT.
+Comparação real inicial com seis respostas e repetição de duas discussões com 256 tokens concluídas em Notebook/CPU. Relatório completo em MODEL_COMPARISON_0.3.md e dados sintéticos em model-comparison-0.3.json. Qwen respondeu 642 na conta 17×19, Huihui respondeu 323. Ambos discutiram RBU sem recusa, mas isso não prova ausência de recusas geral. Houve erros de linguagem/alegações sem fonte. Nenhuma nota humana inventada. Temperatura/amostragem foram padrões dos modelos; outros processos estavam abertos. Não declarar um vencedor geral.
 
-Anthropic API opcional e desligada: DPAPI, verificação de autenticação/modelos, preços/orçamentos e reservas. Contratos automatizados passaram; nenhuma chamada paga real. Claude por assinatura indisponível; não extrair tokens nem contornar restrições do provedor.
+Teste real scripts/smoke_continuity.py passou: Qwen resumiu registro sintético Aurora; nenhuma memória antes de revisão; edição aprovada salva com origem. Testes anteriores da 0.2: Codex sintético, pesquisa pública e análise de resultado Notebook sem erro de contexto.
 
-Modo Jogo suspende/revoga ações, tenta descarregar o modelo selecionado e oculta janela. Não garante liberação integral de RAM/VRAM.
+Notebook atual i5-1135G7/Iris Xe usa CPU. PC principal Ryzen 9 3900/32 GB/RX 7600 e Windows limpo continuam sem validação. Não prometer resposta instantânea ou aceleração AMD confirmada. Revisão visual final da interface depende de serviço Computer Use, indisponível na retomada anterior.
 
-Atualização local verificada por manifesto Ed25519, hash/tamanho/anti-rollback, confirmação e nova validação antes da instalação. Não é feed automático nem certificado Windows Authenticode.
+## Distribuição e instalação
 
-## Validação final desta rodada
+Pacote 0.3 concluído: NSIS, smoke empacotado e manifesto Ed25519/hash verificados. Instalador ALT-AI-Setup-0.3.0-x64.exe com 129.517.936 bytes. SHA256: 3365e2660c75c518d68af91d5bb4b669c2d4c991290f8cf04352782003b9dab0. Browser empacotado corresponde ao fonte testado e runtime backend corresponde ao smoke aprovado. Manifesto regenerado após ajuste final de versão na interface. Publicação privada em andamento: https://github.com/caio306santana/ALT-/releases/tag/v0.3.0
 
-- 67 testes Python passaram; um teste de symlink foi ignorado por falta de privilégio Windows. Um teste Node de assinatura/adulteração/chave incorreta/rollback passou.
-- TypeScript/Vite, PyInstaller e NSIS concluídos. O wrapper preserva o ambiente Windows no passo NSIS de electron-builder 26.18 (evita spawn UNKNOWN) e deixa o builder carregar package.json uma única vez (evita duplicar extraResources e EBUSY).
-- Backend empacotado validou autenticação (401 sem token), SQLite/conversas, personalidade, memória, ferramentas, autorização persistente e telemetria Notebook, usando banco temporário.
-- Corrigido o erro de contexto na análise de resultados: backend/context.py ajusta JSON ao espaço restante em bytes, preserva URLs inteiras e avisa sobre o trecho reduzido. Esquemas de ferramentas entram no orçamento. Personalidade/memórias escolhidas não são cortadas silenciosamente; o resultado completo continua no cartão/banco. O prefixo técnico do Electron foi removido das mensagens de erro da interface.
-- Teste real scripts/smoke_analysis.py: Qwen 3.5 4B analisou um registro sintético extenso no perfil Notebook, resposta em 41,72 s, primeiro token em 38,12 s, 777 tokens de entrada, 19 de saída, 5,28 tokens/s. Resultado completo preservado. Não usou nuvem ou dados pessoais.
-- Testes reais anteriores: Codex respondeu ALT-CODEX-OK. em 5,02 s com contexto sintético revisado; Qwen propôs pesquisa que permaneceu pendente em Observação; busca pública e leitura docs.ollama.com verificadas por HTTP.
-- Nesta retomada o serviço Computer Use não conectou ao pipe nativo, mesmo após recuperação documentada. Não foi possível revisar interativamente o pacote final. Prints anteriores de ferramentas/modelos/histórico/personalidade/memória/sistema foram inspecionados. Não alegar teste visual completo.
-- Notebook atual: Intel i5-1135G7/Iris Xe, inferência CPU. O PC principal Ryzen 9 3900/32 GB/RX 7600, Windows limpo e uso prolongado permanecem sem validação. Qwen 2B/9B não testados.
+Build: npm.cmd run dist. Wrapper scripts/build-windows.cjs preserva ambiente no passo NSIS electron-builder 26.18 e evita configuração duplicada/extraResources concorrentes. Não publicar o pequeno gerador intermediário de uninstaller. release:manifest recusa arquivos abaixo de 10 MB.
 
-## Pacote e publicação
+**Chave privada .local/update-private-key.pem permanece fora do Git. Fazer backup privado para assinar no outro PC. Nunca publicar.** Chave pública em assets/update-public-key.pem. Manifesto Ed25519 não é Authenticode. Certificado Windows e feed automático continuam pendentes; nenhum secret foi enviado ao GitHub.
 
-Artefatos finais publicados e verificados na prévia privada 0.2.0:
-- Instalador: release/ALT-AI-Setup-0.2.0-x64.exe, **129.476.502 bytes**.
-- SHA256: c7abd6f24ad9f9d9fca5efb0470448cf917bc3b9c12fd20874027fe4cd646cc1
-- Manifesto: release/ALT-AI-0.2.0-update.json, assinatura Ed25519 verificada com a chave pública versionada e comparação de tamanho/hash/versão. Não é certificado Windows Authenticode.
-- SHA256SUMS.txt gerado a partir deste arquivo final; não usar os intermediários anteriores.
-- Release privada publicada: https://github.com/caio306santana/ALT-/releases/tag/v0.2.0
-- Estado da publicação: concluída. Os três assets estão uploaded; tamanho e SHA256 do instalador retornados pelo GitHub coincidem com o arquivo local. Repositório permanece privado. A tag aponta para o commit 3d16ff0; alterações posteriores são documentação.
+Para aplicar: Sobre → Sair da ALT-AI, instalar a versão nova e reabrir. O × apenas oculta na bandeja. Preservar dados locais. Para desenvolver: clonar, Node 24/Python 3.12, npm.cmd ci, .venv + requirements-lock.txt e npm.cmd run dev. Fontes mudados em backend/Electron exigem reiniciar.
 
-A prévia 0.1 continua disponível para histórico. A tag de release corresponde ao código do pacote; commits posteriores de documentação não modificam o binário.
+SQLite de conversas/memórias não é criptografado. Credencial Anthropic opcional usa DPAPI separado. Não versionar bancos, logs ou chaves. Migrações adicionam tabelas; não há downgrade reverso automático, fazer backup.
 
-## Aplicar a correção no aplicativo aberto
+## Pendências reais
 
-Encerre em Configurações → Sobre → Sair da ALT-AI, instale a 0.2 e reabra. O × apenas oculta na bandeja. A janela antiga não carrega o backend novo automaticamente. Não apagar os dados do usuário. A primeira instalação 0.2 é manual: a 0.1 ainda não possui verificador de atualização.
+1. Confirmar envio dos três assets da release 0.3 e digest no GitHub; depois manter este registro atualizado e Git limpo.
+2. Revisão visual completa de Controle/Navegador/Memória/Laboratório e instalação em Windows limpo/PC principal; teste prolongado e GPU real.
+3. Memória semântica/importação de documentos, resumos automáticos por projeto e recuperação mais refinada; hoje é rascunho revisado e busca por termos.
+4. Mais abas e tarefas longas de navegador, automação genérica da GUI Windows, tratamento de apps que mudam PID, rotinas e integrações adicionais.
+5. Certificado Authenticode, feed autenticado, backup/migrações, coletores GPU/temperatura, voz e iOS, conforme ROADMAP.
 
-Para testar só os fontes atuais, sair e executar npm.cmd start (usa frontend compilado e Python da .venv) ou npm.cmd run dev. A seleção de memórias muito grande ainda pode exceder legitimamente o contexto; nesse caso reduzir seleção/instruções ou usar Desktop. Não descartar escolhas silenciosamente nem aumentar o consumo do notebook sem pedido.
-
-## Outro PC e assinatura
-
-**Chave privada de atualização: .local/update-private-key.pem, ignorada pelo Git. Fazer backup privado para continuar assinando do outro PC. Nunca publicar.** Chave pública em assets/update-public-key.pem. Um clone contém os fontes, não a chave privada. Authenticode exige certificado/serviço externo ainda não configurado; nenhum secret foi enviado ao GitHub.
-
-Para desenvolver: Git, Node 24 e Python 3.12; clonar, npm.cmd ci, criar .venv, instalar requirements-lock.txt e npm.cmd run dev. Usar .cmd evita npm.ps1 bloqueado. Backend/Electron exigem sair e reabrir após mudanças. Para usar, instalar a release e configurar Ollama/modelo com consentimento. Não copiar bancos/cofre/logs/chaves privadas para Git.
-
-SQLite local sem criptografia para conversas/memórias. A 0.2 adiciona tabelas, sem migração reversa. Fazer backup antes de downgrade. Não publicar dados pessoais.
-
-## Próximos passos reais
-
-1. Conferência visual final de Perfil/navegação/escala/temas e autorização sem prazo após reabrir, quando o serviço de controle visual estiver disponível.
-2. Instalação em Windows limpo e no PC Ryzen/RX 7600, medir GPU realmente utilizada e estabilidade prolongada. Modelos opcionais só após consentimento.
-3. Navegador interativo isolado e GUI com permissões granulares, mais apps, busca recursiva e proteção de documentos ao fechar programas. A pesquisa atual só lê páginas HTTPS públicas sem login/JS.
-4. Memória com importação/resumos/busca semântica, tarefas/rotinas, temas completos, APIs adicionais/fallback autorizado; voz e iOS continuam no ROADMAP.
-5. Certificado Authenticode, feed autenticado de atualização, migrações/backup, testes de junctions e coletores de GPU/temperatura.
-
-Retomada de 29/10 concluída no código e no pacote, após pausa anterior por cota. O usuário autorizou prosseguir. Não habilitar API paga, baixar outros modelos, publicar a chave privada ou alterar visibilidade do repositório.
+Não confundir ampliação dos passos solicitados com todas as fases do MASTER PROMPT concluídas.

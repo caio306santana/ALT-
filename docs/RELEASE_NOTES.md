@@ -1,17 +1,17 @@
-# ALT-AI 0.2.0 — personalidade, memória e ferramentas
+# ALT-AI 0.3.0 — suas regras, navegador e continuidade
 
-Personalidade configurável: calma na fala, provocadora, irônica e desafiadora nas ideias. Perfil clicável, visual cyberpunk original, memória explícita editável/selecionável e mais controles de aparência.
+Novo painel Controle e regras: instruções de conversa editáveis, permissões por capacidade e recuperação manual/automática de memória. Veja o prompt e os limites de cada camada. Suas regras persistem até alterar; STOP continua disponível. O aplicativo não reescreve os pesos do modelo nem as regras dos serviços externos.
 
-Chat Qwen com propostas de cálculo, arquivos texto nas pastas autorizadas, pastas, Notepad/Calculadora, URLs, busca e leitura pública com fontes. Quatro modos de autorização salvos sem prazo até alterar/revogar. STOP e Modo Jogo revogam o acesso. Controle amplo cobre perfil pessoal/pastas supervisionadas; credenciais, AppData, sistema e shell arbitrário ficam excluídos. Sem mouse/teclado genéricos ou navegação logada.
+Navegador ALT em janela/sessão separada com páginas JavaScript, leitura de elementos, cliques, digitação e voltar. Conexões HTTPS públicas passam por proxy com DNS/IP validado e TLS. Não usa sua sessão do navegador pessoal. Downloads, permissões especiais e campos protegidos ficam fora; observações antigas são recusadas. Ações seguem suas autorizações.
 
-Codex oficial autenticado ChatGPT com revisão de contexto por envio. Anthropic API opcional, desligada, com cofre Windows/orçamentos; ainda sem teste pago real. Claude por assinatura não integrado. ALT é o aplicativo/persona/agente; Qwen é seu modelo local de terceiros.
+Ferramentas Windows ampliadas: registrar aplicativos .exe pelo seletor nativo, abrir executável conferido por hash, solicitar fechamento normal de processos rastreados e buscar arquivos em subpastas autorizadas. Sem shell arbitrário ou encerramento forçado de documentos.
 
-Instalador com interface, backend e runtime Python; não exige Node/Python para usar. Ollama/modelos configurados pelo app com confirmação de download. Perfis Notebook/Desktop, métricas disponíveis e Modo Jogo. Inferência depende do hardware: carregar o 4B em CPU pode levar dezenas de segundos.
+Memória: rascunhos de continuidade gerados localmente e revisados antes de salvar, origem em conversa/mensagens, importação JSON atômica/deduplicada e recuperação por termos relacionada ao pedido. A recuperação automática é opcional e aparece no contexto enviado; ainda não é memória semântica.
 
-Corrigido o erro de contexto ao pedir análise de resultados no perfil Notebook. O trecho é ajustado ao espaço disponível, em JSON válido, com URLs preservadas e aviso de abreviação. O resultado completo continua no cartão; personalidade e memórias selecionadas não são descartadas silenciosamente. Mensagens de erro deixam de mostrar o prefixo interno do Electron.
+Laboratório de modelos locais com respostas, tempos, limites de saída e suas notas. Huihui Qwen 3.5 4B disponível no seletor e testado após autorização de download. Relatório completo em docs/MODEL_COMPARISON_0.3.md. Os testes encontraram erros reais e não demonstram um vencedor geral nem ausência universal de recusas.
 
-Validação: 67 testes Python passaram, um symlink ignorado por privilégio Windows e um teste Node de assinatura passou; TypeScript/Vite e PyInstaller compilaram. O backend empacotado validou autenticação, armazenamento, personalidade, memória, ferramentas e autorização sem prazo. Qwen real analisou um resultado sintético extenso no perfil Notebook em 41,72 s, com resultado completo preservado. Codex e pesquisa pública já tiveram testes reais. Prints anteriores revisados; serviço de controle visual indisponível nesta retomada, portanto revisão interativa do pacote final, Windows limpo e PC principal continuam pendentes.
+Validação: 74 testes Python passaram, um symlink ignorado por privilégio Windows e três testes Node passaram. TS/Vite compilou; navegador real Electron oculto validou HTTPS e DOM sintético de leitura/clique/digitação. Comparação real dos dois modelos e resumo local revisado foram testados sem nuvem/dados pessoais. Revisão visual completa, Windows limpo e PC principal permanecem pendentes.
 
-Baixe o .exe para instalar. SHA256SUMS.txt confere integridade; manifesto Ed25519 permite atualização verificada pelo aplicativo. O manifesto não substitui certificado Windows Authenticode; esta prévia ainda não tem certificado Windows. Históricos/memórias locais não são criptografados. Voz, memória semântica, navegador interativo e iOS permanecem no roadmap.
+Instalador inclui Electron/backend/runtime Python. Ollama e modelos são separados, com confirmação de download. Manifesto Ed25519 e SHA256 verificam a atualização; esta prévia ainda não possui certificado Windows Authenticode. Encerre a versão anterior em Sobre → Sair, instale e reabra. O × apenas oculta a janela.
 
-Código completo e continuidade: README.md, docs/HANDOFF.md, docs/SECURITY.md e docs/ROADMAP.md. A chave privada de atualização não está no Git; seu proprietário precisa manter backup privado para assinar futuras versões.
+Código e continuidade completos em README.md, docs/HANDOFF.md e docs/ROADMAP.md. Chave privada de atualização fora do Git; manter backup privado para assinar no outro PC.
