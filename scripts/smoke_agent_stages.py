@@ -79,7 +79,7 @@ with tempfile.TemporaryDirectory(prefix='alt-agent-smoke-') as directory:
         if run['state']=='draft':
             client.post(f"/tasks/{run['id']}/start",json={})
             run=wait(client,'/tasks/'+run['id'],lambda r:r['state'] in ('awaiting_approval','completed','needs_review','paused'),300)
-            pause['first_stop']=run['state'];pause['cursor_before_pause']=run['cursor']
+            pause['first_stop']=run['state'];pause['cursor_before_pause']=run['cursor'];pause['first_notice']=run['notice']
             if run['state']=='awaiting_approval':
                 client.post(f"/tasks/{run['id']}/pause");wait(client,'/tasks/'+run['id'],lambda r:r['state']=='paused',60)
                 before=len(client.get('/tools/history').json())

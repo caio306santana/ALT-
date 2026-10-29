@@ -1,6 +1,6 @@
 # ALT-AI
 
-**Estado atual:** correção 0.3.1 no código de `main`, testada com Qwen real. O pacote 0.3.1 está em rascunho: o Windows bloqueou o novo backend por política de assinatura, e a instalação dessa atualização ainda não foi validada/aplicada. A última release publicada é a 0.3.0. Consulte [o que funcionou e o que falta concluir](docs/STATUS.md) antes de retomar ou instalar.
+**Estado atual:** 0.3.1 (correção do chat) em `main`, instalada neste notebook. A **0.4.0** está na branch `work/advanced-0.4`: tarefas com várias ações, memória semântica com documentos e projetos, conferência de contas e links, modo Acesso total, aviso de atualização com notas da release e barra lateral nova. Instalador 0.4.0 gerado para teste local; sem assinatura digital, o Windows pode bloquear. Veja [o que funcionou, como instalar e o que falta](docs/STATUS.md).
 
 Assistente pessoal Windows com personalidade própria, memória editável e ferramentas reais. **Qwen é o modelo de terceiros que gera respostas locais; ALT-AI é o aplicativo/agente, a identidade, a memória e o controle das ferramentas. Não treinamos um modelo exclusivo do zero.**
 

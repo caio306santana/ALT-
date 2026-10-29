@@ -2,52 +2,78 @@
 
 Atualizado em 29/10/2026. Este é o ponto de entrada para retomar o projeto em outro PC.
 
-## O que deu certo
+## Versões
 
-O código da correção **0.3.1 está em `main`**. A implementação ainda incompleta das etapas maiores está preservada em [`work/advanced-0.4`](https://github.com/caio306santana/ALT-/tree/work/advanced-0.4). Não confundir código em desenvolvimento com funcionalidade entregue no aplicativo instalado.
-
-| Entrega | Estado e evidência |
-| --- | --- |
-| Contagem de contexto Qwen 3.5/Huihui | Feita no código. Usa tokenizer oficial local, com hash e licença; mensagem comum não é mais contada como bytes/tokens. |
-| Conferência antes do envio | Feita. Mostra uso de contexto, preserva o rascunho quando o envio é recusado e mantém o histórico completo salvo. |
-| Propostas sem prazo | Feitas para propostas novas. Pesquisa/cálculo e ações independentes de snapshots podem sobreviver ao reinício. STOP, recusa, regras e validação do alvo continuam valendo. |
-| Interface do chat | Feita no código. Seletor de aprovação dentro do chat, modo real visível, leitura mais limpa, caixa de mensagem que cresce e rolagem que respeita a leitura. |
-| Personalidade | Ajustada para atender primeiro ao pedido concreto, mantendo o tom aprovado: calma ao falar e provocadora nas ideias. Não representa a conclusão de toda a etapa 5. |
-| Testes da correção | 82 testes Python passaram, 1 ignorado por privilégio de symlink; 3 testes Node passaram; TypeScript/Vite compilou; teste do renderer com dados sintéticos passou. |
-| Chat local real | Qwen 3.5 4B respondeu à mensagem de 4.757 caracteres com memória selecionada no perfil Notebook. Estimativa: 1.517 tokens; Ollama: 1.470. Resposta completa em 74,39 s neste notebook/CPU. |
-
-Essas são as evidências da rodada de correção, não uma nova execução de todos os testes neste checkpoint de documentação. Detalhes em [CHAT_FIX_0.3.1.md](CHAT_FIX_0.3.1.md) e [chat-context-smoke.json](chat-context-smoke.json).
-
-## Impedimento para entregar a atualização instalada
-
-O instalador 0.3.1 foi gerado e seu manifesto Ed25519/hash foi verificado. Porém, o teste do backend empacotado foi bloqueado antes de iniciar pelo Controle de Aplicativos do Windows: **WinError 4551**, eventos Code Integrity **3033/3077**, exigência de assinatura/política de integridade.
-
-- **Não concluído:** smoke do runtime empacotado, instalação/atualização da 0.3.1 e aplicação da correção na ALT já aberta.
-- A release [0.3.1 permanece em rascunho](https://github.com/caio306santana/ALT-/releases/tag/untagged-82010de874c86b9ed2df), com instalador, manifesto e SHA256 enviados. A última release publicada continua sendo a 0.3.0.
-- Nenhuma proteção do Windows foi alterada ou contornada. O usuário informou não possuir certificado e autorizou deixar essa dependência explícita; nenhum certificado foi comprado/configurado.
-- Instalador: `ALT-AI-Setup-0.3.1-x64.exe`, 134.257.757 bytes. SHA256: `831f1d72d7f07792f27250442cfc0a4bde1f8d52ee769a38b93fd0a3d4aa9e85`.
-
-## Etapas maiores: nenhuma está integralmente concluída
-
-| Etapa solicitada | Estado | O que falta para concluir |
+| Versão | Onde está | Estado |
 | --- | --- | --- |
-| 2 — Tarefas com várias ações | Parcial | Integrar TaskManager à API/interface; validar planejamento, aprovação, execução, conferência do resultado, pausa e retomada sem repetir ações concluídas. |
-| 3 — Memória semântica/documentos/projetos | Parcial | Integrar Knowledge, importação nativa, indexação/busca semântica e resumos revisados por projeto. EmbeddingGemma já foi baixado com autorização; busca real ainda precisa de validação. |
-| 4 — Controle de janelas Windows | Parcial | Integrar driver UI Automation, seleção/autorização nativa da janela e painel; testar leitura e interação em uma janela de teste própria. Não declarar controle universal do Windows. |
-| 5 — Confiabilidade e personalidade | Parcial | Concluir validação determinística de cálculos, procedência/conferência de fontes e testes da personalidade em tarefas e debates reais. |
-| 6 — Distribuição, backup e atualizações | Parcial | Integrar e testar backup/restauração, migrações e feed de atualização verificado; resolver a dependência de assinatura/confiança, validar instalação/atualização e testar no PC principal. |
+| 0.3.1 | `main` | Correção do chat (contexto Qwen, propostas sem prazo, aprovação no chat). **Instalada e em uso neste notebook.** Release no GitHub ainda em rascunho. |
+| 0.4.0 | `work/advanced-0.4` | Etapas 2, 3 e 5 integradas, modo Acesso total, aviso de atualização e novo design. Instalador gerado para teste local (ver abaixo). Ainda não mesclada em `main`. |
 
-Os módulos dessas etapas estão na branch de desenvolvimento e ainda não foram integrados à entrega 0.3.1. A lista específica dessa branch está em [PROGRESS-0.4.md](https://github.com/caio306santana/ALT-/blob/work/advanced-0.4/docs/PROGRESS-0.4.md).
+## O que a 0.4.0 entrega
 
-## Ordem de retomada
+| Entrega | O que faz | Evidência |
+| --- | --- | --- |
+| 2 — Tarefas com várias ações | Tela **Tarefas**: o modelo local planeja; você revisa ou edita; a ALT executa e confere cada passo; pausar e retomar sem repetir ações. O plano recebe só as ferramentas que o objetivo pede. Uma rodada automática corrige plano incompleto (ex.: arquivo sem nome). Arquivos ficam na pasta escolhida para a tarefa. | Testes automatizados e smoke real com Qwen 3.5 4B ([agent-stages-smoke.json](agent-stages-smoke.json)). |
+| 3 — Memória semântica, documentos e projetos | Projetos; importar PDF, DOCX, TXT e MD; documentos divididos por título e parágrafo; busca por significado com EmbeddingGemma (prompts recomendados do modelo); "Recuperação semântica" no chat, com volta para busca por termos; resumos por projeto sempre revisados antes de virar memória. | Smoke real: 4/4 buscas corretas; o chat respondeu com o trecho certo do documento. |
+| 5 — Confiabilidade e personalidade | Cada resposta do chat é conferida: contas escritas são recalculadas, e links que não vieram de pesquisa real são sinalizados. Mensagens com sinais claros de momento difícil recebem instrução explícita de acolhimento. Laboratório com casos reais e verificações automáticas. | Smoke real dos casos de personalidade; testes automatizados. Avaliação humana do tom continua com o usuário. |
+| Acesso total (modo 4) | Tudo que não estiver bloqueado em Controle e regras executa sem aprovação: internet, downloads (nova ferramenta), arquivos em qualquer pasta local, apps, navegador e tarefas. Versões anteriores de arquivos sobrescritos ficam em `file-history`. Sempre fora: credenciais/AppData, compartilhamentos de rede, shell, administrador, executar arquivos baixados. STOP revoga tudo. | Testes automatizados. |
+| Aviso de nova versão | Ao abrir (e a cada 6 h), consulta a última release do GitHub, mostra as **notas da versão**, baixa, confere a assinatura Ed25519 e o SHA-256 e oferece "instalar e reiniciar". | Teste Node com release simulada. |
+| Design | Barra lateral com nomes, conversas recentes, recolhível; cabeçalho único; menos brilhos e cantos cortados; textos maiores; os temas e cores continuam. | Capturas do smoke visual (`node scripts/run-chat-ui-smoke.mjs`, imagens em `.local/`). |
 
-1. Resolver a assinatura/confiança do novo runtime conforme a política deste Windows, mantendo as proteções do sistema.
-2. Executar `scripts/smoke_packaged.py` com o pacote candidato; validar instalação e atualização preservando os dados. Publicar a 0.3.1 somente depois de confirmar esses resultados.
-3. Retomar `work/advanced-0.4`, trazer as correções de `main` que forem necessárias e concluir uma etapa por vez, com integração e evidência de funcionamento antes de marcar como feita.
-4. Testar no notebook e no PC principal Ryzen/RX 7600; desempenho/GPU e instalação em Windows limpo continuam pendentes.
+Também: `pypdf`, `python-docx` e `lxml` entraram nos requisitos (antes faltariam no pacote).
+
+## Testes desta rodada
+
+- 95 testes Python passaram (1 ignorado por privilégio de symlink); testes Node passaram; TypeScript/Vite compilou; smoke visual do renderer passou.
+- Smoke real em `scripts/smoke_agent_stages.py` (Qwen 3.5 4B + EmbeddingGemma, perfil Notebook, CPU). Resultados e respostas completas em [agent-stages-smoke.json](agent-stages-smoke.json).
+
+Resultados do smoke real (última rodada):
+
+| Verificação | Resultado |
+| --- | --- |
+| Busca semântica | 4/4 consultas com o item certo em primeiro (antes da divisão por seções: 3/4). |
+| Chat com recuperação semântica | Respondeu "22h, terminal 2, adaptador tipo F" a partir do documento; 49 s. |
+| Tarefa de 3 passos planejada pelo Qwen | Concluída e conferida (calcular, gravar, ler); 78 s. |
+| Pausar e retomar | Numa rodada anterior, retomou sem repetir ações. Na última, a tarefa parou antes da pausa porque o modelo pôs "listar arquivos" com caminho de arquivo; o validador de plano agora pede correção nesse caso. Repetir o teste. |
+| Desabafo ("perdi meu emprego") | Antes: ironia e lição. Depois da instrução de acolhimento: resposta acolhedora, sem debate. |
+| Fontes sem internet | **Falhou:** o modelo disse ter internet e listou fontes. A verificação automática detectou; no chat, links não confirmados aparecem marcados. |
+| Contas no meio do texto | **Variável:** numa rodada acertou (R$ 105 / R$ 735), na seguinte errou em prosa ("12,5% é um quarto"); a conferência só pega contas escritas como expressão. |
+| Pedido prático | Lista correta, mas passou do limite de palavras e abriu com comentário irônico. |
+
+Conclusão: a infraestrutura das etapas 2, 3 e 5 funciona com o modelo real; a qualidade do Qwen 4B ainda varia entre rodadas, principalmente em fontes e contas em prosa.
+
+## Instalar a 0.4.0 neste notebook
+
+O instalador e o manifesto assinado ficam em `C:\Users\prici\Downloads\ALT-AI-0.4.0\`.
+
+1. Na ALT aberta: Sobre → **Sair da ALT-AI** (o × só esconde na bandeja).
+2. Execute `ALT-AI-Setup-0.4.0-x64.exe`. Conversas, memórias e configurações são preservadas; antes de atualizar o banco a ALT salva um backup em `%APPDATA%\alt-ai\data\backups`.
+3. O **Controle Inteligente de Aplicativos** do Windows está ligado e pode bloquear o instalador ou o backend novo, porque não têm assinatura digital (aconteceu com a 0.3.1 recém-gerada). Nenhuma proteção foi alterada pelo agente. Se bloquear, as opções são: certificado de assinatura de código, ou o dono decidir sobre essa proteção do Windows.
+
+## Aviso de atualização e repositório privado
+
+O aviso consulta `releases/latest` do GitHub sem login. Com o repositório **privado**, o app não enxerga as releases e informa isso. Para funcionar, uma das opções:
+
+- tornar este repositório público (decisão do dono, depois de revisar), ou
+- publicar só os instaladores num repositório público separado e apontar `ALT_UPDATE_FEED` / a constante em `apps/desktop/electron/update-feed.cjs` para ele.
+
+A release precisa ser **publicada** (não rascunho), com tag `vX.Y.Z` e os arquivos `ALT-AI-Setup-X.Y.Z-x64.exe` e `ALT-AI-X.Y.Z-update.json`.
+
+## O que falta
+
+| Item | O que falta |
+| --- | --- |
+| Assinatura Windows | Certificado de assinatura de código para o instalador e o backend; sem ele, executáveis novos podem ser bloqueados. |
+| 4 — Controle de janelas Windows | Driver UI Automation existe (`backend/tools/windows_ui.py`), mas faltam seletor nativo de janela, painel e testes numa janela própria. |
+| 6 — Backup e restauração | `backend/maintenance.py` existe sem interface; migrações automáticas já rodam com backup. |
+| Tarefas | Testar tarefas longas com navegador ALT; editor de plano ainda é JSON. |
+| Documentos | Validar PDFs longos e DOCX reais; PDFs digitalizados precisam de OCR (não incluído). |
+| Personalidade | Avaliação humana em uso real; as verificações automáticas são heurísticas. |
+| PC principal | Testar no Ryzen 9 3900 / RX 7600 e em Windows limpo; medir desempenho com GPU. |
+| `main` | Mesclar `work/advanced-0.4` em `main` depois da revisão do dono. |
 
 ## Continuidade em outro PC
 
-Fontes, locks, testes e documentação estão no repositório privado. O [README](../README.md#desenvolver-no-outro-pc) contém a preparação do ambiente; [HANDOFF.md](HANDOFF.md) registra decisões e histórico técnico. Para explorar o trabalho incompleto após clonar, usar `git switch --track origin/work/advanced-0.4`; isso não é a versão pronta para instalar.
+Fontes, locks, testes e documentação estão no repositório. O [README](../README.md#desenvolver-no-outro-pc) contém a preparação do ambiente; [HANDOFF.md](HANDOFF.md) registra decisões e histórico; [PROGRESS-0.4.md](PROGRESS-0.4.md) detalha a 0.4. Usar `git switch --track origin/work/advanced-0.4` para continuar.
 
-Dados pessoais, bancos SQLite, logs, modelos e credenciais ficam fora do Git. Preservar a chave privada de atualização em backup privado para assinar versões futuras; ela não é incluída no repositório. Não há acesso confiável ao percentual de créditos do agente: fazer checkpoints frequentes sem inventar esse percentual.
+Dados pessoais, bancos SQLite, logs, modelos e credenciais ficam fora do Git. Preservar a chave privada de atualização (`.local/update-private-key.pem`) em backup privado para assinar versões futuras. Não há acesso confiável ao percentual de uso da sessão do agente: fazer checkpoints frequentes.

@@ -258,6 +258,10 @@ def test_flawed_plan_gets_one_correction_round_before_review(tmp_path):
         run=client.post('/tasks',json={'goal':'Grave 360','model':'fixture:4b','scope_id':scope}).json()
         run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
         assert run['state']=='error' and 'nome de arquivo' in run['notice']
+        provider.plan=[{'steps':[{'title':'Listar','action':{'tool':'list_files','path':'quadrado.txt'}}]}]*2
+        run=client.post('/tasks',json={'goal':'Liste a pasta','model':'fixture:4b','scope_id':scope}).json()
+        run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
+        assert run['state']=='error' and 'recebe uma pasta' in run['notice']
 
 def test_documents_split_by_heading_and_use_embedding_prompts(tmp_path):
     from backend.memory.knowledge import extract_document,chunks
