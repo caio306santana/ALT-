@@ -11,3 +11,5 @@ Prints recebidos cobrem ferramentas, modelos, histórico, personalidade, memóri
 Build/publicação final em andamento. Não publicar stub intermediário NSIS. scripts/build-windows.cjs preserva ambiente no gerador de uninstaller electron-builder 26.18, evitando spawn UNKNOWN. release:manifest recusa arquivo pequeno incompleto.
 
 Sem certificado Authenticode, chave Anthropic real, execução paga ou teste Ryzen/RX 7600. Chave privada .local/update-private-key.pem fora do Git: manter backup privado. Nunca publicar bancos/cofre/chaves/logs.
+
+Pausa solicitada pelo usuário antes do limite de uso. Compilação NSIS interrompida; v0.2 não publicada. Fontes e decisões salvos. Próxima rodada: seguir a seção final de HANDOFF.md para concluir pacote, smoke empacotado, manifesto/hash e release privada. Não tratar artefatos intermediários como entrega final.

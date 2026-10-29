@@ -12,8 +12,10 @@ WineVmManager.prototype.execWine = function (input) {
   });
 };
 const target = process.argv.includes('--dir') ? 'dir' : 'nsis';
+// Default configuration is already loaded from package.json. Passing it again
+// concatenates extraResources and races two copies of the same backend binary.
 const config = process.argv.includes('--signed')
-  ? require('../electron-builder.signed.cjs')
-  : require('../package.json').build;
+  ? require('node:path').resolve(__dirname, '../electron-builder.signed.cjs')
+  : undefined;
 build({ targets: Platform.WINDOWS.createTarget(target, Arch.x64), config, publish: 'never' })
   .catch((error) => { console.error(error); process.exitCode = 1; });

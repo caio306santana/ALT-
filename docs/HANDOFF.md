@@ -63,3 +63,23 @@ Para desenvolver: Git, Node 24 e Python 3.12; clonar, npm.cmd ci, criar .venv, i
 ## Registro final
 
 Build/publicação em validação. Atualizar link, tamanho e SHA256 após compilação final; não usar hash de intermediários.
+
+## Pausa solicitada pelo usuário — checkpoint antes do limite
+
+O usuário pediu parar tudo e atualizar o Git, informando 2% de cota restante e renovação em duas horas. Desenvolvimento e compilação interrompidos. Não publicar a 0.2 com o pacote atual sem concluir os passos abaixo.
+
+- Fontes de personalidade/memória/provedores/ferramentas/perfil/visual/persistência já salvos no Git. Último ajuste do wrapper NSIS evita configuração duplicada: passar package.json.build novamente à API concatenava extraResources e criava duas cópias concorrentes do backend, causando EBUSY. Agora o build normal deixa electron-builder carregar package.json; o assinado recebe caminho do arquivo de configuração.
+- Validação final já feita: 59 testes Python passaram, um symlink ignorado; um teste Node passou; TypeScript/Vite e PyInstaller concluíram. Inspeção estática de app.asar confirmou texto sem prazo e página Perfil no frontend empacotado. Não equivale a teste visual.
+- A última montagem chegou ao NSIS sem os erros anteriores, mas foi interrompida a pedido do usuário antes de confirmar término. Não considerar release/ALT-AI-Setup-0.2.0-x64.exe válido até novo build bem-sucedido.
+- Não foi publicada release v0.2.0. A v0.1.0 continua sendo a prévia publicada. Manifesto/SHA256 locais de builds anteriores podem estar desatualizados e devem ser regenerados após concluir o pacote.
+
+### Retomar por esta ordem
+
+1. Não refazer implementação nem downloads já concluídos. Ler este HANDOFF e consultar git status. A janela atual usa o build anterior e não atualiza o backend só por recarregar a interface.
+2. Executar node scripts/build-windows.cjs para concluir somente empacotamento (frontend/backend atuais já compilados). Se os fontes forem alterados, usar npm.cmd run dist. Não iniciar múltiplos builds concorrentes.
+3. Após término bem-sucedido, executar .venv/Scripts/python.exe scripts/smoke_packaged.py. Valida runtime incluído, autenticação, armazenamento, personalidade/memória, ferramentas e permissão sem prazo em banco temporário.
+4. Executar npm.cmd run release:manifest apenas depois do instalador final. Verificar assinatura com update-security.cjs, tamanho e SHA256. Não executar o instalador durante essa verificação. A chave privada original existe apenas em .local, fora do Git.
+5. Atualizar este documento e RELEASE_NOTES com resultado real, tamanho/hash e pendências. Commit/push. Publicar prévia privada v0.2.0 com instalador, manifesto Ed25519 e SHA256SUMS.txt, usando docs/RELEASE_NOTES.md. Verificar assets enviados.
+6. Revisão visual final/Perfil e instalação Windows limpo/PC Ryzen/RX 7600 continuam pendentes. Controle visual detectou Esc; prints do usuário foram revisados. Retomar automação visual só com nova solicitação.
+
+Não habilitar API paga, baixar outros modelos, publicar chave privada nem alterar visibilidade do repositório.
