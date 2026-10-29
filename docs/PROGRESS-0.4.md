@@ -22,6 +22,6 @@ Também: `pypdf`, `python-docx` e `lxml` entraram em `requirements.txt`/`require
 
 - **2:** testar tarefas longas com navegador ALT e janelas reais; interface de edição de plano é JSON simples.
 - **3:** validar com documentos reais maiores (PDF longo, DOCX com tabelas) e medir tempo de indexação no PC principal. PDFs digitalizados precisam de OCR, não incluído.
-- **4 (não tratada nesta rodada):** driver UI Automation existe (`backend/tools/windows_ui.py`), mas sem seletor nativo de janela nem painel; as capacidades de janela aparecem como “em desenvolvimento”.
+- **4:** integrada na 0.4.1 (seletor nativo, painel em Ferramentas, chat e tarefas). Falta validar com mais aplicativos reais.
 - **5:** as verificações automáticas são heurísticas; a avaliação humana da personalidade em uso real continua com o usuário.
-- **6:** backup/restauração (`backend/maintenance.py`) e migrações seguem sem integração à interface; gerar pacote 0.4, smoke empacotado e assinatura/confiança do Windows.
+- **6:** backup/restauração integrados na 0.4.1 (Sistema → Backup e restauração). Falta certificado de assinatura do Windows.

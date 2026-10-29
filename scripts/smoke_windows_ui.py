@@ -32,7 +32,9 @@ def wait(client,path,done,timeout):
         time.sleep(1)
     return client.get(path).json()
 
-window=subprocess.Popen(['charmap.exe'])
+# Open minimized and without focus so the owner's typing never lands in the test window.
+startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=7
+window=subprocess.Popen(['charmap.exe'],startupinfo=startup)
 try:
     with tempfile.TemporaryDirectory(prefix='alt-windows-smoke-',ignore_cleanup_errors=True) as directory:
         with TestClient(create_app(Path(directory),token),headers={'Authorization':'Bearer '+token}) as client:

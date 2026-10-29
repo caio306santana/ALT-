@@ -82,7 +82,9 @@ class TaskManager:
         # Small local models add unrelated steps when offered every tool; offer
         # browser/web/app tools only when the goal is about them.
         goal=run['goal'].casefold()
-        if not re.search(r'naveg|browser|clique|clicar|digite|formul',goal):names=[t for t in names if not t.startswith('browser_')]
+        # With a granted window, clicking/typing means that window, not the browser.
+        browser_words=r'naveg|browser|site|p[áa]gina' if run['window_id'] else r'naveg|browser|clique|clicar|digite|formul'
+        if not re.search(browser_words,goal):names=[t for t in names if not t.startswith('browser_')]
         if not re.search(r'pesquis|internet|site|p[áa]gina|http|link|baix|download|web|fonte',goal):names=[t for t in names if t not in ('web_search','read_webpage','open_url','download_file')]
         if not re.search(r'abr|apli|app|programa|feche|fechar|calculadora|bloco de notas|notepad|pasta',goal):names=[t for t in names if t not in ('open_app','close_app','open_folder')]
         return names
@@ -94,6 +96,9 @@ class TaskManager:
         if not available:raise PermissionError('Todas as capacidades estão bloqueadas nas suas regras.')
         context={'goal':run['goal'],'registered_apps':[{'id':p['id'],'name':p['name']} for p in self.tools.programs()[:8]],'feedback':feedback[:2500]}
         if run['scope_id']:context['folder']='Pasta escolhida para a tarefa; use caminhos relativos a ela (\".\" é a raiz).'
+        if run['window_id']:
+            title=next((g['title'] for g in self.tools.gui.grants() if g['id']==run['window_id']),'')
+            context['window']=f'Janela autorizada já aberta: "{title[:80]}". Comece com windows_read; depois use windows_type/windows_invoke com target igual ao rótulo exato observado.'
         instruction=('Planeje de 1 a 8 ações curtas para o objetivo. Não execute. Retorne JSON com steps; cada step tem title, action e expected. '
             'action contém tool e somente os argumentos necessários. Use apenas as ferramentas listadas. Leia antes de interagir. '
             'Para elemento ainda não observado use snapshot_id="$latest" e target com rótulo exato. Cálculos usam expression com números e + - * / % **. '

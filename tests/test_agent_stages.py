@@ -339,3 +339,14 @@ def test_granted_windows_are_offered_to_chat_and_tasks_and_can_be_revoked(tmp_pa
         assert client.post('/tasks',json={'goal':'x','model':'fixture:4b','window_id':'nao-autorizada'}).status_code==400
         client.delete('/windows/grants/00000000-0000-0000-0000-0000000000ee')
         assert client.get('/windows/grants').json()==[]
+
+def test_window_task_gets_window_tools_not_browser(tmp_path):
+    app,provider,client=agent_client(tmp_path)
+    with client:
+        app.state.store.write('INSERT INTO windows_grants VALUES(?,?,?,?,?,?)',('00000000-0000-0000-0000-0000000000ef',1,1,1.0,'Mapa de Caracteres','C:\\Windows\\charmap.exe'))
+        provider.plan={'steps':[{'title':'Ler','action':{'tool':'windows_read'}}]}
+        run=client.post('/tasks',json={'goal':'Na janela, digite Olá no campo e clique em Selecionar','model':'fixture:4b','window_id':'00000000-0000-0000-0000-0000000000ef'}).json()
+        run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
+        offered=provider.profiles[-1]['format']['properties']['steps']['items']['properties']['action']['properties']['tool']['enum']
+        assert 'windows_read' in offered and 'windows_type' in offered and not any(t.startswith('browser_') for t in offered)
+        assert 'Mapa de Caracteres' in provider.contexts[-1][1][1]['content'] and run['state']=='draft'

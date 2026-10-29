@@ -132,6 +132,60 @@
           "value": ""
         }
       ]
+    },
+    "type": {
+      "field_value": "ALT\r"
+    },
+    "invoke": {
+      "elements_before": 21,
+      "elements_after": 32,
+      "new_labels": [
+        "Agrupar por:",
+        "Conjunto de caracteres:",
+        "Ir para Unicode:",
+        "Pesquisar",
+        "Procurar por:"
+      ]
+    },
+    "stale_snapshot_refused": {
+      "status": 400,
+      "detail": "Leia a janela novamente antes de interagir."
+    },
+    "task_on_window": {
+      "state": "draft",
+      "notice": "Revise o plano antes de iniciar. Nenhuma ação foi executada.",
+      "plan": [
+        [
+          "Abrir o Bloco de Notas",
+          "browser_open",
+          "",
+          ""
+        ],
+        [
+          "Ler a janela para identificar campos",
+          "browser_read",
+          "",
+          ""
+        ],
+        [
+          "Identificar o campo 'Caracteres a serem copiados'",
+          "browser_read",
+          "",
+          ""
+        ],
+        [
+          "Digitar 'Olá ALT' no campo correspondente",
+          "browser_type",
+          "\"Caracteres a serem copiados\"",
+          ""
+        ]
+      ],
+      "planning_seconds": 204.0,
+      "final_state": "needs_review",
+      "final_notice": "O navegador não respondeu. Abra a ALT desktop e tente novamente.",
+      "history": [],
+      "field_after": "[removido: o campo recebeu texto digitado pelo usuário em outro app enquanto a janela de teste estava em primeiro plano]",
+      "seconds": 451.9
     }
   }
 }
