@@ -19,6 +19,7 @@ from backend.memory.store import now
 from backend.tools.research import read_page,search_web
 from backend.memory.library import reject_secrets
 from backend.security.policy import Policy
+from backend.tools.windows_ui import WindowsUI
 import fnmatch
 import threading
 
@@ -27,7 +28,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
@@ -35,6 +36,7 @@ class ToolProposal(BaseModel):
     app:str=Field(default='notepad',pattern=r'^[a-zA-Z0-9-]{1,64}$')
     target:str=Field(default='',max_length=160)
     snapshot_id:str=Field(default='',max_length=64)
+    window_id:str=Field(default='',max_length=64)
     url:str=Field(default='',max_length=2000)
     query:str=Field(default='',max_length=300)
 
@@ -65,6 +67,7 @@ class ToolService:
     def __init__(self,store,engine,data_dir,desktop=None):
         self.store,self.engine=store,engine
         self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
+        self.gui=WindowsUI(store)
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         store.db.executescript('''
@@ -229,6 +232,15 @@ class ToolService:
             if body.app not in {p['id'] for p in self.programs()}:raise ValueError('Escolha um aplicativo registrado no painel Controle.')
             preview['app']=body.app
             if body.tool=='close_app':preview['notice']='Solicita fechamento normal somente de janelas abertas pela ALT; o programa pode pedir para salvar documentos.'
+        elif body.tool.startswith('windows_'):
+            grant=next((g for g in self.gui.grants() if g['id']==body.window_id),None)
+            if not grant:raise PermissionError('Autorize uma janela no seletor nativo.')
+            preview.update({'window_id':body.window_id,'window_title':grant['title']})
+            if body.tool!='windows_read':
+                cached,index=self.gui.describe_target(body.window_id,body.snapshot_id,body.target)
+                preview['element']=cached['public']['elements'][index]
+                if body.tool=='windows_type':reject_secrets(body.content);preview['text']=body.content
+                preview['external_notice']='Interagir com este aplicativo pode modificar dados. Confira janela, elemento e conteúdo.'
         elif body.tool.startswith('browser_'):
             if not self.desktop:raise ValueError('Navegador disponível somente no aplicativo desktop.')
             if body.tool=='browser_open':
@@ -281,7 +293,6 @@ class ToolService:
         self.store.write("UPDATE actions SET status='superseded' WHERE id=?",(aid,))
         return result
 
-
     async def approve(self,aid):
         if self.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
         preview=self.describe(aid)
@@ -303,6 +314,8 @@ class ToolService:
     def execute(self,body,fingerprint,event):
         if event.is_set() or self.engine.stopped:raise PermissionError('Ação interrompida.')
         self.policy.check(body.tool)
+        if body.tool.startswith('windows_'):
+            return self.gui.read(body.window_id) if body.tool=='windows_read' else self.gui.act(body)
         if body.tool.startswith('browser_'):
             if not self.desktop:raise ValueError('Abra o aplicativo desktop.')
             return self.desktop.request(body.model_dump(),event)
@@ -412,6 +425,7 @@ class ToolService:
     def cancel_pending(self):
         self.pending.clear();self.previews.clear();self.critical_confirmed.clear()
         if self.desktop:self.desktop.snapshot=None
+        self.gui.snapshots.clear()
         self.store.write("UPDATE actions SET status='cancelled' WHERE status='proposed'")
         for key,event in self.engine.active.items():
             if key.startswith('tool:'):event.set()

@@ -4,16 +4,19 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+from backend.memory.migrations import migrate
 
 def now():
     return datetime.now(timezone.utc).isoformat()
 
 class Store:
     def __init__(self, path: Path):
+        self.path=path
         path.parent.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
+        self.db.execute('PRAGMA foreign_keys=ON');migrate(self.db,path)
         self.db.executescript('''
           PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
           CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY,title TEXT NOT NULL,created TEXT NOT NULL,updated TEXT NOT NULL);
