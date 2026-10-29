@@ -350,3 +350,9 @@ def test_window_task_gets_window_tools_not_browser(tmp_path):
         offered=provider.profiles[-1]['format']['properties']['steps']['items']['properties']['action']['properties']['tool']['enum']
         assert 'windows_read' in offered and 'windows_type' in offered and not any(t.startswith('browser_') for t in offered)
         assert 'Mapa de Caracteres' in provider.contexts[-1][1][1]['content'] and run['state']=='draft'
+        # Typing with no text is sent back for correction before review.
+        empty={'steps':[{'title':'Ler','action':{'tool':'windows_read'}},{'title':'Digitar','action':{'tool':'windows_type','target':'Campo','content':''}}]}
+        provider.plan=[empty,empty]
+        run=client.post('/tasks',json={'goal':'Na janela, digite Olá no campo','model':'fixture:4b','window_id':'00000000-0000-0000-0000-0000000000ef'}).json()
+        run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
+        assert run['state']=='error' and 'texto exato a digitar' in run['notice']

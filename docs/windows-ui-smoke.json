@@ -79,54 +79,30 @@
         },
         {
           "id": "w12",
-          "label": "Uma linha acima",
-          "type": "Button",
-          "value": ""
-        },
-        {
-          "id": "w13",
-          "label": "Posição",
-          "type": "Thumb",
-          "value": ""
-        },
-        {
-          "id": "w14",
-          "label": "Uma página abaixo",
-          "type": "Button",
-          "value": ""
-        },
-        {
-          "id": "w15",
-          "label": "Uma linha abaixo",
-          "type": "Button",
-          "value": ""
-        },
-        {
-          "id": "w16",
           "label": "Sistema",
           "type": "MenuBar",
           "value": ""
         },
         {
-          "id": "w17",
+          "id": "w13",
           "label": "Sistema",
           "type": "MenuItem",
           "value": ""
         },
         {
-          "id": "w18",
-          "label": "Minimizar",
+          "id": "w14",
+          "label": "Restaurar",
           "type": "Button",
           "value": ""
         },
         {
-          "id": "w19",
+          "id": "w15",
           "label": "Maximizar",
           "type": "Button",
           "value": ""
         },
         {
-          "id": "w20",
+          "id": "w16",
           "label": "Fechar",
           "type": "Button",
           "value": ""
@@ -137,8 +113,8 @@
       "field_value": "ALT\r"
     },
     "invoke": {
-      "elements_before": 21,
-      "elements_after": 32,
+      "elements_before": 17,
+      "elements_after": 28,
       "new_labels": [
         "Agrupar por:",
         "Conjunto de caracteres:",
@@ -156,36 +132,37 @@
       "notice": "Revise o plano antes de iniciar. Nenhuma ação foi executada.",
       "plan": [
         [
-          "Abrir o Bloco de Notas",
-          "browser_open",
-          "",
+          "Ler a janela Mapa de Caracteres",
+          "windows_read",
+          "$latest",
           ""
         ],
         [
-          "Ler a janela para identificar campos",
-          "browser_read",
-          "",
-          ""
-        ],
-        [
-          "Identificar o campo 'Caracteres a serem copiados'",
-          "browser_read",
-          "",
-          ""
-        ],
-        [
-          "Digitar 'Olá ALT' no campo correspondente",
-          "browser_type",
-          "\"Caracteres a serem copiados\"",
+          "Escrever no campo Caracteres a serem copiados",
+          "windows_type",
+          "Caracteres a serem copiados",
           ""
         ]
       ],
-      "planning_seconds": 204.0,
-      "final_state": "needs_review",
-      "final_notice": "O navegador não respondeu. Abra a ALT desktop e tente novamente.",
-      "history": [],
-      "field_after": "[removido: o campo recebeu texto digitado pelo usuário em outro app enquanto a janela de teste estava em primeiro plano]",
-      "seconds": 451.9
+      "planning_seconds": 47.9,
+      "final_state": "completed",
+      "final_notice": "Plano aprovado executado; resultados conferidos. Revise as evidências para confirmar o alcance do objetivo.",
+      "history": [
+        {
+          "step": "Ler a janela Mapa de Caracteres",
+          "tool": "windows_read",
+          "verified": true,
+          "reason": "Resultado conferido com a ferramenta; isso não garante fatos além do resultado observado."
+        },
+        {
+          "step": "Ler o campo Caractere selecionado",
+          "tool": "windows_read",
+          "verified": true,
+          "reason": "Resultado conferido com a ferramenta; isso não garante fatos além do resultado observado."
+        }
+      ],
+      "field_after": "ALT\r",
+      "seconds": 122.8
     }
   }
 }

@@ -51,6 +51,10 @@ def plan_problems(plan):
             problems.append(f'etapa {number} ({action.tool}) precisa de path com nome de arquivo, ex.: "resultado.txt"')
         if action.tool in ('list_files','find_files','open_folder') and '.' in path.replace('\\','/').split('/')[-1].lstrip('.'):
             problems.append(f'etapa {number} ({action.tool}) recebe uma pasta, não um arquivo; use path "." para a pasta da tarefa')
+        if action.tool in ('windows_type','browser_type') and not action.content.strip():
+            problems.append(f'etapa {number} ({action.tool}) precisa de content com o texto exato a digitar')
+        if action.tool in ('windows_type','windows_invoke','browser_type','browser_click') and not action.target.strip():
+            problems.append(f'etapa {number} ({action.tool}) precisa de target com o rótulo exato do elemento')
         if action.tool=='calculate' and not action.expression.strip():problems.append(f'etapa {number} precisa de expression')
         if action.tool in ('web_search',) and not action.query.strip():problems.append(f'etapa {number} precisa de query')
         if action.tool in ('read_webpage','open_url','download_file','browser_open') and not action.url.strip():problems.append(f'etapa {number} precisa de url')

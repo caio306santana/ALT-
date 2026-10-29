@@ -63,6 +63,21 @@ A release precisa ser **publicada** (não rascunho), com tag `vX.Y.Z` e os arqui
 
 Instalador 0.4.0: `ALT-AI-Setup-0.4.0-x64.exe`, 139.882.074 bytes, SHA256 `a36673b5060d3ee70e478c3108e08c6ea6bc688e7a90516e63d55efe5bf38d3b`. A checagem de plano que recusa “listar arquivos” com caminho de arquivo entrou depois deste build e vai na próxima versão.
 
+## Próximo passo imediato (sessão encerrada perto do limite)
+
+O código da **0.4.1** (etapa 4 — janelas do Windows, backup/restauração na interface e as correções do teste real) está completo e testado em `work/advanced-0.4` (98 testes Python passando), mas **o instalador 0.4.1 ainda não foi gerado**. A release v0.4.0 em rascunho não contém a etapa 4 nem o backup.
+
+Para gerar e publicar o rascunho:
+
+```powershell
+npm.cmd run dist
+npm.cmd run release:manifest
+.venv\Scripts\python.exe scripts\smoke_packaged.py
+gh release create v0.4.1 release\ALT-AI-Setup-0.4.1-x64.exe release\ALT-AI-0.4.1-update.json release\SHA256SUMS.txt --draft --target work/advanced-0.4 --title "ALT-AI 0.4.1"
+```
+
+Último teste real de janela: o Qwen planejou ler e digitar no Mapa de Caracteres, mas deixou o texto vazio; o validador agora exige o texto (e o alvo) antes da revisão. Repetir `scripts/smoke_windows_ui.py` depois do build.
+
 ## O que falta
 
 | Item | O que falta |
