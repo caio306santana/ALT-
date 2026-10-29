@@ -1,6 +1,6 @@
 # Continuidade — ALT-AI
 
-Última atualização: 29/10/2026. Prévia 0.1.0 — Fases 1 e 2 implementadas. Instalador final em validação.
+Última atualização: 29/10/2026. Prévia 0.1.0 — Fases 1 e 2 implementadas. Instalador gerado e aplicativo empacotado validado; publicação de release em andamento.
 
 ## Escopo autorizado
 
@@ -22,7 +22,9 @@ Implementar Fases 1 e 2 do MASTER PROMPT: Electron/React/TypeScript, FastAPI, SQ
 ## Testes e diagnóstico já realizados
 
 - 14 testes automatizados passaram: auth/origem/host, persistência/reinício, seleção/troca/isolamento de conversas, falhas/partials, STOP, cancelamento antes de headers, crash, configurações, ferramentas negadas, exclusão em cascata e perfis.
-- Build TypeScript/Vite e primeira compilação PyInstaller/NSIS concluídos. Recompilação final com perfis em andamento.
+- Build TypeScript/Vite e compilação final PyInstaller/NSIS concluídos. Instalador `ALT-AI-Setup-0.1.0-x64.exe`, 129.286.919 bytes, SHA256 `3121B2F35181C496E55D6EB2BA34D5E5A8DB33DE1D9C81307C150A3F6BFD65AB`.
+- `scripts/smoke_packaged.py` passou usando o runtime incluído no pacote: auth (401 sem token), conversa/SQLite e telemetria, detectando perfil notebook.
+- Executável `release/win-unpacked/ALT-AI.exe` aberto e inspecionado por Computer Use: UI e conexão Ollama presentes, conversa anterior restaurada. O instalador NSIS não foi validado em Windows limpo.
 - Janela real inspecionada com Computer Use; chat/painel e controles presentes.
 - Qwen 3.5 4B baixado: 3.324.173.934 bytes, Q4_K_M, 4.2B. Smoke com backend/SQLite real respondeu `ALT-AI local funcionando.` e persistiu mensagens.
 - Teste quente, sem fila: primeiro token 0,66 s, total 2,14 s, 7 tokens. Outro teste após mudança de contexto e durante compilação levou 49,59 s. Esses números não são garantia de desempenho/cold start.
@@ -33,11 +35,10 @@ Implementar Fases 1 e 2 do MASTER PROMPT: Electron/React/TypeScript, FastAPI, SQ
 
 ## Próximos passos imediatos
 
-1. Concluir recompilação final NSIS com perfis, ícone e fontes atuais.
-2. Rodar `scripts/smoke_packaged.py` no backend de `release/win-unpacked` para validar runtime incluído, auth, SQLite e telemetria.
-3. Abrir executável empacotado e conferir UI; testar instalação por usuário quando possível.
-4. Atualizar este arquivo com resultados/limitações, publicar commit final e release de prévia com instalador/SHA256, preservando visibilidade privada.
-5. Próxima etapa funcional: validar no PC Ryzen/RX 7600, depois seguir ROADMAP sem habilitar funções fictícias.
+1. Publicar release de prévia com instalador/SHA256, preservando visibilidade privada, e entregar links.
+2. Validar instalação no PC principal, modelo 4B e aceleração real da RX 7600. Testar Qwen 9B apenas após consentimento para download.
+3. Validar uso prolongado no notebook; Qwen 2B é alternativa opcional e ainda não testada aqui.
+4. Evoluir fases seguintes pelo ROADMAP, começando personalização/memória e investigação oficial de Codex/Claude, sem habilitar funções fictícias.
 
 ## Retomar no outro PC
 
