@@ -32,17 +32,17 @@ def test_search_only_returns_retrieved_urls_and_refuses_entities(monkeypatch):
     monkeypatch.setattr('backend.tools.research.retrieve',lambda url:(url,'<!DOCTYPE rss [<!ENTITY x "unsafe">]><rss/>','application/xml'))
     with pytest.raises(ValueError):search_web('teste')
 
-def test_limited_and_windows_sessions_expire_revoke_and_deny_secrets(tmp_path,monkeypatch):
+def test_limited_and_windows_authorizations_revoke_and_deny_secrets(tmp_path,monkeypatch):
     app,_,_,client=fixture_client(tmp_path)
     personal=tmp_path/'personal';personal.mkdir();(personal/'notes.txt').write_text('personal note')
     monkeypatch.setattr(Path,'home',classmethod(lambda cls:personal))
     with client:
         scope=client.get('/permissions').json()['scopes'][0]['id']
-        data=client.post('/permissions/grant',json={'level':3,'scope_ids':[scope],'duration':600}).json()
+        data=client.post('/permissions/grant',json={'level':3,'scope_ids':[scope]}).json()
         assert data['level']==3
         assert app.state.tools.can_auto(ToolProposal(tool='read_text',scope_id=scope,path='file.txt'))
         assert not app.state.tools.can_auto(ToolProposal(tool='write_text',scope_id=scope,path='file.txt'))
-        client.post('/permissions/grant',json={'level':4,'scope_ids':[scope],'duration':600})
+        client.post('/permissions/grant',json={'level':4,'scope_ids':[scope]})
         assert client.get('/permissions').json()['level']==4
         assert app.state.tools.scoped('windows-profile','notes.txt')==personal/'notes.txt'
         with pytest.raises(ValueError):app.state.tools.scoped('windows-profile','AppData/secret.txt')
@@ -56,6 +56,30 @@ def test_limited_and_windows_sessions_expire_revoke_and_deny_secrets(tmp_path,mo
         client.post('/actions/stop')
         assert client.get('/permissions').json()['level']==1
         assert client.post('/permissions/grant',json={'level':4,'scope_ids':[]}).status_code==403
+
+@pytest.mark.parametrize('level',[2,3,4])
+def test_authorization_persists_without_timer_until_changed(tmp_path,monkeypatch,level):
+    app,_,_,client=fixture_client(tmp_path)
+    with client:
+        scope=client.get('/permissions').json()['scopes'][0]['id']
+        if level==2:client.put('/permissions',json={'level':2})
+        else:client.post('/permissions/grant',json={'level':level,'scope_ids':[scope]})
+        monkeypatch.setattr('backend.tools.service.time.monotonic',lambda:10**12)
+        status=client.get('/permissions').json()
+        assert status['level']==level and status['expires_in'] is None and status['persistent']
+    _,_,_,client=fixture_client(tmp_path)
+    with client:
+        status=client.get('/permissions').json()
+        assert status['level']==level
+        assert (scope in status['auto_scopes'])==(level>=3)
+        proposal=client.post('/tools/propose',json={'tool':'calculate','expression':'2+2'}).json()
+        assert client.post('/tools/approve/'+proposal['id']).json()['result']['value']==4
+        client.post('/actions/stop')
+        client.post('/actions/resume')
+        assert client.get('/permissions').json()['level']==1
+    _,_,_,client=fixture_client(tmp_path)
+    with client:assert client.get('/permissions').json()['level']==1
+
 
 def test_qwen_tool_call_is_a_proposal_not_implicit_execution(tmp_path,monkeypatch):
     app,local,_,client=fixture_client(tmp_path)

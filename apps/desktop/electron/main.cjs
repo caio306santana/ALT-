@@ -340,12 +340,12 @@ ipcMain.handle("windows:grant", async (event, level, scopeId) => {
   if (![3, 4].includes(level)) throw new Error("Modo inválido");
   const current = await (await request("GET", "/permissions")).json();
   const scope = current.scopes.find((s) => s.id === scopeId);
-  if (level === 3 && !scope)
-    throw new Error("Escolha uma pasta autorizada primeiro.");
+  if (level === 3 && (!scope||scope.id==='windows-profile'))
+    throw new Error("Escolha uma pasta específica nos controles manuais primeiro.");
   const detail =
     level === 4
-      ? "Por 10 minutos: leitura automática de arquivos texto no seu perfil pessoal e pastas escolhidas. Abrir aplicativos, navegação e gravações continuam supervisionados. Gravações no perfil exigem confirmação adicional. Credenciais, AppData, sistema, shell arbitrário e privilégios administrativos ficam excluídos. STOP e Revogar encerram a sessão."
-      : `Por 10 minutos: cálculo e leitura automática apenas em ${scope.path}. Gravações e consultas externas ainda pedem aprovação.`;
+      ? "Sem prazo; permanece autorizado até você alterar ou revogar, inclusive ao reabrir a ALT: leitura automática de arquivos texto no seu perfil pessoal e pastas escolhidas. Abrir aplicativos, navegação e gravações continuam supervisionados. Gravações no perfil exigem confirmação adicional. Credenciais, AppData, sistema, shell arbitrário e privilégios administrativos ficam excluídos. STOP e Revogar encerram a sessão."
+      : `Sem prazo; permanece autorizado até você alterar ou revogar, inclusive ao reabrir a ALT: cálculo e leitura automática apenas em ${scope.path}. Gravações e consultas externas ainda pedem aprovação.`;
   const confirmation = await dialog.showMessageBox(win, {
     type: "warning",
     buttons: [
@@ -364,8 +364,7 @@ ipcMain.handle("windows:grant", async (event, level, scopeId) => {
   return (
     await request("POST", "/permissions/grant", {
       level,
-      scope_ids: scope ? [scope.id] : [],
-      duration: 600,
+      scope_ids: scope&&scope.id!=='windows-profile' ? [scope.id] : [],
     })
   ).json();
 });

@@ -36,6 +36,7 @@ class MemoryLibrary:
             if not self.store.rows('SELECT id FROM memories WHERE id=?',(mid,)):raise KeyError(mid)
             self.store.write('UPDATE memories SET title=?,content=?,category=?,enabled=?,updated=? WHERE id=?',(body.title,body.content,body.category,int(body.enabled),now(),mid))
         else:
+            if self.store.rows('SELECT COUNT(*) AS count FROM memories')[0]['count']>=300:raise ValueError('Limite de 300 memórias. Exporte e revise as existentes antes de adicionar outras.')
             mid=str(uuid4());self.store.write('INSERT INTO memories VALUES(?,?,?,?,?,?,?)',(mid,body.title,body.content,body.category,int(body.enabled),now(),now()))
         self.store.audit('memory_saved',mid)
         return next(row for row in self.list() if row['id']==mid)

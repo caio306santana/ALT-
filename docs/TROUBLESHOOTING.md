@@ -29,3 +29,13 @@ Verifique `backend.log` dentro de `%APPDATA%/ALT-AI` ou `%APPDATA%/alt-ai`. Não
 ## Continuar desenvolvimento
 
 Leia HANDOFF.md, confirme `git status` e use o clone mais recente. Não envie `.env`, bancos, logs ou credenciais ao Git. Locks estão versionados para instalação reproduzível.
+
+## Prévia 0.2
+
+Clique no círculo inferior para abrir Perfil. Personalidade fica em Configurações; memória no ícone de cérebro. Para ações pelo chat, selecione um modelo Ollama/Qwen, peça a ação e revise o cartão. Ative a sessão correspondente em Ferramentas. Codex nesta prévia usa conversa/código com seus executores desligados.
+
+Pesquisa usa HTTPS público sem cookies/JavaScript. Página com login ou renderização obrigatória por JS pode falhar; isso não indica que o chat local precisa de internet. O perfil amplo exclui AppData/credenciais/sistema e não equivale a controle de mouse/teclado de qualquer programa.
+
+Se o contexto exceder o limite, reduza mensagem/memórias/instruções ou escolha Desktop. O primeiro pedido com personalidade/ferramentas pode levar dezenas de segundos na CPU deste notebook. Resultados extensos são abreviados para análise; o cartão guarda o resultado completo.
+
+Para atualizações verificadas, baixe o instalador e o manifesto da mesma release e use Sobre → Verificar atualização baixada. Versão igual/antiga ou conteúdo modificado é recusado. A primeira instalação 0.2 é manual; 0.1 ainda não tem esse verificador.

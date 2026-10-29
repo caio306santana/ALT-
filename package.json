@@ -11,10 +11,10 @@
     "start": "node scripts/start.mjs",
     "test": ".venv\\Scripts\\python.exe -m pytest tests -q && node --test tests/update-security.test.cjs",
     "backend:build": ".venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean backend.spec",
-    "dist": "npm run build && npm run backend:build && electron-builder --win nsis --publish never",
-    "pack": "npm run build && npm run backend:build && electron-builder --win dir --publish never",
+    "dist": "npm run build && npm run backend:build && node scripts/build-windows.cjs",
+    "pack": "npm run build && npm run backend:build && node scripts/build-windows.cjs --dir",
     "release:manifest": "node scripts/sign-update.mjs",
-    "dist:signed": "node scripts/check-signing.mjs && npm run build && npm run backend:build && electron-builder --config electron-builder.signed.cjs --win nsis --publish never"
+    "dist:signed": "node scripts/check-signing.mjs && npm run build && npm run backend:build && node scripts/build-windows.cjs --signed"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

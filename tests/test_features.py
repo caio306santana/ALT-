@@ -227,14 +227,15 @@ def test_oversized_selected_memory_never_silently_truncates_personality(tmp_path
         assert local.contexts==[]
         assert client.get(f'/conversations/{cid}/messages').json()==[]
 
-def test_expired_permission_and_expired_proposal_cannot_execute(tmp_path):
+def test_revoked_permission_and_expired_proposal_cannot_execute(tmp_path):
     app,_,_,client=fixture_client(tmp_path)
     with client:
         client.put('/permissions',json={'level':2})
         proposal=client.post('/tools/propose',json={'tool':'calculate','expression':'2+2'}).json()
-        app.state.tools.until=0
+        client.post('/permissions/revoke')
         assert client.post('/tools/approve/'+proposal['id']).status_code==403
         client.put('/permissions',json={'level':2})
+        proposal=client.post('/tools/propose',json={'tool':'calculate','expression':'2+2'}).json()
         pending=app.state.tools.pending[proposal['id']]
         app.state.tools.pending[proposal['id']]=(0,pending[1],pending[2])
         assert client.post('/tools/approve/'+proposal['id']).status_code==400

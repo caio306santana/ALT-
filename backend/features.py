@@ -17,7 +17,6 @@ class GrantBody(BaseModel):
     model_config=ConfigDict(extra='forbid')
     level:Literal[3,4]
     scope_ids:list[str]=Field(default_factory=list,max_length=20)
-    duration:int=Field(default=600,ge=60,le=1800)
 class KeyBody(BaseModel):
     model_config=ConfigDict(extra='forbid')
     key:str=Field(min_length=1,max_length=500)
@@ -62,7 +61,7 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
     @router.put('/permissions')
     async def permissions_set(body:PermissionBody):return tools.set_level(body.level)
     @router.post('/permissions/grant')
-    async def grant(body:GrantBody):return tools.grant(body.level,body.scope_ids,body.duration)
+    async def grant(body:GrantBody):return tools.grant(body.level,body.scope_ids)
     @router.post('/permissions/revoke')
     async def revoke():tools.revoke();return tools.status()
     # Only the main-process folder picker may call this route; omitted from renderer API allowlist.

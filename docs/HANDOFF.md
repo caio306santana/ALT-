@@ -1,54 +1,65 @@
-# Continuidade — ALT-AI
+# Continuidade — ALT-AI 0.2.0
 
-Última atualização: 29/10/2026. Prévia 0.1.0 — Fases 1 e 2 implementadas. Instalador gerado, aplicativo empacotado validado e release publicada.
+Atualizado em 29/10/2026. Repositório privado: https://github.com/caio306santana/ALT-.git. Manter a visibilidade. Entrega: fontes completos e instalador Windows com Electron, backend e runtime Python. Node/Python só são necessários para desenvolver.
 
-Release: https://github.com/caio306santana/ALT-/releases/tag/v0.1.0
+## Pedidos e decisões
 
-Instalador e SHA256SUMS foram enviados e verificados na release privada. A tag aponta para o commit de entrega; alterações posteriores de documentação não modificam o binário.
+- Avançar personalização, memória, integrações oficiais, ferramentas Windows, desempenho e distribuição. Voz/iOS ficam no roteiro.
+- Personalidade aprovada: calma na forma de falar, provocadora, irônica e desafiadora nas ideias, com paciência. Editor continua disponível. Personalidade não altera permissões.
+- ALT é o produto/persona/memória/agente. Qwen 3.5 4B é o modelo de terceiros instalado; não existe modelo exclusivo treinado pela ALT.
+- Último pedido: autorizações **sem prazo, até alterar ou revogar**, inclusive ao reabrir o app. Implementado em tabela SQLite própria. STOP, Modo Jogo, Observação e remoção de escopo revogam o estado salvo; retomar não restaura acesso anterior. Propostas/recibos de nuvem continuam de uso único com validade de cinco minutos.
+- Instalação de dependências, Python/Ollama, download/teste Qwen 4B e publicação de fontes/instalador foram autorizados. Outros modelos exigem confirmação. Nenhuma API paga habilitada/testada com chave real.
+- Usuário pediu aviso aos 90% de créditos; agente não possui medição confiável da cota da conta. Fazer checkpoints sem inventar percentuais.
 
-## Escopo autorizado
+## Implementado
 
-Implementar Fases 1 e 2 do MASTER PROMPT: Electron/React/TypeScript, FastAPI, SQLite, permissões básicas e chat Ollama com streaming. Gerar instalador Windows e publicar código completo em https://github.com/caio306santana/ALT-.git. Repositório privado; não alterar visibilidade. Instalação de dependências do projeto, Python e Ollama autorizada pelo usuário. Posteriormente autorizou baixar/testar Qwen 3.5 4B. Nenhuma API paga habilitada. Outros downloads de modelos precisam de confirmação explícita na interface.
+Chat Ollama real: streaming, erros, cancelamento, histórico, recuperação após interrupção e think:false no Qwen. Perfis Notebook/Desktop e telemetria disponível.
 
-## Checkpoint atual
+Personalidade aplicada ao contexto local/nuvem; Perfil clicável e nome do usuário opcional. CSS cyberpunk original rosa/ciano com recortes/HUD. Aparência, temas, escala, opacidade, efeitos, bordas, atalho global, topo e janela configuráveis.
 
-- Interface React real: chat Markdown, modelos locais, histórico, métricas, permissões, aparência, temas, temporizador de foco, bandeja, topo, atalho global e posição da janela restaurada.
-- Ponte Electron limitada, sandbox/contextIsolation e backend autenticado em loopback/porta efêmera. Token não exposto ao React.
-- SQLite com conversas, mensagens, configurações e auditoria; checkpoints parciais e recuperação após encerramento.
-- Chat Ollama real com streaming/cancelamento/erros. STOP bloqueia novas gerações/downloads até retomar. Nenhuma ferramenta de OS disponível ao modelo.
-- Descoberta automática ao focar a janela e a cada 10 segundos visíveis; preferência inicial por Qwen 4B. Apenas modelos locais detectados disponíveis.
-- Setup com instalação Ollama por winget após diálogo nativo e downloads opcionais Qwen 2B/4B/9B, restritos a essas tags e com confirmação.
-- Perfil automático notebook/desktop e escolha manual em Comportamento. Notebook: 4K contexto/768 saída/até 4 threads/keep-alive 2m; desktop: 8K/4096/5m.
-- CPU/RAM/disco reais; nome GPU/driver por consulta Windows fixa; alocação de modelos via Ollama. Uso/temperatura/VRAM total indisponíveis quando não coletados.
-- PyInstaller + electron-builder/NSIS geram instalador com Electron/backend/runtime Python incluídos. Não exige Python ou Node para usar no outro PC.
-- Fontes e locks versionados, ícone próprio, documentação completa e workflow manual de build Windows.
+Memória explícita CRUD/busca/desativação/exportação JSON. Até 300 registros; selecionar até dez por envio, sujeito ao contexto. Sem extração automática ou busca semântica. Históricos e memórias não são criptografados.
 
-## Testes e diagnóstico já realizados
+Ferramentas estruturadas propostas no chat Qwen: calcular, listar/ler/gravar texto, abrir pasta, Notepad/Calculadora, URL, pesquisa e leitura pública. Cartões/resultados persistem ligados à conversa; análise usa trecho limitado do resultado.
 
-- 14 testes automatizados passaram: auth/origem/host, persistência/reinício, seleção/troca/isolamento de conversas, falhas/partials, STOP, cancelamento antes de headers, crash, configurações, ferramentas negadas, exclusão em cascata e perfis.
-- Build TypeScript/Vite e compilação final PyInstaller/NSIS concluídos. Instalador `ALT-AI-Setup-0.1.0-x64.exe`, 129.286.919 bytes, SHA256 `3121B2F35181C496E55D6EB2BA34D5E5A8DB33DE1D9C81307C150A3F6BFD65AB`.
-- `scripts/smoke_packaged.py` passou usando o runtime incluído no pacote: auth (401 sem token), conversa/SQLite e telemetria, detectando perfil notebook.
-- Executável `release/win-unpacked/ALT-AI.exe` aberto e inspecionado por Computer Use: UI e conexão Ollama presentes, conversa anterior restaurada. O instalador NSIS não foi validado em Windows limpo.
-- Janela real inspecionada com Computer Use; chat/painel e controles presentes.
-- Qwen 3.5 4B baixado: 3.324.173.934 bytes, Q4_K_M, 4.2B. Smoke com backend/SQLite real respondeu `ALT-AI local funcionando.` e persistiu mensagens.
-- Teste quente, sem fila: primeiro token 0,66 s, total 2,14 s, 7 tokens. Outro teste após mudança de contexto e durante compilação levou 49,59 s. Esses números não são garantia de desempenho/cold start.
-- O notebook atual é Intel i5-1135G7/Iris Xe. Ollama informou VRAM 0 bytes, inferência CPU (~4 tokens/s). Diferente do PC principal Ryzen 9 3900/32 GB/RX 7600 8 GB, ainda não validado.
-- Primeira mensagem do usuário levou ~275 s por raciocínio interno do Qwen. Corrigido para `think:false` no Qwen 3.5. Um smoke concorrente aguardou essa fila; não confundir fila/carregamento com geração. Evitar testes concorrentes enquanto o usuário conversa.
-- O usuário pediu suporte estável a notebooks; por isso há perfil econômico e Qwen 2B opcional, ainda não baixado/testado. Não prometer aceleração de GPU neste notebook.
-- O usuário pediu aviso aos 90% de créditos. Não há indicador confiável de créditos disponível ao agente; informado que serão feitos checkpoints por marcos, com este arquivo atualizado.
+Modo 1 Observação; 2 Assistido com aprovação individual; 3 leitura autorizada de pasta; 4 amplo supervisionado do perfil pessoal e pastas escolhidas. Somente cálculo/leitura/listagem podem executar automaticamente em 3/4. Gravações e consultas externas continuam supervisionadas; perfil exige confirmação nativa adicional para gravação. Sem shell arbitrário, GUI genérica, credenciais/AppData/sistema ou elevação de privilégios.
 
-## Próximos passos imediatos
+Pesquisa Bing RSS e páginas HTTPS: fontes, DNS/IP público fixado, TLS, limites de bytes/redirecionamentos/tipos. Sem cookies, sessões logadas, JavaScript ou execução de downloads. Não é navegador interativo.
 
-1. Validar instalação no PC principal, modelo 4B e aceleração real da RX 7600. Testar Qwen 9B apenas após consentimento para download.
-2. Validar uso prolongado no notebook; Qwen 2B é alternativa opcional e ainda não testada aqui.
-3. Evoluir fases seguintes pelo ROADMAP, começando personalização/memória e investigação oficial de Codex/Claude, sem habilitar funções fictícias.
+Codex CLI oficial autenticado ChatGPT com prévia exata/recibo por envio. Scratch isolado, configuração/hooks/plugins/ferramentas pessoais desligados, permissões restritas. Sem fallback pago automático nem acesso automático aos executores locais ALT.
 
-## Retomar no outro PC
+Anthropic API opcional e desligada: DPAPI, verificação de autenticação/modelos, preços/orçamentos e reservas. Contratos automatizados passaram; nenhuma chamada paga real. Claude por assinatura indisponível; não extrair tokens nem contornar restrições do provedor.
 
-Instalar Git, Node LTS e Python 3.12 para desenvolver. Clonar o repositório, seguir README.md. Para apenas usar o app, executar o instalador Windows da release. Não copiar bancos pessoais para Git. Os fontes são a entrega principal; o instalador é um artefato de release.
+Modo Jogo suspende/revoga ações, tenta descarregar o modelo selecionado e oculta janela. Não garante liberação integral de RAM/VRAM.
 
-Use Node 24 LTS, `npm.cmd ci`, crie `.venv`, instale `requirements-lock.txt`, execute `npm.cmd run dev`. `.cmd` evita bloqueio de npm.ps1; script de lançamento remove ELECTRON_RUN_AS_NODE herdado de IDEs. Mudanças no backend/Electron exigem sair e abrir novamente.
+Atualização local verificada por manifesto Ed25519, hash/tamanho/anti-rollback, confirmação e nova validação antes da instalação. Não é feed automático nem certificado Windows Authenticode.
 
-## Limitações
+## Evidência e limites
 
-Não validado em Windows limpo ou no PC principal. Qwen 2B/9B não testados; driver/aceleração AMD precisa de confirmação real. Histórico SQLite local sem criptografia: não digitar segredos. Instalador sem certificado, atualização segura ainda pendente. Voz, ferramentas Windows, APIs/Codex/Claude, fallback/consentimento de nuvem, memória semântica, custos, game mode e iOS continuam indisponíveis e registrados no ROADMAP. FastAPI/Starlette atual emite aviso de depreciação TestClient/httpx, sem falha nos testes; avaliar atualização futura do lock de testes.
+- 59 testes Python passaram; um ignorado porque este usuário Windows não pode criar symlinks. Um teste Node de assinatura/adulteração/chave incorreta/rollback passou. Inclui persistência dos modos 2/3/4, avanço do relógio, reinício e revogação persistente.
+- TypeScript/Vite compilou. Registrar o resultado final PyInstaller/NSIS e smoke empacotado abaixo, antes da publicação.
+- Codex real respondeu ALT-CODEX-OK. em 5,02 s com contexto sintético revisado. Qwen 4B questionou uma premissa e propôs pesquisa estruturada; a consulta permaneceu pendente em Observação. Pesquisa pública e leitura docs.ollama.com verificadas por HTTP real.
+- Notebook Intel i5-1135G7/Iris Xe: Ollama em CPU, aproximadamente 3,5–4 tokens/s. Carregamento/contexto frio levou 40–80 s. PC principal Ryzen 9 3900/32 GB/RX 7600 ainda não validado; Qwen 2B/9B não testados.
+- Controle visual retornou interrupção física por Esc. Não insistir em automação na mesma rodada. Usuário enviou prints de ferramentas/modelos/histórico/personalidade/memória/sistema, inspecionados. Os prints ainda mostram o build anterior com minutos. Perfil/pacote final precisam de validação interativa; não alegar revisão visual completa.
+- Windows limpo, certificado Authenticode e uso prolongado no PC principal permanecem pendentes. Sem migração reversa de banco; fazer backup antes de downgrade. A 0.2 adiciona tabelas.
+
+## Distribuição e outro PC
+
+npm.cmd run dist usa scripts/build-windows.cjs. O wrapper preserva o ambiente Windows no passo NSIS de electron-builder 26.18: o código da dependência passava somente __COMPAT_LAYER ao execFile, perdendo SystemRoot/PATH e causando spawn UNKNOWN. Mantém a cadeia normal NSIS/assinatura. A execução do gerador funcionou preservando o ambiente.
+
+Nunca publicar o gerador intermediário NSIS como instalador. release:manifest recusa arquivos abaixo de 10 MB.
+
+**Chave privada de atualização: .local/update-private-key.pem, ignorada pelo Git. Fazer backup privado para continuar assinando do outro PC. Nunca publicar.** Chave pública em assets/update-public-key.pem. Clone não contém chave privada. Authenticode exige certificado/serviço ainda não configurado. Nenhum secret foi enviado ao GitHub.
+
+Para desenvolver: Git, Node 24 e Python 3.12; clonar, npm.cmd ci, criar .venv, instalar requirements-lock.txt e npm.cmd run dev. Usar .cmd evita npm.ps1 bloqueado. Backend/Electron exigem sair e reabrir após mudança. Para usar: instalador da release e setup Ollama/modelo. Não copiar bancos/cofre/logs/chaves privadas para Git.
+
+## Próximos passos
+
+1. Instalar e validar em Windows limpo/PC principal, incluindo GPU realmente utilizada. Testar uso prolongado no notebook e modelos opcionais só com consentimento.
+2. Revisar pacote final: Perfil, navegação, escala/tema e autorização sem prazo após reabrir.
+3. Navegador interativo isolado e GUI com permissões granulares, mais apps, busca recursiva, proteção de documentos ao fechar programas.
+4. Memória com importação/resumos/busca semântica, tarefas/rotinas, temas completos, APIs adicionais/fallback autorizado. Roteiro completo em ROADMAP.md.
+5. Certificado Authenticode, feed autenticado, migrações/backup, testes de junctions e coletores GPU/temperatura.
+
+## Registro final
+
+Build/publicação em validação. Atualizar link, tamanho e SHA256 após compilação final; não usar hash de intermediários.

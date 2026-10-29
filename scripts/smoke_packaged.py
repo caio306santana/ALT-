@@ -29,8 +29,19 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             headers={'Authorization':'Bearer '+token}
             cid=client.post('/conversations',headers=headers).json()['id']
             assert client.get(f'/conversations/{cid}/messages',headers=headers).json()==[]
+            prefs=client.get('/settings',headers=headers).json()
+            assert 'provocadora' in prefs['personality']['tone']
+            memory=client.post('/memories',headers=headers,json={'title':'Synthetic package check','content':'Temporary fixture only'}).json()
+            assert memory['id'] in [m['id'] for m in client.get('/memories',headers=headers).json()]
+            proposal=client.post('/tools/propose',headers=headers,json={'tool':'calculate','expression':'(10+5)*2'}).json()
+            assert client.post('/tools/approve/'+proposal['id'],headers=headers).status_code==403
+            client.put('/permissions',headers=headers,json={'level':2})
+            authorization=client.get('/permissions',headers=headers).json()
+            assert authorization['persistent'] and authorization['expires_in'] is None
+            assert client.post('/tools/approve/'+proposal['id'],headers=headers).json()['result']['value']==30
+            client.post('/permissions/revoke',headers=headers)
             system=client.get('/system',headers=headers).json()
             assert system['ram']['total']>0
-            print(json.dumps({'packaged_backend':'ok','health':response.json(),'cpu':system['cpu']['name'],'profile':system.get('performance',{}).get('effective'),'authentication':'401 without token','conversation_storage':'ok'},ensure_ascii=False))
+            print(json.dumps({'packaged_backend':'ok','health':response.json(),'cpu':system['cpu']['name'],'profile':system.get('performance',{}).get('effective'),'authentication':'401 without token','conversation_storage':'ok','personality_memory_permissions_tools':'ok'},ensure_ascii=False))
     finally:
         child.terminate();child.wait(timeout=10)

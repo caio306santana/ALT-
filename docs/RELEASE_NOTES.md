@@ -1,13 +1,15 @@
-# ALT-AI 0.1.0 — prévia Windows
+# ALT-AI 0.2.0 — personalidade, memória e ferramentas
 
-Primeira versão executável das Fases 1 e 2: chat local real com Ollama, streaming, histórico SQLite, modelos locais, aparência configurável, temporizador de foco, métricas disponíveis e STOP.
+Personalidade configurável: calma na fala, provocadora, irônica e desafiadora nas ideias. Perfil clicável, visual cyberpunk original, memória explícita editável/selecionável e mais controles de aparência.
 
-O instalador inclui interface Electron e backend com runtime Python. Não exige Node/Python no PC de destino. Ollama e modelos são detectados/configurados no aplicativo, com confirmação para downloads. Qwen 2B/4B/9B ficam disponíveis quando instalados. Nenhuma API paga habilitada.
+Chat Qwen com propostas de cálculo, arquivos texto nas pastas autorizadas, pastas, Notepad/Calculadora, URLs, busca e leitura pública com fontes. Quatro modos de autorização salvos sem prazo até alterar/revogar. STOP e Modo Jogo revogam o acesso. Controle amplo cobre perfil pessoal/pastas supervisionadas; credenciais, AppData, sistema e shell arbitrário ficam excluídos. Sem mouse/teclado genéricos ou navegação logada.
 
-Perfil Automático adapta contexto/saída/threads ao hardware. Notebook econômico e Desktop podem ser escolhidos manualmente em Configurações → Comportamento. O raciocínio interno do Qwen 3.5 fica desativado no chat para reduzir longas esperas.
+Codex oficial autenticado ChatGPT com revisão de contexto por envio. Anthropic API opcional, desligada, com cofre Windows/orçamentos; ainda sem teste pago real. Claude por assinatura não integrado. ALT é o aplicativo/persona/agente; Qwen é seu modelo local de terceiros.
 
-Validação: 14 testes críticos passaram; build TS/Vite, backend PyInstaller e NSIS concluídos; backend empacotado validou autenticação, SQLite e telemetria; janela empacotada aberta e inspecionada; chat real Qwen 4B e persistência confirmados. Desempenho depende de carregamento, fila e hardware.
+Instalador com interface, backend e runtime Python; não exige Node/Python para usar. Ollama/modelos configurados pelo app com confirmação de download. Perfis Notebook/Desktop, métricas disponíveis e Modo Jogo. Inferência depende do hardware: carregar o 4B em CPU pode levar dezenas de segundos.
 
-Limites desta prévia: instalador não assinado; instalação em Windows limpo e aceleração no PC Ryzen/RX 7600 ainda precisam de validação. Voz, automação de Windows, memória semântica, nuvem/Codex/Claude, fallback e iOS ainda não estão disponíveis. Histórico local não é criptografado; não inserir segredos.
+Validação: 59 testes Python passaram, um symlink ignorado por privilégio Windows e um teste Node de assinatura passou; TypeScript/Vite compilou. Qwen/Codex e pesquisa pública tiveram testes reais com contexto sintético. Prints do usuário revisados; validação interativa do pacote final, Windows limpo e PC principal continuam pendentes.
 
-Baixe o `.exe` abaixo. `SHA256SUMS.txt` permite conferir o arquivo. Código completo, instruções para desenvolver e próximos passos ficam no repositório em `README.md`, `docs/HANDOFF.md` e `docs/ROADMAP.md`.
+Baixe o .exe para instalar. SHA256SUMS.txt confere integridade; manifesto Ed25519 permite atualização verificada pelo aplicativo. O manifesto não substitui certificado Windows Authenticode; esta prévia ainda não tem certificado Windows. Históricos/memórias locais não são criptografados. Voz, memória semântica, navegador interativo e iOS permanecem no roadmap.
+
+Código completo e continuidade: README.md, docs/HANDOFF.md, docs/SECURITY.md e docs/ROADMAP.md. A chave privada de atualização não está no Git; seu proprietário precisa manter backup privado para assinar futuras versões.

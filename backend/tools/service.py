@@ -17,6 +17,7 @@ from pydantic import BaseModel,Field,ConfigDict
 from typing import Literal
 from backend.memory.store import now
 from backend.tools.research import read_page,search_web
+from backend.memory.library import reject_secrets
 
 TEXT_EXTENSIONS={'.txt','.md','.json','.csv','.ts','.tsx','.js','.jsx','.py','.css','.html','.yaml','.yml','.sql','.toml'}
 SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials','credentials.json','id_rsa','id_ed25519','appdata','ntuser.dat','ntuser.ini','secrets.txt','passwords.txt','senhas.txt'}
@@ -58,38 +59,49 @@ def calculate(expression):
 class ToolService:
     def __init__(self,store,engine,data_dir):
         self.store,self.engine=store,engine
-        self.level=1;self.until=0;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
+        self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         store.db.executescript('''
           CREATE TABLE IF NOT EXISTS scopes(id TEXT PRIMARY KEY,path TEXT NOT NULL UNIQUE,created TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS actions(id TEXT PRIMARY KEY,tool TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,result TEXT,created TEXT NOT NULL,updated TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS action_context(id TEXT PRIMARY KEY,conversation_id TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS tool_authorization(id INTEGER PRIMARY KEY CHECK(id=1),level INTEGER NOT NULL,scopes TEXT NOT NULL);
         ''')
         store.db.commit()
         store.write("UPDATE actions SET status='interrupted' WHERE status IN ('proposed','running')")
         self.add_scope(self.workspace,internal=True)
+        saved=store.rows('SELECT level,scopes FROM tool_authorization WHERE id=1')
+        if saved and saved[0]['level'] in (1,2,3,4):
+            self.level=saved[0]['level']
+            valid={s['id'] for s in store.rows('SELECT id FROM scopes')}
+            self.auto_scopes=set(json.loads(saved[0]['scopes'])) & valid
+            if self.level==4:self.auto_scopes.add('windows-profile')
+
+    def save_authorization(self):
+        self.store.write('INSERT INTO tool_authorization VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET level=excluded.level,scopes=excluded.scopes',(self.level,json.dumps(sorted(self.auto_scopes))))
 
     def status(self):
-        if self.until<time.monotonic():self.level=1
         scopes=self.store.rows('SELECT * FROM scopes ORDER BY created')
         if self.level==4:scopes.append({'id':'windows-profile','path':str(Path.home()),'label':'Perfil pessoal Windows · sessão supervisionada'})
-        return {'level':self.level,'expires_in':max(0,int(self.until-time.monotonic())) if self.level>=2 else 0,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':['calculate','list_files','read_text','write_text','open_folder','open_app','open_url','web_search','read_webpage'],'windows_scope':'Perfil pessoal e pastas escolhidas; credenciais, AppData, sistema, shell e privilégios administrativos excluídos.'}
+        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':['calculate','list_files','read_text','write_text','open_folder','open_app','open_url','web_search','read_webpage'],'windows_scope':'Perfil pessoal e pastas escolhidas; credenciais, AppData, sistema, shell e privilégios administrativos excluídos.'}
 
     def set_level(self,level):
         if level not in (1,2):raise ValueError('Níveis 3 e 4 ainda indisponíveis.')
         if level>1 and self.engine.stopped:raise PermissionError('Retome as ações antes de conceder permissões.')
-        self.level=level;self.until=time.monotonic()+900 if level==2 else 0
+        if level==1 or self.level>=3:self.revoke()
+        self.level=level;self.auto_scopes.clear();self.save_authorization()
         self.store.audit('permission_level',str(level))
         return self.status()
 
-    def grant(self,level,scope_ids,duration=600):
+    def grant(self,level,scope_ids):
         if level not in (3,4):raise ValueError('Modo inválido.')
         if self.engine.stopped:raise PermissionError('Retome as ações antes de conceder permissões.')
         valid={s['id'] for s in self.store.rows('SELECT id FROM scopes')}
         if any(sid not in valid for sid in scope_ids):raise ValueError('Escopo não encontrado.')
-        self.revoke();self.level=level;self.until=time.monotonic()+max(60,min(1800,duration));self.auto_scopes=set(scope_ids)
+        self.revoke();self.level=level;self.auto_scopes=set(scope_ids)
         if level==4:self.auto_scopes.add('windows-profile')
-        self.store.audit('supervised_session_granted',json.dumps({'level':level,'scopes':sorted(self.auto_scopes),'duration':duration}))
+        self.save_authorization()
+        self.store.audit('supervised_session_granted',json.dumps({'level':level,'scopes':sorted(self.auto_scopes),'persistent':True}))
         return self.status()
 
     def can_auto(self,body):
@@ -123,7 +135,7 @@ class ToolService:
 
     def scoped(self,sid,relative):
         if sid=='windows-profile':
-            if self.status()['level']!=4:raise PermissionError('A sessão ampla do Windows expirou ou foi revogada.')
+            if self.status()['level']!=4:raise PermissionError('A autorização ampla do Windows foi revogada ou alterada.')
             roots=[{'path':str(Path.home())}]
             if Path(relative).is_absolute():
                 try:relative=str(Path(relative).relative_to(Path.home()))
@@ -159,6 +171,7 @@ class ToolService:
                 fingerprint=self.file_state(path)
                 if body.tool=='read_text' and fingerprint is None:raise ValueError('Arquivo não encontrado.')
             if body.tool=='write_text':
+                reject_secrets(body.content)
                 if not path.parent.is_dir():raise ValueError('A pasta de destino precisa existir.')
                 before=path.read_text(encoding='utf-8') if fingerprint else ''
                 preview['diff']=''.join(difflib.unified_diff(before.splitlines(True),body.content.splitlines(True),fromfile='antes',tofile='depois'))[:40000]
@@ -167,13 +180,16 @@ class ToolService:
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
         elif body.tool=='open_app':preview['app']=body.app
         elif body.tool=='open_url':
+            reject_secrets(body.url)
             url=urllib.parse.urlsplit(body.url)
             if url.scheme!='https' or not url.hostname or url.username or url.password or any(c.isspace() for c in body.url):raise ValueError('Use uma URL HTTPS válida, sem credenciais.')
             preview['url']=body.url
         elif body.tool=='web_search':
+            reject_secrets(body.query)
             if not body.query.strip():raise ValueError('Informe o assunto da pesquisa.')
             preview['query']=body.query;preview['external_notice']='Esta consulta será enviada a um mecanismo de pesquisa público.'
         elif body.tool=='read_webpage':
+            reject_secrets(body.url)
             parsed=urllib.parse.urlsplit(body.url)
             if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password:raise ValueError('Use uma URL HTTPS pública, sem credenciais.')
             preview['url']=body.url;preview['external_notice']='A página será consultada sem cookies ou sessões pessoais.'
@@ -222,7 +238,9 @@ class ToolService:
                 return {'entries':entries,'limit':200}
             if body.tool in ('read_text','write_text'):
                 if self.file_state(path)!=fingerprint:raise ValueError('O arquivo mudou desde a prévia. Crie uma nova proposta.')
-                if body.tool=='read_text':return {'content':path.read_text(encoding='utf-8')}
+                if body.tool=='read_text':
+                    content=path.read_text(encoding='utf-8');reject_secrets(content)
+                    return {'content':content}
                 # Exclusive staging, then atomic replacement. Revalidate before commit.
                 temporary=path.with_name('.alt-write-'+str(uuid4())+'.tmp')
                 try:
@@ -248,7 +266,7 @@ class ToolService:
         raise ValueError('Ferramenta indisponível.')
 
     def revoke(self):
-        self.level=1;self.until=0;self.pending.clear();self.previews.clear();self.critical_confirmed.clear();self.auto_scopes.clear()
+        self.level=1;self.pending.clear();self.previews.clear();self.critical_confirmed.clear();self.auto_scopes.clear();self.save_authorization()
         self.store.write("UPDATE actions SET status='cancelled' WHERE status='proposed'")
         for key,event in self.engine.active.items():
             if key.startswith('tool:'):event.set()
@@ -257,7 +275,8 @@ class ToolService:
         return self.store.rows('SELECT id,tool,status,result,created,updated FROM actions ORDER BY created DESC LIMIT 100')
 
     def conversation_actions(self,cid):
-        rows=self.store.rows('SELECT a.* FROM actions a JOIN action_context c ON c.id=a.id WHERE c.conversation_id=? ORDER BY a.created',(cid,))
+        rows=self.store.rows('SELECT a.* FROM actions a JOIN action_context c ON c.id=a.id WHERE c.conversation_id=? ORDER BY a.created DESC LIMIT 100',(cid,))
+        rows.reverse()
         result=[]
         for row in rows:
             payload=json.loads(row['payload'])

@@ -16,9 +16,12 @@ if(process.argv.includes('--init')){
 }
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 const file=`ALT-AI-Setup-${pkg.version}-x64.exe`;const installer=path.join(root,'release',file);
+// Refuse NSIS's small intermediate uninstaller generator after a failed build.
+if(fs.statSync(installer).size<10_000_000)throw new Error('Instalador incompleto: finalize o build NSIS antes de assinar.');
 const privatePem=process.env.ALT_UPDATE_PRIVATE_KEY||fs.readFileSync(privatePath,'utf8');
-const derived=crypto.createPublicKey(privatePem).export({type:'spki',format:'pem'});
-if(derived!==fs.readFileSync(publicPath,'utf8'))throw new Error('Chave privada não corresponde à identidade pública versionada.');
+const derived=crypto.createPublicKey(privatePem).export({type:'spki',format:'der'});
+const expected=crypto.createPublicKey(fs.readFileSync(publicPath,'utf8')).export({type:'spki',format:'der'});
+if(!derived.equals(expected))throw new Error('Chave privada não corresponde à identidade pública versionada.');
 const payload={version:pkg.version,file,size:fs.statSync(installer).size,sha256:await hashFile(installer)};
 const signature=crypto.sign(null,Buffer.from(JSON.stringify(payload)),privatePem).toString('base64');
 fs.writeFileSync(path.join(root,'release',`ALT-AI-${pkg.version}-update.json`),JSON.stringify({payload,signature},null,2));

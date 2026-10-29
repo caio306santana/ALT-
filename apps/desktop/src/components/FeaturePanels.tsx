@@ -551,7 +551,7 @@ export function MemoryPanel({
 
 type Permissions = {
   level: number;
-  expires_in: number;
+  expires_in: number | null;
   scopes: { id: string; path: string }[];
 };
 type Proposal = {
@@ -654,7 +654,7 @@ export function ToolsPanel({
         <span>
           Modo:{" "}
           {permissions && permissions.level >= 2
-            ? `${["", "", "Assistido", "Leitura autorizada", "Windows supervisionado"][permissions.level]} · ${Math.ceil(permissions.expires_in / 60)} min restantes`
+            ? `${["", "", "Assistido", "Leitura autorizada", "Windows supervisionado"][permissions.level]} · sem prazo · até você alterar`
             : "Observação"}
         </span>
         <button
@@ -669,7 +669,7 @@ export function ToolsPanel({
         >
           {permissions?.level === 2
             ? "Voltar à observação"
-            : "Ativar assistido por 15 min"}
+            : "Ativar modo assistido"}
         </button>
       </div>
       <div className="permission-grid">
@@ -684,19 +684,19 @@ export function ToolsPanel({
             level: 2,
             title: "Assistido",
             tag: "02 / ASSIST",
-            text: "Até 15 min. Você aprova cada ação.",
+            text: "Sem prazo. Você aprova cada ação.",
           },
           {
             level: 3,
             title: "Leitura autorizada",
             tag: "03 / SCOPED",
-            text: "Até 10 min. Cálculos e leitura na pasta escolhida podem continuar sem novos cliques.",
+            text: "Até você alterar. Cálculos e leitura na pasta escolhida podem continuar sem novos cliques.",
           },
           {
             level: 4,
             title: "Controle amplo Windows",
             tag: "04 / SUPERVISED",
-            text: "Até 10 min. Perfil pessoal e pastas escolhidas; gravações, aplicativos e navegação supervisionados.",
+            text: "Até você alterar. Perfil pessoal e pastas escolhidas; gravações, aplicativos e navegação supervisionados.",
           },
         ].map((mode) => (
           <button
@@ -712,7 +712,8 @@ export function ToolsPanel({
                   .grantWindows(mode.level as 3 | 4, scope)
                   .then(async (result) => {
                     await refresh();
-                    if (mode.level === 4 && (result as Permissions).level===4) setScope("windows-profile");
+                    if (mode.level === 4 && (result as Permissions).level === 4)
+                      setScope("windows-profile");
                   })
                   .catch(onError);
             }}

@@ -24,8 +24,17 @@ class CodexProvider:
     def executable(self):
         found=shutil.which('codex.exe') or shutil.which('codex')
         if found and Path(found).suffix.lower() not in ('.cmd','.ps1','.bat'):return found
+        npm_root=Path(os.environ.get('APPDATA',str(Path.home())))/'npm'/'node_modules'/'@openai'
+        native=[]
+        for pattern in ('codex/vendor/*/codex/codex.exe','codex-*/vendor/*/codex/codex.exe','codex/node_modules/@openai/codex-*/vendor/*/codex/codex.exe'):
+            native.extend(npm_root.glob(pattern))
+        local=Path.home()/'.local'/'bin'/'codex.exe'
+        if local.is_file():native.append(local)
+        if native:return str(sorted(native)[-1])
         # Official extension runtime, useful when CLI is not installed globally.
-        candidates=list((Path.home()/'.antigravity-ide'/'extensions').glob('openai.chatgpt-*/bin/windows-x86_64/codex.exe'))
+        candidates=[]
+        for editor in ('.antigravity-ide','.vscode','.cursor'):
+            candidates.extend((Path.home()/editor/'extensions').glob('openai.chatgpt-*/bin/windows-x86_64/codex.exe'))
         return str(sorted(candidates)[-1]) if candidates else None
 
     def status(self,refresh=False):

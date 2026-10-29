@@ -302,6 +302,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     yield line({'type':'error','code':'incomplete','message':'A geração terminou sem confirmação do Ollama. Resposta parcial preservada.'})
             except ProviderError as exc:
                 status='error'; yield line({'type':'error','code':exc.code,'message':str(exc)})
+            except (ValueError,PermissionError) as exc:
+                status='error';yield line({'type':'error','code':'tool_permission' if isinstance(exc,PermissionError) else 'validation','message':str(exc)})
             except asyncio.CancelledError:
                 event.set(); raise
             except Exception:

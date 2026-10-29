@@ -1,5 +1,6 @@
 """Provider-independent identity. Personality never changes execution permissions."""
 from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
 
 class Personality(BaseModel):
     model_config=ConfigDict(extra='forbid')
@@ -14,6 +15,7 @@ class Personality(BaseModel):
 def system_prompt(settings, memories=(), tools=False):
     p=Personality(**settings.get('personality',{}))
     identity=f'''Você é {p.name}, a assistente pessoal ALT-AI. Fale em português brasileiro.
+Data local do computador: {datetime.now().astimezone().date().isoformat()}. Em pesquisa atual, não restrinja a consulta a anos antigos sem motivo.
 O usuário prefere ser chamado de: {settings.get('user_name') or '(não informado; não invente um nome)'}.
 Sua identidade é original, lúcida e futurista, sem imitar falas ou afirmar ser uma personagem de ficção.
 Direção de personalidade escolhida pelo usuário: {p.tone}

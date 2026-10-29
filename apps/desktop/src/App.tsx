@@ -207,7 +207,9 @@ export default function App() {
     setMemoryIds([]);
     setChatActions([]);
     setMessages(data);
-    setChatActions(await api<ChatAction[]>('GET',`/conversations/${id}/actions`));
+    setChatActions(
+      await api<ChatAction[]>("GET", `/conversations/${id}/actions`),
+    );
     setView("chat");
     setError("");
   }
@@ -245,7 +247,12 @@ export default function App() {
         await refresh();
         if (list.length) {
           setCid(list[0].id);
-          setChatActions(await api<ChatAction[]>('GET',`/conversations/${list[0].id}/actions`));
+          setChatActions(
+            await api<ChatAction[]>(
+              "GET",
+              `/conversations/${list[0].id}/actions`,
+            ),
+          );
           setMessages(
             await api<Message[]>(
               "GET",
@@ -1133,7 +1140,9 @@ export default function App() {
                         : `Ollama · Local · ${bytes(model.size)} em disco`}
                     </p>
                     <span>
-                      {model.location==='cloud'?'Conversa e código · ferramentas Windows no Qwen/Ollama':`${model.details?.parameter_size||'Parâmetros não informados'} · ${model.details?.quantization_level||'Quantização não informada'}`}
+                      {model.location === "cloud"
+                        ? "Conversa e código · ferramentas Windows no Qwen/Ollama"
+                        : `${model.details?.parameter_size || "Parâmetros não informados"} · ${model.details?.quantization_level || "Quantização não informada"}`}
                     </span>
                   </div>
                   <span className="check-circle">
@@ -1394,7 +1403,7 @@ export default function App() {
                 {
                   n: "02",
                   title: "Assistido",
-                  text: "Sessão de 15 minutos com aprovação individual de cada ação no painel Ferramentas.",
+                  text: "Autorização sem prazo, até você alterar ou revogar, com aprovação individual de cada ação no painel Ferramentas.",
                   ready: true,
                 },
                 {
