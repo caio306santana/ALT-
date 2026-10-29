@@ -14,11 +14,14 @@ class Capabilities(BaseModel):
     internet: Decision = 'ask'
     browser_navigation: Decision = 'ask'
     browser_interaction: Decision = 'ask'
+    windows_read:Decision='ask'
+    windows_control:Decision='ask'
 
 class OwnerPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid')
     rules: str = Field(default='', max_length=1500)
-    memory_recall: Literal['manual', 'automatic'] = 'manual'
+    memory_recall: Literal['manual', 'automatic','semantic'] = 'manual'
+    auto_project_summaries:bool=False
     capabilities: Capabilities = Field(default_factory=Capabilities)
 
 CAPABILITY = {
@@ -28,6 +31,7 @@ CAPABILITY = {
     'open_url':'internet', 'browser_open':'browser_navigation', 'browser_read':'browser_navigation',
     'browser_click':'browser_interaction', 'browser_type':'browser_interaction',
     'browser_back':'browser_navigation',
+    'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control',
 }
 
 class Policy:

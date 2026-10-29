@@ -135,7 +135,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         try:
             entries = await ollama.models()
             # Cloud aliases are never exposed as local/available.
-            local = [m for m in entries if not m.get('remote_host') and not m.get('remote_model') and 'cloud' not in m.get('name','').lower()]
+            local = [m for m in entries if not m.get('remote_host') and not m.get('remote_model') and 'cloud' not in m.get('name','').lower() and not m.get('name','').startswith('embeddinggemma')]
             return {'connected':True,'models':local,'error':None}
         except ProviderError as exc:
             return {'connected':False,'models':[],'error':str(exc)}
@@ -185,6 +185,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         return {'stopped':False}
 
     def context_for(body):
+        cost=lambda text:message_cost(text,body.model)
         previous=[m for m in store.messages(body.conversation_id) if m['status']=='complete']
         prefs=preferences();prefs['owner_policy']=tools.policy.current().model_dump();profile=performance_profile(prefs['performance'])
         memory=library.selected(body.memory_ids)
@@ -203,9 +204,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             profile['tools']=spec
         user_content=body.content
         context_limit=24000 if body.model.startswith('cloud:') else profile['options']['num_ctx']-min(profile['options']['num_predict'],768)-128
-        schema_cost=message_cost(json.dumps(spec,ensure_ascii=False,separators=(',',':'))) if spec else 0
-        chars=message_cost(user_content)+message_cost(prompt)+schema_cost
-        if chars>context_limit:raise ValueError('Mensagem, personalidade e memórias excedem o contexto deste perfil. Reduza o texto/seleção ou use o perfil Desktop.')
+        schema_cost=cost(json.dumps(spec,ensure_ascii=False,separators=(',',':'))) if spec else 0
+        chars=cost(user_content)+cost(prompt)+schema_cost
+        if chars>context_limit:raise ValueError(f'Este envio precisa de cerca de {chars} tokens de entrada; o contexto deste perfil permite {context_limit}. Reduza a mensagem ou as memórias selecionadas. O histórico anterior continua salvo.')
         if spec and any(n.startswith('browser_') for n in definition) and desktop.snapshot:
             snapshot=desktop.snapshot
             terms={w.casefold() for w in body.content.split() if len(w)>3}
@@ -226,7 +227,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             available=context_limit-chars-len((prefix+notice).encode('utf-8'))
             excerpt,result_truncated=tool_excerpt(result,min(cap,available))
             user_content+=prefix+excerpt+(notice if result_truncated else '')
-            chars=message_cost(user_content)+message_cost(prompt)+schema_cost
+            chars=cost(user_content)+cost(prompt)+schema_cost
         context=[]
         recalled=[]
         if prefs['owner_policy']['memory_recall']=='automatic':
@@ -234,12 +235,12 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 candidate=[*memory,{'id':row['id'],'title':row['title'],'content':row['content'],'category':row['category']}]
                 replacement=system_prompt(prefs,candidate,tools=bool(spec))
                 replacement+=tool_context
-                addition=message_cost(replacement)-message_cost(prompt)
+                addition=cost(replacement)-cost(prompt)
                 if chars+addition>context_limit:continue
                 memory=candidate;chars+=addition;prompt=replacement;recalled.append({'id':row['id'],'title':row['title']})
         for message in reversed(previous):
-            if chars+message_cost(message['content'])>context_limit:break
-            context.insert(0,{'role':message['role'],'content':message['content']});chars+=message_cost(message['content'])
+            if chars+cost(message['content'])>context_limit:break
+            context.insert(0,{'role':message['role'],'content':message['content']});chars+=cost(message['content'])
         if not body.model.startswith('cloud:'):profile['options']['num_predict']=min(profile['options']['num_predict'],profile['options']['num_ctx']-chars-128)
         messages=[{'role':'system','content':prompt}]+context+[{'role':'user','content':user_content}]
         payload={'conversation_id':body.conversation_id,'model':body.model,'messages':messages}

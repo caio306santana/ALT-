@@ -1,9 +1,25 @@
 """Byte-bounded tool excerpts. Never trim user instructions or selected memories."""
 import json
+import sys
+import hashlib
+from pathlib import Path
+from functools import lru_cache
 
 
-def message_cost(text):
-    # A byte is an intentionally conservative upper bound for a text token.
+@lru_cache(maxsize=1)
+def qwen_tokenizer():
+    from tokenizers import Tokenizer
+    root=Path(sys.executable).parent/'tokenizers' if getattr(sys,'frozen',False) else Path(__file__).resolve().parents[1]/'assets'/'tokenizers'
+    path=root/'qwen3.5.json';metadata=json.loads((root/'provenance.json').read_text(encoding='utf-8'))
+    if hashlib.sha256(path.read_bytes()).hexdigest()!=metadata['sha256']:raise ValueError('Metadados de tokenização alterados. Reinstale o pacote validado da ALT.')
+    return Tokenizer.from_file(str(path))
+
+def message_cost(text,model=None):
+    if model and (model.lower().startswith('qwen3.5:') or model.lower().startswith('huihui_ai/qwen3.5-abliterated:')):
+        # Count the model family's actual BPE tokens, reserving role/template
+        # overhead separately. UTF-8 bytes are not treated as individual tokens.
+        return len(qwen_tokenizer().encode(text,add_special_tokens=False).ids)+32
+    # Conservative fallback for other models whose tokenizer is not bundled.
     return len(text.encode('utf-8')) + 32
 
 
