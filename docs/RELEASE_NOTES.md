@@ -10,7 +10,7 @@ Instalador com interface, backend e runtime Python; não exige Node/Python para 
 
 Corrigido o erro de contexto ao pedir análise de resultados no perfil Notebook. O trecho é ajustado ao espaço disponível, em JSON válido, com URLs preservadas e aviso de abreviação. O resultado completo continua no cartão; personalidade e memórias selecionadas não são descartadas silenciosamente. Mensagens de erro deixam de mostrar o prefixo interno do Electron.
 
-Validação: 67 testes Python passaram, um symlink ignorado por privilégio Windows e um teste Node de assinatura passou; TypeScript/Vite compilou. Qwen/Codex e pesquisa pública tiveram testes reais com contexto sintético. Prints do usuário revisados; validação interativa do pacote final, Windows limpo e PC principal continuam pendentes.
+Validação: 67 testes Python passaram, um symlink ignorado por privilégio Windows e um teste Node de assinatura passou; TypeScript/Vite e PyInstaller compilaram. O backend empacotado validou autenticação, armazenamento, personalidade, memória, ferramentas e autorização sem prazo. Qwen real analisou um resultado sintético extenso no perfil Notebook em 41,72 s, com resultado completo preservado. Codex e pesquisa pública já tiveram testes reais. Prints anteriores revisados; serviço de controle visual indisponível nesta retomada, portanto revisão interativa do pacote final, Windows limpo e PC principal continuam pendentes.
 
 Baixe o .exe para instalar. SHA256SUMS.txt confere integridade; manifesto Ed25519 permite atualização verificada pelo aplicativo. O manifesto não substitui certificado Windows Authenticode; esta prévia ainda não tem certificado Windows. Históricos/memórias locais não são criptografados. Voz, memória semântica, navegador interativo e iOS permanecem no roadmap.
 

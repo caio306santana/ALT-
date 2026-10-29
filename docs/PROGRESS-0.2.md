@@ -1,15 +1,11 @@
-# Checkpoint 0.2 — 29/10/2026
+﻿# Checkpoint 0.2 — 29/10/2026
 
-Estado atual e continuidade: [HANDOFF.md](HANDOFF.md). Escopo: personalização, memória explícita, Codex oficial/Anthropic API opcional, ferramentas com permissões, pesquisa pública, Game Mode e distribuição verificável. As fases maiores continuam parciais no [ROADMAP.md](ROADMAP.md).
+Retomada autorizada após a pausa por cota. Fontes e pacote final concluídos. Ver [HANDOFF.md](HANDOFF.md) para hash, validações, instruções de instalação e pendências.
 
-Último pedido: remover limite de minutos. Modos 2/3/4 persistem no SQLite até alterar/revogar, inclusive após reiniciar. STOP/Modo Jogo revogam o estado salvo. Propostas/recibos de nuvem mantêm cinco minutos e uso único.
+Correção do erro ao analisar pesquisa no Notebook: redução estruturada ao espaço livre em bytes, JSON válido, URLs inteiras, aviso de trecho limitado e resultado completo preservado. Personalidade e memórias selecionadas não são descartadas. Prefixo técnico do Electron removido dos erros.
 
-59 testes Python passaram, um ignorado por privilégio de symlink; um teste Node de assinatura passou; TypeScript/Vite compilou. Testes reais confirmaram Codex sintético, personalidade Qwen, proposta estruturada sem execução implícita e pesquisa/leitura públicas com fontes.
+67 testes Python e um teste Node passaram; um symlink ignorado por privilégio Windows. TypeScript/Vite, PyInstaller e NSIS concluíram. Smoke do backend empacotado passou. Qwen real analisou resultado sintético extenso no Notebook em 41,72 s sem erro de contexto.
 
-Prints recebidos cobrem ferramentas, modelos, histórico, personalidade, memória e sistema. Controle visual interrompido por Esc; não afirmar revisão interativa completa do pacote final.
+Autorização continua sem prazo até alteração/revogação, inclusive após reabrir. STOP/Modo Jogo revogam o estado salvo. Propostas/recibos de nuvem mantêm validade de cinco minutos e uso único.
 
-Build/publicação final em andamento. Não publicar stub intermediário NSIS. scripts/build-windows.cjs preserva ambiente no gerador de uninstaller electron-builder 26.18, evitando spawn UNKNOWN. release:manifest recusa arquivo pequeno incompleto.
-
-Sem certificado Authenticode, chave Anthropic real, execução paga ou teste Ryzen/RX 7600. Chave privada .local/update-private-key.pem fora do Git: manter backup privado. Nunca publicar bancos/cofre/chaves/logs.
-
-Pausa solicitada pelo usuário antes do limite de uso. Compilação NSIS interrompida; v0.2 não publicada. Fontes e decisões salvos. Próxima rodada: seguir a seção final de HANDOFF.md para concluir pacote, smoke empacotado, manifesto/hash e release privada. Não tratar artefatos intermediários como entrega final.
+Instalador de 129.476.502 bytes e manifesto Ed25519/SHA256 verificados; publicação privada 0.2 em andamento. Controle visual indisponível por falha do pipe nativo; revisão interativa final/Windows limpo/PC principal permanecem pendentes. Nenhuma API paga ou modelo adicional baixado nesta retomada. Chave privada continua fora do Git.

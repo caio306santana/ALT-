@@ -36,6 +36,8 @@ Clique no círculo inferior para abrir Perfil. Personalidade fica em Configuraç
 
 Pesquisa usa HTTPS público sem cookies/JavaScript. Página com login ou renderização obrigatória por JS pode falhar; isso não indica que o chat local precisa de internet. O perfil amplo exclui AppData/credenciais/sistema e não equivale a controle de mouse/teclado de qualquer programa.
 
-Se o contexto exceder o limite, reduza mensagem/memórias/instruções ou escolha Desktop. O primeiro pedido com personalidade/ferramentas pode levar dezenas de segundos na CPU deste notebook. Resultados extensos são abreviados para análise; o cartão guarda o resultado completo.
+A versão 0.2 corrige o estouro de contexto ao analisar resultados: ajusta o trecho em bytes ao espaço livre, preserva URLs inteiras e mantém o resultado completo no cartão. A personalidade e as memórias escolhidas são preservadas. Se a própria mensagem com suas instruções/memórias exceder o perfil, reduza esses itens ou escolha Desktop. O primeiro pedido com personalidade/ferramentas pode levar dezenas de segundos na CPU deste notebook.
+
+Depois de atualizar o código ou instalar uma versão nova, encerre de verdade em Sobre → Sair da ALT-AI e reabra. O × apenas oculta na bandeja; não reinicia o backend. Uma janela antiga continua com o comportamento anterior até ser encerrada.
 
 Para atualizações verificadas, baixe o instalador e o manifesto da mesma release e use Sobre → Verificar atualização baixada. Versão igual/antiga ou conteúdo modificado é recusado. A primeira instalação 0.2 é manual; 0.1 ainda não tem esse verificador.

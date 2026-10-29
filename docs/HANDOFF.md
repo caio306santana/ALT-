@@ -33,53 +33,49 @@ Modo Jogo suspende/revoga ações, tenta descarregar o modelo selecionado e ocul
 
 Atualização local verificada por manifesto Ed25519, hash/tamanho/anti-rollback, confirmação e nova validação antes da instalação. Não é feed automático nem certificado Windows Authenticode.
 
-## Evidência e limites
+## Validação final desta rodada
 
-- 59 testes Python passaram; um ignorado porque este usuário Windows não pode criar symlinks. Um teste Node de assinatura/adulteração/chave incorreta/rollback passou. Inclui persistência dos modos 2/3/4, avanço do relógio, reinício e revogação persistente.
-- TypeScript/Vite compilou. Registrar o resultado final PyInstaller/NSIS e smoke empacotado abaixo, antes da publicação.
-- Codex real respondeu ALT-CODEX-OK. em 5,02 s com contexto sintético revisado. Qwen 4B questionou uma premissa e propôs pesquisa estruturada; a consulta permaneceu pendente em Observação. Pesquisa pública e leitura docs.ollama.com verificadas por HTTP real.
-- Notebook Intel i5-1135G7/Iris Xe: Ollama em CPU, aproximadamente 3,5–4 tokens/s. Carregamento/contexto frio levou 40–80 s. PC principal Ryzen 9 3900/32 GB/RX 7600 ainda não validado; Qwen 2B/9B não testados.
-- Controle visual retornou interrupção física por Esc. Não insistir em automação na mesma rodada. Usuário enviou prints de ferramentas/modelos/histórico/personalidade/memória/sistema, inspecionados. Os prints ainda mostram o build anterior com minutos. Perfil/pacote final precisam de validação interativa; não alegar revisão visual completa.
-- Windows limpo, certificado Authenticode e uso prolongado no PC principal permanecem pendentes. Sem migração reversa de banco; fazer backup antes de downgrade. A 0.2 adiciona tabelas.
+- 67 testes Python passaram; um teste de symlink foi ignorado por falta de privilégio Windows. Um teste Node de assinatura/adulteração/chave incorreta/rollback passou.
+- TypeScript/Vite, PyInstaller e NSIS concluídos. O wrapper preserva o ambiente Windows no passo NSIS de electron-builder 26.18 (evita spawn UNKNOWN) e deixa o builder carregar package.json uma única vez (evita duplicar extraResources e EBUSY).
+- Backend empacotado validou autenticação (401 sem token), SQLite/conversas, personalidade, memória, ferramentas, autorização persistente e telemetria Notebook, usando banco temporário.
+- Corrigido o erro de contexto na análise de resultados: backend/context.py ajusta JSON ao espaço restante em bytes, preserva URLs inteiras e avisa sobre o trecho reduzido. Esquemas de ferramentas entram no orçamento. Personalidade/memórias escolhidas não são cortadas silenciosamente; o resultado completo continua no cartão/banco. O prefixo técnico do Electron foi removido das mensagens de erro da interface.
+- Teste real scripts/smoke_analysis.py: Qwen 3.5 4B analisou um registro sintético extenso no perfil Notebook, resposta em 41,72 s, primeiro token em 38,12 s, 777 tokens de entrada, 19 de saída, 5,28 tokens/s. Resultado completo preservado. Não usou nuvem ou dados pessoais.
+- Testes reais anteriores: Codex respondeu ALT-CODEX-OK. em 5,02 s com contexto sintético revisado; Qwen propôs pesquisa que permaneceu pendente em Observação; busca pública e leitura docs.ollama.com verificadas por HTTP.
+- Nesta retomada o serviço Computer Use não conectou ao pipe nativo, mesmo após recuperação documentada. Não foi possível revisar interativamente o pacote final. Prints anteriores de ferramentas/modelos/histórico/personalidade/memória/sistema foram inspecionados. Não alegar teste visual completo.
+- Notebook atual: Intel i5-1135G7/Iris Xe, inferência CPU. O PC principal Ryzen 9 3900/32 GB/RX 7600, Windows limpo e uso prolongado permanecem sem validação. Qwen 2B/9B não testados.
 
-## Distribuição e outro PC
+## Pacote e publicação
 
-npm.cmd run dist usa scripts/build-windows.cjs. O wrapper preserva o ambiente Windows no passo NSIS de electron-builder 26.18: o código da dependência passava somente __COMPAT_LAYER ao execFile, perdendo SystemRoot/PATH e causando spawn UNKNOWN. Mantém a cadeia normal NSIS/assinatura. A execução do gerador funcionou preservando o ambiente.
+Artefatos finais gerados e verificados para publicação:
+- Instalador: release/ALT-AI-Setup-0.2.0-x64.exe, **129.476.502 bytes**.
+- SHA256: c7abd6f24ad9f9d9fca5efb0470448cf917bc3b9c12fd20874027fe4cd646cc1
+- Manifesto: release/ALT-AI-0.2.0-update.json, assinatura Ed25519 verificada com a chave pública versionada e comparação de tamanho/hash/versão. Não é certificado Windows Authenticode.
+- SHA256SUMS.txt gerado a partir deste arquivo final; não usar os intermediários anteriores.
+- Destino da prévia privada: https://github.com/caio306santana/ALT-/releases/tag/v0.2.0
+- Estado da publicação: aguardando envio e verificação dos assets.
 
-Nunca publicar o gerador intermediário NSIS como instalador. release:manifest recusa arquivos abaixo de 10 MB.
+A prévia 0.1 continua disponível para histórico. A tag de release corresponde ao código do pacote; commits posteriores de documentação não modificam o binário.
 
-**Chave privada de atualização: .local/update-private-key.pem, ignorada pelo Git. Fazer backup privado para continuar assinando do outro PC. Nunca publicar.** Chave pública em assets/update-public-key.pem. Clone não contém chave privada. Authenticode exige certificado/serviço ainda não configurado. Nenhum secret foi enviado ao GitHub.
+## Aplicar a correção no aplicativo aberto
 
-Para desenvolver: Git, Node 24 e Python 3.12; clonar, npm.cmd ci, criar .venv, instalar requirements-lock.txt e npm.cmd run dev. Usar .cmd evita npm.ps1 bloqueado. Backend/Electron exigem sair e reabrir após mudança. Para usar: instalador da release e setup Ollama/modelo. Não copiar bancos/cofre/logs/chaves privadas para Git.
+Encerre em Configurações → Sobre → Sair da ALT-AI, instale a 0.2 e reabra. O × apenas oculta na bandeja. A janela antiga não carrega o backend novo automaticamente. Não apagar os dados do usuário. A primeira instalação 0.2 é manual: a 0.1 ainda não possui verificador de atualização.
 
-## Próximos passos
+Para testar só os fontes atuais, sair e executar npm.cmd start (usa frontend compilado e Python da .venv) ou npm.cmd run dev. A seleção de memórias muito grande ainda pode exceder legitimamente o contexto; nesse caso reduzir seleção/instruções ou usar Desktop. Não descartar escolhas silenciosamente nem aumentar o consumo do notebook sem pedido.
 
-1. Instalar e validar em Windows limpo/PC principal, incluindo GPU realmente utilizada. Testar uso prolongado no notebook e modelos opcionais só com consentimento.
-2. Revisar pacote final: Perfil, navegação, escala/tema e autorização sem prazo após reabrir.
-3. Navegador interativo isolado e GUI com permissões granulares, mais apps, busca recursiva, proteção de documentos ao fechar programas.
-4. Memória com importação/resumos/busca semântica, tarefas/rotinas, temas completos, APIs adicionais/fallback autorizado. Roteiro completo em ROADMAP.md.
-5. Certificado Authenticode, feed autenticado, migrações/backup, testes de junctions e coletores GPU/temperatura.
+## Outro PC e assinatura
 
-## Registro final
+**Chave privada de atualização: .local/update-private-key.pem, ignorada pelo Git. Fazer backup privado para continuar assinando do outro PC. Nunca publicar.** Chave pública em assets/update-public-key.pem. Um clone contém os fontes, não a chave privada. Authenticode exige certificado/serviço externo ainda não configurado; nenhum secret foi enviado ao GitHub.
 
-Build/publicação em validação. Atualizar link, tamanho e SHA256 após compilação final; não usar hash de intermediários.
+Para desenvolver: Git, Node 24 e Python 3.12; clonar, npm.cmd ci, criar .venv, instalar requirements-lock.txt e npm.cmd run dev. Usar .cmd evita npm.ps1 bloqueado. Backend/Electron exigem sair e reabrir após mudanças. Para usar, instalar a release e configurar Ollama/modelo com consentimento. Não copiar bancos/cofre/logs/chaves privadas para Git.
 
-## Pausa solicitada pelo usuário — checkpoint antes do limite
+SQLite local sem criptografia para conversas/memórias. A 0.2 adiciona tabelas, sem migração reversa. Fazer backup antes de downgrade. Não publicar dados pessoais.
 
-O usuário pediu parar tudo e atualizar o Git, informando 2% de cota restante e renovação em duas horas. Desenvolvimento e compilação interrompidos. Não publicar a 0.2 com o pacote atual sem concluir os passos abaixo.
+## Próximos passos reais
 
-- Fontes de personalidade/memória/provedores/ferramentas/perfil/visual/persistência já salvos no Git. Último ajuste do wrapper NSIS evita configuração duplicada: passar package.json.build novamente à API concatenava extraResources e criava duas cópias concorrentes do backend, causando EBUSY. Agora o build normal deixa electron-builder carregar package.json; o assinado recebe caminho do arquivo de configuração.
-- Validação final já feita: 59 testes Python passaram, um symlink ignorado; um teste Node passou; TypeScript/Vite e PyInstaller concluíram. Inspeção estática de app.asar confirmou texto sem prazo e página Perfil no frontend empacotado. Não equivale a teste visual.
-- A última montagem chegou ao NSIS sem os erros anteriores, mas foi interrompida a pedido do usuário antes de confirmar término. Não considerar release/ALT-AI-Setup-0.2.0-x64.exe válido até novo build bem-sucedido.
-- Não foi publicada release v0.2.0. A v0.1.0 continua sendo a prévia publicada. Manifesto/SHA256 locais de builds anteriores podem estar desatualizados e devem ser regenerados após concluir o pacote.
+1. Conferência visual final de Perfil/navegação/escala/temas e autorização sem prazo após reabrir, quando o serviço de controle visual estiver disponível.
+2. Instalação em Windows limpo e no PC Ryzen/RX 7600, medir GPU realmente utilizada e estabilidade prolongada. Modelos opcionais só após consentimento.
+3. Navegador interativo isolado e GUI com permissões granulares, mais apps, busca recursiva e proteção de documentos ao fechar programas. A pesquisa atual só lê páginas HTTPS públicas sem login/JS.
+4. Memória com importação/resumos/busca semântica, tarefas/rotinas, temas completos, APIs adicionais/fallback autorizado; voz e iOS continuam no ROADMAP.
+5. Certificado Authenticode, feed autenticado de atualização, migrações/backup, testes de junctions e coletores de GPU/temperatura.
 
-### Retomar por esta ordem
-
-1. Não refazer implementação nem downloads já concluídos. Ler este HANDOFF e consultar git status. A janela atual usa o build anterior e não atualiza o backend só por recarregar a interface.
-2. Executar node scripts/build-windows.cjs para concluir somente empacotamento (frontend/backend atuais já compilados). Se os fontes forem alterados, usar npm.cmd run dist. Não iniciar múltiplos builds concorrentes.
-3. Após término bem-sucedido, executar .venv/Scripts/python.exe scripts/smoke_packaged.py. Valida runtime incluído, autenticação, armazenamento, personalidade/memória, ferramentas e permissão sem prazo em banco temporário.
-4. Executar npm.cmd run release:manifest apenas depois do instalador final. Verificar assinatura com update-security.cjs, tamanho e SHA256. Não executar o instalador durante essa verificação. A chave privada original existe apenas em .local, fora do Git.
-5. Atualizar este documento e RELEASE_NOTES com resultado real, tamanho/hash e pendências. Commit/push. Publicar prévia privada v0.2.0 com instalador, manifesto Ed25519 e SHA256SUMS.txt, usando docs/RELEASE_NOTES.md. Verificar assets enviados.
-6. Revisão visual final/Perfil e instalação Windows limpo/PC Ryzen/RX 7600 continuam pendentes. Controle visual detectou Esc; prints do usuário foram revisados. Retomar automação visual só com nova solicitação.
-
-Não habilitar API paga, baixar outros modelos, publicar chave privada nem alterar visibilidade do repositório.
+Retomada de 29/10 concluída no código e no pacote, após pausa anterior por cota. O usuário autorizou prosseguir. Não habilitar API paga, baixar outros modelos, publicar a chave privada ou alterar visibilidade do repositório.
