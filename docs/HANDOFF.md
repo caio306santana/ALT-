@@ -1,5 +1,7 @@
 # Continuidade — ALT-AI 0.3.1 / desenvolvimento 0.4
 
+**Ponto de retomada:** [STATUS.md](STATUS.md) reúne o que foi feito, evidências, estado do instalador e pendências das etapas 2–6. O checkpoint de documentação não representa novos testes ou instalação da atualização.
+
 Atualização de 29/10/2026: ver `CHAT_FIX_0.3.1.md` para escopo e evidências da correção de contexto, propostas sem prazo e interface. O runtime novo foi bloqueado pelo Controle de Aplicativos (WinError 4551; eventos Code Integrity 3033/3077). Pacote gerado, mas smoke empacotado e instalação não aprovados. Manter release 0.3.1 em rascunho. Nenhuma proteção Windows foi alterada.
 
 `main` contém a correção isolada sobre a base 0.3. O trabalho incompleto das etapas 2–6 está preservado em `work/advanced-0.4`, documentado em `docs/PROGRESS-0.4.md` nessa branch: TaskManager, Knowledge, UIA, backup/migrações ainda precisam de integração/validação. EmbeddingGemma baixado com autorização; certificado Authenticode não disponível, dependência expressamente adiada pelo usuário. Não declarar as etapas completas.

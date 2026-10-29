@@ -1,4 +1,6 @@
-# ALT-AI 0.3
+# ALT-AI
+
+**Estado atual:** correção 0.3.1 no código de `main`, testada com Qwen real. O pacote 0.3.1 está em rascunho: o Windows bloqueou o novo backend por política de assinatura, e a instalação dessa atualização ainda não foi validada/aplicada. A última release publicada é a 0.3.0. Consulte [o que funcionou e o que falta concluir](docs/STATUS.md) antes de retomar ou instalar.
 
 Assistente pessoal Windows com personalidade própria, memória editável e ferramentas reais. **Qwen é o modelo de terceiros que gera respostas locais; ALT-AI é o aplicativo/agente, a identidade, a memória e o controle das ferramentas. Não treinamos um modelo exclusivo do zero.**
 
