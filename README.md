@@ -20,7 +20,7 @@ O instalador desta prévia não tem certificado Authenticode. Há verificação 
 - Temas, cores, neon, opacidade, fonte, escala, claro/escuro, efeitos, bordas, atalhos, janela e temas pessoais salvos.
 - Memórias criadas/editadas/excluídas pelo usuário, busca e exportação JSON. Selecione até dez para o próximo envio. Nenhuma extração automática de lembranças ou credenciais.
 - Ferramentas pelo chat Qwen: cálculos, listar/ler/criar/editar texto, abrir pasta, Bloco de Notas/Calculadora, URLs HTTPS, pesquisa pública e leitura de páginas com fontes.
-- Cartões de proposta, aprovação e resultado confirmado no chat. Resultados persistem e podem ser analisados pela ALT. Conteúdo externo não concede permissões.
+- Cartões de proposta, aprovação e resultado confirmado no chat. Análise ajusta o trecho ao espaço do modelo, preservando links inteiros e avisando sobre abreviação; resultado completo continua salvo. Personalidade/memórias selecionadas não são cortadas silenciosamente. Conteúdo externo não concede permissões.
 - Codex via CLI oficial com login ChatGPT, testado com prompt sintético e prévia de consentimento. Credenciais não são extraídas. Nesta prévia é conversa/código; os executores ALT pelo chat estão no Ollama/Qwen.
 - API Anthropic opcional: chave protegida no cofre Windows DPAPI, verificação de autenticação/modelos, preços informados pelo usuário, limites por pedido/sessão/dia/mês, reserva conservadora e confirmação de cada envio. Desligada por padrão; não foi testada com chave real nesta sessão.
 - CPU/RAM/disco/inventário GPU/driver e alocação de modelos quando disponíveis; perfis Notebook/Desktop e Game Mode.

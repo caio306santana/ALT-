@@ -159,7 +159,7 @@ export default function App() {
   } | null>(null);
   current.current = cid;
   const report = (e: unknown) =>
-    setError(e instanceof Error ? e.message : String(e));
+    setError((e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, ""));
   async function refresh() {
     const data = await api<{
       connected: boolean;
@@ -438,10 +438,11 @@ export default function App() {
             );
           if (event.type === "error")
             setError(event.message || "Erro ao gerar resposta");
-          if (event.type === "start" && event.context_truncated)
-            setNotice(
-              "A conversa completa está salva. Apenas o trecho recente que cabe no contexto foi enviado ao modelo.",
-            );
+          if (event.type === "start")
+            setNotice([
+              event.context_truncated ? "A conversa completa está salva. Apenas o trecho recente que cabe no contexto foi enviado ao modelo." : "",
+              event.tool_result_truncated ? "A ALT recebeu um trecho do resultado ajustado ao contexto. O conteúdo completo continua no cartão da ferramenta." : "",
+            ].filter(Boolean).join(" "));
           if (event.type === "done")
             setMessages((old) =>
               old.map((m) =>

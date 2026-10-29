@@ -81,6 +81,7 @@ export interface CloudPreview {
   estimated_usd: number | null;
   billing_notice: string;
   context_truncated: boolean;
+  tool_result_truncated?: boolean;
 }
 export type StreamEvent = {
   type:
@@ -102,4 +103,5 @@ export type StreamEvent = {
   completed?: number;
   total?: number;
   context_truncated?: boolean;
+  tool_result_truncated?: boolean;
 };

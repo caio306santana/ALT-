@@ -10,7 +10,7 @@ Electron principal inicia FastAPI em porta efêmera 127.0.0.1 com token aleatór
 
 SQLite WAL guarda conversas, mensagens/estado/métricas, configurações, memórias, auditoria, propostas/resultados de ferramentas, associação de ações à conversa, escopos, temas e custos estimados. Credencial API fica fora do banco, cifrada por DPAPI. Chave de assinatura de release fica fora do Git. Recuperação marca respostas inacabadas e propostas antigas como interrompidas.
 
-Contexto inclui personalidade, trecho da conversa corrente e memórias escolhidas. Limites conservadores usam bytes UTF-8 e overhead; entradas excessivas são recusadas, resultados grandes são abreviados com aviso. Não há busca semântica, extração automática ou resumo automático ainda. Dados pessoais não são lidos para compor contexto por padrão.
+Contexto inclui personalidade, trecho da conversa corrente e memórias escolhidas. Limites conservadores usam bytes UTF-8, overhead e esquema de ferramentas. Entradas excessivas são recusadas, sem cortar instruções pessoais ou memórias silenciosamente. `backend/context.py` ajusta resultados ao espaço restante: JSON válido, fontes com URLs inteiras, trechos de páginas/arquivos e aviso de abreviação. O resultado completo permanece no cartão/banco. A prévia de nuvem mostra o trecho exato que será enviado; recibo vincula esse conteúdo. Não há busca semântica, extração automática ou resumo automático ainda. Dados pessoais não são lidos para compor contexto por padrão.
 
 ## Ferramentas no chat
 
