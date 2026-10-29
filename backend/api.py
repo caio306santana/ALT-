@@ -9,7 +9,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ConfigDict
 from backend.memory.store import Store
-from backend.providers.ollama import Ollama, ProviderError
+from backend.providers.ollama import Ollama, ProviderError, cancellable
 from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
 
@@ -34,6 +34,10 @@ class Settings(BaseModel):
     compact: bool = False
     animations: bool = True
     model: str = Field(default='',max_length=200)
+
+class PullBody(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    model: Literal['qwen3.5:4b','qwen3.5:9b']
 
 def create_app(data_dir: Path, token: str, provider=None):
     if len(token) < 32:
@@ -129,6 +133,26 @@ def create_app(data_dir: Path, token: str, provider=None):
         if cid in engine.active: engine.active[cid].set()
         return {'ok':True}
 
+    @app.post('/setup/pull',dependencies=[Depends(auth)])
+    async def pull(body: PullBody):
+        try: event=engine.begin('model-download')
+        except PermissionError as exc: raise HTTPException(403,str(exc))
+        except ValueError as exc: raise HTTPException(409,str(exc))
+        store.audit('model_download_authorized',body.model)
+        async def download():
+            success=False
+            try:
+                async for data in cancellable(ollama.pull(body.model),event):
+                    success = data.get('status')=='success'
+                    yield json.dumps({'type':'progress',**data})+'\n'
+            except ProviderError as exc:
+                yield json.dumps({'type':'error','message':str(exc)})+'\n'
+            finally:
+                engine.active.pop('model-download',None)
+                store.audit('model_download_complete' if success else 'model_download_interrupted',body.model)
+            yield json.dumps({'type':'done','status':'complete' if success else 'interrupted'})+'\n'
+        return StreamingResponse(download(),media_type='application/x-ndjson',headers={'Cache-Control':'no-store'})
+
     @app.post('/chat',dependencies=[Depends(auth)])
     async def chat(body: ChatBody, request: Request):
         if not body.content.strip(): raise HTTPException(422,'Mensagem vazia')
@@ -158,7 +182,7 @@ def create_app(data_dir: Path, token: str, provider=None):
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
                 yield line({'type':'start','message_id':mid,'context_messages':len(context),'context_truncated':len(context)<len(previous)})
-                async for chunk in ollama.stream(body.model,[{'role':'system','content':SYSTEM}]+context+[{'role':'user','content':body.content}],event):
+                async for chunk in cancellable(ollama.stream(body.model,[{'role':'system','content':SYSTEM}]+context+[{'role':'user','content':body.content}],event),event):
                     if event.is_set() or await request.is_disconnected(): break
                     delta = chunk.get('message',{}).get('content','')
                     if delta:

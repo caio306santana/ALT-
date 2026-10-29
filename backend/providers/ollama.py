@@ -7,6 +7,25 @@ class ProviderError(Exception):
         super().__init__(message)
         self.code = code
 
+async def cancellable(source, cancel):
+    """Cancel even while connecting/loading a model, before response headers arrive."""
+    iterator = source.__aiter__()
+    try:
+        while not cancel.is_set():
+            pending = asyncio.create_task(anext(iterator))
+            stopped = asyncio.create_task(cancel.wait())
+            try:
+                ready,_ = await asyncio.wait([pending,stopped],return_when=asyncio.FIRST_COMPLETED)
+                if stopped in ready: return
+                try: yield pending.result()
+                except StopAsyncIteration: return
+            finally:
+                for task in (pending,stopped):
+                    if not task.done(): task.cancel()
+                await asyncio.gather(pending,stopped,return_exceptions=True)
+    finally:
+        await iterator.aclose()
+
 class Ollama:
     # Fixed loopback endpoint. The renderer cannot supply a URL or credentials.
     base_url = 'http://127.0.0.1:11434'
@@ -29,14 +48,29 @@ class Ollama:
         except (httpx.HTTPError, ValueError):
             return None
 
+    async def pull(self, model):
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(600,connect=10),trust_env=False) as client:
+                async with client.stream('POST',self.base_url+'/api/pull',json={'model':model,'stream':True}) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line:
+                            data=json.loads(line)
+                            if data.get('error'): raise ProviderError('Ollama informou falha ao baixar o modelo. Verifique conexão e espaço livre.','download')
+                            yield data
+        except (httpx.HTTPError,ValueError) as exc:
+            raise ProviderError('Falha no download. Verifique se o Ollama está aberto e tente novamente.','download') from exc
+
     async def stream(self, model, messages, cancel):
         timeout = httpx.Timeout(connect=5, read=300, write=30, pool=5)
         try:
             async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-                async with client.stream('POST', self.base_url+'/api/chat', json={
+                payload={
                     'model':model, 'messages':messages, 'stream':True,
                     'options':{'num_ctx':8192, 'num_predict':4096}, 'keep_alive':'5m'
-                }) as response:
+                }
+                if model.startswith('qwen3.5:'): payload['think']=False
+                async with client.stream('POST', self.base_url+'/api/chat', json=payload) as response:
                     if response.status_code != 200:
                         await response.aread()
                         raise ProviderError('Ollama recusou a geração. Confira o modelo e os logs locais.', 'inference')
