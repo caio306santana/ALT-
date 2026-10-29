@@ -30,6 +30,10 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             cid=client.post('/conversations',headers=headers).json()['id']
             assert client.get(f'/conversations/{cid}/messages',headers=headers).json()==[]
             prefs=client.get('/settings',headers=headers).json()
+            prefs['performance']='notebook';client.put('/settings',headers=headers,json=prefs)
+            estimate=client.post('/chat/estimate',headers=headers,json={'conversation_id':cid,'model':'qwen3.5:4b','content':'Estou organizando meus projetos e quero discutir ideias com calma. '*70})
+            assert estimate.status_code==200,estimate.text
+            assert estimate.json()['fits'] and estimate.json()['tokenizer']=='Qwen 3.5',estimate.text
             assert 'provocadora' in prefs['personality']['tone']
             policy=client.get('/policy',headers=headers).json()
             assert policy['policy']['memory_recall']=='manual' and policy['boundaries']
@@ -41,6 +45,7 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             assert imported['imported']==1
             assert client.get('/memories/search',headers=headers,params={'q':'Aurora'}).json()
             proposal=client.post('/tools/propose',headers=headers,json={'tool':'calculate','expression':'(10+5)*2'}).json()
+            assert proposal['expires_in'] is None
             assert client.post('/tools/approve/'+proposal['id'],headers=headers).status_code==403
             client.put('/permissions',headers=headers,json={'level':2})
             authorization=client.get('/permissions',headers=headers).json()

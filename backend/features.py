@@ -76,6 +76,8 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
     async def approve(aid:str):return await tools.approve(aid)
     @router.get('/tools/proposal/{aid}')
     async def proposal_detail(aid:str):return tools.describe(aid)
+    @router.post('/tools/renew/{aid}')
+    async def renew_proposal(aid:str):return tools.renew(aid)
     @router.post('/tools/confirm/{aid}')
     async def critical_confirm(aid:str):
         tools.describe(aid);tools.critical_confirmed.add(aid);return {'confirmed':True}

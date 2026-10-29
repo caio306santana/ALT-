@@ -1,9 +1,23 @@
-"""Byte-bounded tool excerpts. Never trim user instructions or selected memories."""
+"""Model token budgets and byte-bounded excerpts; preserve explicit user context."""
 import json
 import sys
 import hashlib
 from pathlib import Path
 from functools import lru_cache
+
+
+class ContextLimitError(ValueError):
+    def __init__(self, required, limit, total, output):
+        self.estimate={'fits':False,'required_tokens':required,'input_tokens':required,
+            'input_limit':limit,'total_context':total,'output_reserve':output,
+            'history_included':0,'history_total':0}
+        super().__init__(f'Este envio precisa de cerca de {required} tokens de entrada; '
+            f'o contexto deste perfil permite {limit}. Reduza a mensagem ou as memórias '
+            'selecionadas. O histórico anterior continua salvo.')
+
+
+def has_qwen_tokenizer(model):
+    return bool(model and (model.lower().startswith('qwen3.5:') or model.lower().startswith('huihui_ai/qwen3.5-abliterated:')))
 
 
 @lru_cache(maxsize=1)
@@ -15,7 +29,7 @@ def qwen_tokenizer():
     return Tokenizer.from_file(str(path))
 
 def message_cost(text,model=None):
-    if model and (model.lower().startswith('qwen3.5:') or model.lower().startswith('huihui_ai/qwen3.5-abliterated:')):
+    if has_qwen_tokenizer(model):
         # Count the model family's actual BPE tokens, reserving role/template
         # overhead separately. UTF-8 bytes are not treated as individual tokens.
         return len(qwen_tokenizer().encode(text,add_special_tokens=False).ids)+32

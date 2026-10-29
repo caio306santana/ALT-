@@ -1,3 +1,15 @@
+# Continuidade — ALT-AI 0.3.1 / desenvolvimento 0.4
+
+Atualização de 29/10/2026: ver `CHAT_FIX_0.3.1.md` para escopo e evidências da correção de contexto, propostas sem prazo e interface. O runtime novo foi bloqueado pelo Controle de Aplicativos (WinError 4551; eventos Code Integrity 3033/3077). Pacote gerado, mas smoke empacotado e instalação não aprovados. Manter release 0.3.1 em rascunho. Nenhuma proteção Windows foi alterada.
+
+`main` contém a correção isolada sobre a base 0.3. O trabalho incompleto das etapas 2–6 está preservado em `work/advanced-0.4`, documentado em `docs/PROGRESS-0.4.md` nessa branch: TaskManager, Knowledge, UIA, backup/migrações ainda precisam de integração/validação. EmbeddingGemma baixado com autorização; certificado Authenticode não disponível, dependência expressamente adiada pelo usuário. Não declarar as etapas completas.
+
+Instalador local `release/ALT-AI-Setup-0.3.1-x64.exe`, 134.257.757 bytes, SHA256 `831f1d72d7f07792f27250442cfc0a4bde1f8d52ee769a38b93fd0a3d4aa9e85`, manifesto Ed25519 verificado. Isso não supera política de assinatura do Windows. Não substituir a instalação aberta sem concluir a validação.
+
+Próximo: resolver confiança/assinatura conforme política local, rodar smoke empacotado e instalação/atualização; retomar depois as integrações avançadas. Preservar `.local/update-private-key.pem` fora do Git e fazer backup privado; não publicar banco, credenciais, logs nem modelos. Não há medição confiável de créditos do agente.
+
+## Registro histórico da entrega anterior (0.3.0)
+
 # Continuidade — ALT-AI 0.3.0
 
 Atualizado em 29/10/2026. Repositório privado: https://github.com/caio306santana/ALT-.git. Manter a visibilidade. Fontes completos e instalador Windows com Electron/FastAPI/runtime Python incluídos.

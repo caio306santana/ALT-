@@ -136,7 +136,7 @@ class TaskManager:
                             rows=self.store.rows('SELECT status,result FROM actions WHERE id=?',(aid,))
                             if rows and rows[0]['status']=='complete':break
                             if not rows or rows[0]['status'] not in ('proposed','running'):raise ValueError('A ação foi recusada, cancelada ou falhou. Revise o plano.')
-                            if rows[0]['status']=='proposed' and (aid not in self.tools.pending or self.tools.pending[aid][0]<time.monotonic()):raise ValueError('Aprovação expirou. Revise e retome para preparar nova proposta.')
+                            if rows[0]['status']=='proposed':self.tools.describe(aid)
                             await asyncio.sleep(.25)
                         if cancel.is_set():break
                         result=json.loads(rows[0]['result'])

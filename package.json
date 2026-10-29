@@ -1,6 +1,6 @@
 {
   "name": "alt-ai",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "ALT-AI — assistente pessoal local",
   "author": "ALT-AI",
@@ -61,8 +61,8 @@
         "to": "backend"
       },
       {
-        "from":"assets/tokenizers",
-        "to":"backend/tokenizers"
+        "from": "assets/tokenizers",
+        "to": "backend/tokenizers"
       }
     ],
     "win": {

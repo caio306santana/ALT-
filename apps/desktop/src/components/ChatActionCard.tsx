@@ -4,7 +4,7 @@ export type ChatAction = {
   id: string;
   preview: Record<string, unknown>;
   result?: unknown;
-  state: "proposed" | "complete" | "rejected" | "error";
+  state: "proposed" | "complete" | "rejected" | "error" | "interrupted" | "cancelled";
 };
 export function ChatActionCard({
   action,
@@ -13,7 +13,7 @@ export function ChatActionCard({
   onError,
 }: {
   action: ChatAction;
-  onUpdate: (action: ChatAction) => void;
+  onUpdate: (action: ChatAction, previousId?: string) => void;
   onAnalyze: () => void;
   onError: (error: unknown) => void;
 }) {
@@ -28,7 +28,7 @@ export function ChatActionCard({
       if (permission.level < 2) {
         onError(
           new Error(
-            "Escolha um modo de autorização no painel Ferramentas antes de executar.",
+            "Escolha Pedir aprovação ou outro modo no seletor abaixo da mensagem antes de executar.",
           ),
         );
         return;
@@ -39,6 +39,11 @@ export function ChatActionCard({
       );
       onUpdate({ ...action, state: "complete", result: result.result });
     } catch (e) {
+      try {
+        const state=await window.alt.request<{id:string;status:string}[]>("GET","/tools/history");
+        const saved=state.find(a=>a.id===action.id);
+        if(saved && ["cancelled","interrupted","error"].includes(saved.status))onUpdate({...action,state:saved.status as ChatAction["state"]});
+      } catch { /* Preserve the visible proposal if its state cannot be checked. */ }
       onError(e);
     } finally {
       setBusy(false);
@@ -89,6 +94,15 @@ export function ChatActionCard({
           <pre>{String(preview.diff) || "Sem alteração de conteúdo."}</pre>
         </details>
       )}
+      {action.state === "proposed" && <p className="setting-note">Sem prazo. Execute ou recuse quando quiser; mudanças no alvo serão conferidas ao executar.</p>}
+      {(action.state === "interrupted" || action.state === "error") && <div className="button-row"><button className="secondary" disabled={busy} onClick={async () => {
+        setBusy(true);
+        try {
+          const renewed=await window.alt.request<{id:string;preview:Record<string,unknown>}>("POST",`/tools/renew/${action.id}`);
+          onUpdate({...renewed,state:"proposed"},action.id);
+        } catch(e) { onError(e); }
+        finally { setBusy(false); }
+      }}>Preparar nova proposta para revisar</button></div>}
       {action.state === "proposed" && (
         <div className="button-row">
           <button className="primary" disabled={busy} onClick={approve}>

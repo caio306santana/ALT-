@@ -1,0 +1,28 @@
+{
+  "test": "ordinary-long-message-notebook",
+  "model": "qwen3.5:4b",
+  "estimate": {
+    "fits": true,
+    "required_tokens": 1517,
+    "input_tokens": 1517,
+    "input_limit": 3200,
+    "total_context": 4096,
+    "output_reserve": 768,
+    "history_included": 0,
+    "history_total": 0,
+    "tokenizer": "Qwen 3.5",
+    "tool_result_truncated": false,
+    "profile": "notebook"
+  },
+  "message_characters": 4757,
+  "old_message_byte_bound": 4789,
+  "reply": "Entendido.",
+  "metrics": {
+    "tokens": 4,
+    "tokens_per_second": 4.11,
+    "first_token_seconds": 74.33,
+    "total_seconds": 74.39,
+    "prompt_tokens": 1470
+  },
+  "original_message_preserved": true
+}
