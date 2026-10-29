@@ -7,7 +7,7 @@ Atualizado em 29/10/2026. Este é o ponto de entrada para retomar o projeto em o
 | Versão | Onde está | Estado |
 | --- | --- | --- |
 | 0.3.1 | `main` | Correção do chat (contexto Qwen, propostas sem prazo, aprovação no chat). **Instalada e em uso neste notebook.** Release no GitHub ainda em rascunho. |
-| 0.4.0 | `work/advanced-0.4` | Etapas 2, 3 e 5 integradas, modo Acesso total, aviso de atualização e novo design. Instalador gerado para teste local (ver abaixo). Ainda não mesclada em `main`. |
+| 0.4.0 | `work/advanced-0.4` | Etapas 2, 3 e 5 integradas, modo Acesso total, aviso de atualização e novo design. Instalador gerado, manifesto Ed25519 conferido e backend empacotado testado neste notebook **sem bloqueio do Windows**. [Release v0.4.0 em rascunho](https://github.com/caio306santana/ALT-/releases) com instalador, manifesto e SHA256. Cópia em `Downloads\ALT-AI-0.4.0`. Ainda não mesclada em `main`. |
 
 ## O que a 0.4.0 entrega
 
@@ -57,7 +57,9 @@ O aviso consulta `releases/latest` do GitHub sem login. Com o repositório **pri
 - tornar este repositório público (decisão do dono, depois de revisar), ou
 - publicar só os instaladores num repositório público separado e apontar `ALT_UPDATE_FEED` / a constante em `apps/desktop/electron/update-feed.cjs` para ele.
 
-A release precisa ser **publicada** (não rascunho), com tag `vX.Y.Z` e os arquivos `ALT-AI-Setup-X.Y.Z-x64.exe` e `ALT-AI-X.Y.Z-update.json`.
+A release precisa ser **publicada** (não rascunho), com tag `vX.Y.Z` e os arquivos `ALT-AI-Setup-X.Y.Z-x64.exe` e `ALT-AI-X.Y.Z-update.json`. Publicar como release normal, não *pre-release*: o GitHub não devolve pre-releases em `releases/latest`.
+
+Instalador 0.4.0: `ALT-AI-Setup-0.4.0-x64.exe`, 139.882.074 bytes, SHA256 `a36673b5060d3ee70e478c3108e08c6ea6bc688e7a90516e63d55efe5bf38d3b`. A checagem de plano que recusa “listar arquivos” com caminho de arquivo entrou depois deste build e vai na próxima versão.
 
 ## O que falta
 
