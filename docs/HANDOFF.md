@@ -46,13 +46,13 @@ Atualização local verificada por manifesto Ed25519, hash/tamanho/anti-rollback
 
 ## Pacote e publicação
 
-Artefatos finais gerados e verificados para publicação:
+Artefatos finais publicados e verificados na prévia privada 0.2.0:
 - Instalador: release/ALT-AI-Setup-0.2.0-x64.exe, **129.476.502 bytes**.
 - SHA256: c7abd6f24ad9f9d9fca5efb0470448cf917bc3b9c12fd20874027fe4cd646cc1
 - Manifesto: release/ALT-AI-0.2.0-update.json, assinatura Ed25519 verificada com a chave pública versionada e comparação de tamanho/hash/versão. Não é certificado Windows Authenticode.
 - SHA256SUMS.txt gerado a partir deste arquivo final; não usar os intermediários anteriores.
-- Destino da prévia privada: https://github.com/caio306santana/ALT-/releases/tag/v0.2.0
-- Estado da publicação: aguardando envio e verificação dos assets.
+- Release privada publicada: https://github.com/caio306santana/ALT-/releases/tag/v0.2.0
+- Estado da publicação: concluída. Os três assets estão uploaded; tamanho e SHA256 do instalador retornados pelo GitHub coincidem com o arquivo local. Repositório permanece privado. A tag aponta para o commit 3d16ff0; alterações posteriores são documentação.
 
 A prévia 0.1 continua disponível para histórico. A tag de release corresponde ao código do pacote; commits posteriores de documentação não modificam o binário.
 

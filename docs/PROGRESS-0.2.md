@@ -1,4 +1,4 @@
-﻿# Checkpoint 0.2 — 29/10/2026
+# Checkpoint 0.2 — 29/10/2026
 
 Retomada autorizada após a pausa por cota. Fontes e pacote final concluídos. Ver [HANDOFF.md](HANDOFF.md) para hash, validações, instruções de instalação e pendências.
 
@@ -8,4 +8,4 @@ Correção do erro ao analisar pesquisa no Notebook: redução estruturada ao es
 
 Autorização continua sem prazo até alteração/revogação, inclusive após reabrir. STOP/Modo Jogo revogam o estado salvo. Propostas/recibos de nuvem mantêm validade de cinco minutos e uso único.
 
-Instalador de 129.476.502 bytes e manifesto Ed25519/SHA256 verificados; publicação privada 0.2 em andamento. Controle visual indisponível por falha do pipe nativo; revisão interativa final/Windows limpo/PC principal permanecem pendentes. Nenhuma API paga ou modelo adicional baixado nesta retomada. Chave privada continua fora do Git.
+Instalador de 129.476.502 bytes e manifesto Ed25519/SHA256 verificados; release privada v0.2.0 publicada, com três assets e digest do instalador verificados no GitHub. Controle visual indisponível por falha do pipe nativo; revisão interativa final/Windows limpo/PC principal permanecem pendentes. Nenhuma API paga ou modelo adicional baixado nesta retomada. Chave privada continua fora do Git.
