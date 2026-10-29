@@ -1,5 +1,6 @@
 """Ordered, transactional schema upgrades with a pre-upgrade SQLite snapshot."""
 import sqlite3
+from contextlib import closing
 from datetime import datetime,timezone
 from uuid import uuid4
 
@@ -26,7 +27,7 @@ def migrate(connection,path):
     if had_data and version<SCHEMA_VERSION:
         folder=path.parent/'backups';folder.mkdir(exist_ok=True)
         destination=folder/('pre-migration-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')+'-'+str(uuid4())[:8]+'.sqlite3')
-        with sqlite3.connect(destination) as backup:connection.backup(backup)
+        with closing(sqlite3.connect(destination)) as backup:connection.backup(backup)
     connection.execute('CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY,applied TEXT NOT NULL)');connection.commit()
     for current in range(version+1,SCHEMA_VERSION+1):
         try:

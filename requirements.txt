@@ -6,3 +6,4 @@ pydantic>=2.10,<3
 tokenizers>=0.23,<0.24
 pypdf>=6.1,<7
 python-docx>=1.1,<2
+pywinauto>=0.6.9,<0.7; sys_platform == "win32"

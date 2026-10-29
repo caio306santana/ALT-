@@ -59,6 +59,7 @@ import type {
 import { themes } from "../../../packages/design-tokens/themes";
 import { ProfilePanel } from "./components/ProfilePanel";
 import {
+  BackupPanel,
   TasksPanel,
   UpdateNotice,
   VerificationNote,
@@ -1515,6 +1516,7 @@ export default function App() {
               ) : (
                 <div className="empty-state">Consultando métricas…</div>
               )}
+              <BackupPanel notify={setNotice} onError={report} />
             </div>
           )}
           {view === "memory" && (

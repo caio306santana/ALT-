@@ -28,8 +28,8 @@ const labels: Record<string, string> = {
   browser_navigation: "Abrir e ler no navegador ALT",
   browser_interaction: "Clicar e digitar no navegador ALT",
   downloads: "Baixar arquivos da internet",
-  windows_read: "Ler janelas do Windows (em desenvolvimento)",
-  windows_control: "Controlar janelas do Windows (em desenvolvimento)",
+  windows_read: "Ler janelas do Windows autorizadas",
+  windows_control: "Clicar e digitar em janelas autorizadas",
 };
 
 export function OwnerControlPanel({ notify, onError }: Feedback) {

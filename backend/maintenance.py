@@ -5,6 +5,7 @@ import json
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import closing
 from datetime import datetime,timezone
 from pathlib import Path
 from uuid import uuid4
@@ -19,7 +20,7 @@ class Maintenance:
     def snapshot(self,prefix='manual'):
         stamp=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')
         destination=self.folder/f'{prefix}-{stamp}-{str(uuid4())[:8]}.sqlite3'
-        with self.store.lock,sqlite3.connect(destination) as backup:self.store.db.backup(backup)
+        with self.store.lock,closing(sqlite3.connect(destination)) as backup:self.store.db.backup(backup)
         return destination
 
     def daily(self):
@@ -44,15 +45,17 @@ class Maintenance:
     def restore(self,data):
         if self.engine.active:raise ValueError('Interrompa as tarefas e aguarde o encerramento antes de restaurar.')
         if len(data)>64_000_000:raise ValueError('Backup grande demais.')
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            if sorted(archive.namelist())!=['database.sqlite3','manifest.json']:raise ValueError('Formato de backup não reconhecido.')
-            if sum(i.file_size for i in archive.infolist())>64_000_000:raise ValueError('Backup expandido excede o limite.')
-            metadata=json.loads(archive.read('manifest.json'));raw=archive.read('database.sqlite3')
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                if sorted(archive.namelist())!=['database.sqlite3','manifest.json']:raise ValueError('Formato de backup não reconhecido.')
+                if sum(i.file_size for i in archive.infolist())>64_000_000:raise ValueError('Backup expandido excede o limite.')
+                metadata=json.loads(archive.read('manifest.json'));raw=archive.read('database.sqlite3')
+        except (zipfile.BadZipFile,json.JSONDecodeError,KeyError) as exc:raise ValueError('Arquivo não é um backup válido da ALT.') from exc
         if metadata.get('format')!='alt-ai-backup' or metadata.get('version')!=1 or metadata.get('credentials_included') is not False:raise ValueError('Manifesto de backup inválido.')
         if hashlib.sha256(raw).hexdigest()!=metadata.get('sha256'):raise ValueError('Backup alterado ou corrompido.')
         with tempfile.TemporaryDirectory(prefix='alt-restore-') as directory:
             path=Path(directory)/'database.sqlite3';path.write_bytes(raw)
-            with sqlite3.connect(path) as restored:
+            with closing(sqlite3.connect(path)) as restored:
                 if restored.execute('PRAGMA integrity_check').fetchone()[0]!='ok':raise ValueError('Banco do backup está corrompido.')
                 version=restored.execute('PRAGMA user_version').fetchone()[0]
                 if version>SCHEMA_VERSION or version!=metadata.get('db_schema'):raise ValueError('Versão de banco incompatível.')

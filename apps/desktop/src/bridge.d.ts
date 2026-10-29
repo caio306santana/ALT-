@@ -67,6 +67,9 @@ declare global {
           info: ReleaseCheck | { received: number; total: number },
         ) => void,
       ): () => void;
+      authorizeWindow(candidateId: string, title: string): Promise<{ id: string } | null>;
+      exportBackup(): Promise<{ saved: boolean; path?: string; bytes?: number }>;
+      restoreBackup(): Promise<{ restored: boolean; restart_required: boolean } | null>;
       importDocument(
         projectId: string,
       ): Promise<{ id: string; chunks?: number; name?: string; duplicate: boolean } | null>;

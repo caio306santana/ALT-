@@ -1,0 +1,137 @@
+{
+  "model": "qwen3.5:4b",
+  "window": "Mapa de Caracteres aberto pelo teste",
+  "steps": {
+    "read": {
+      "title": "Mapa de Caracteres",
+      "elements": [
+        {
+          "id": "w0",
+          "label": "Grade de Caracteres",
+          "type": "Pane",
+          "value": ""
+        },
+        {
+          "id": "w1",
+          "label": "Caracteres a serem copiados:",
+          "type": "Text",
+          "value": ""
+        },
+        {
+          "id": "w2",
+          "label": "Caracteres a serem copiados:",
+          "type": "Edit",
+          "value": "\r"
+        },
+        {
+          "id": "w3",
+          "label": "Selecionar",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w4",
+          "label": "Copiar",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w5",
+          "label": "Modo de exibição avançado",
+          "type": "CheckBox",
+          "value": ""
+        },
+        {
+          "id": "w6",
+          "label": "Caractere selecionado:",
+          "type": "Text",
+          "value": ""
+        },
+        {
+          "id": "w7",
+          "label": "U+0021: Ponto de exclamação",
+          "type": "Text",
+          "value": ""
+        },
+        {
+          "id": "w8",
+          "label": "Fonte:",
+          "type": "Text",
+          "value": ""
+        },
+        {
+          "id": "w9",
+          "label": "Fonte:",
+          "type": "ComboBox",
+          "value": ""
+        },
+        {
+          "id": "w10",
+          "label": "Abrir",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w11",
+          "label": "Ajuda",
+          "type": "Hyperlink",
+          "value": ""
+        },
+        {
+          "id": "w12",
+          "label": "Uma linha acima",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w13",
+          "label": "Posição",
+          "type": "Thumb",
+          "value": ""
+        },
+        {
+          "id": "w14",
+          "label": "Uma página abaixo",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w15",
+          "label": "Uma linha abaixo",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w16",
+          "label": "Sistema",
+          "type": "MenuBar",
+          "value": ""
+        },
+        {
+          "id": "w17",
+          "label": "Sistema",
+          "type": "MenuItem",
+          "value": ""
+        },
+        {
+          "id": "w18",
+          "label": "Minimizar",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w19",
+          "label": "Maximizar",
+          "type": "Button",
+          "value": ""
+        },
+        {
+          "id": "w20",
+          "label": "Fechar",
+          "type": "Button",
+          "value": ""
+        }
+      ]
+    }
+  }
+}

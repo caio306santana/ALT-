@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
+  AppWindow,
+  Archive,
   Check,
   Download,
+  RefreshCw,
+  RotateCcw,
   FileText,
   FolderPlus,
   Pause,
@@ -85,6 +89,8 @@ export function TasksPanel({
     [scope, setScope] = useState(""),
     [taskModel, setTaskModel] = useState(""),
     [scopes, setScopes] = useState<{ id: string; path: string; label?: string }[]>([]),
+    [windowsGranted, setWindowsGranted] = useState<{ id: string; title: string }[]>([]),
+    [windowId, setWindowId] = useState(""),
     [replan, setReplan] = useState(false),
     [editing, setEditing] = useState(""),
     [busy, setBusy] = useState(false);
@@ -101,6 +107,7 @@ export function TasksPanel({
     api<{ scopes: { id: string; path: string; label?: string }[] }>("GET", "/permissions")
       .then((p) => setScopes(p.scopes.filter((s) => s.id !== "windows-profile")))
       .catch(onError);
+    api<{ id: string; title: string }[]>("GET", "/windows/grants").then(setWindowsGranted).catch(onError);
   }, []);
   const run = runs.find((r) => r.id === selected) || runs[0];
   const polling = runs.some(active);
@@ -149,6 +156,19 @@ export function TasksPanel({
             ))}
           </select>
         </label>
+        {windowsGranted.length > 0 && (
+          <label>
+            Janela do Windows (opcional, autorize em Ferramentas)
+            <select value={windowId} onChange={(e) => setWindowId(e.target.value)}>
+              <option value="">Nenhuma janela</option>
+              {windowsGranted.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           Modelo que planeja
           <select value={chosenModel} onChange={(e) => setTaskModel(e.target.value)}>
@@ -168,6 +188,7 @@ export function TasksPanel({
                 goal: goal.trim(),
                 model: chosenModel,
                 scope_id: scope,
+                window_id: windowId,
               });
               setSelected(created.id);
               setGoal("");
@@ -689,5 +710,148 @@ export function UpdateNotice({ onError }: { onError: (e: unknown) => void }) {
         assinatura Ed25519 e o SHA-256. Isso não substitui certificado Windows.
       </p>
     </div>
+  );
+}
+
+type WindowRow = { id?: string; candidate_id?: string; title: string; app: string };
+
+export function WindowsPanel({ notify, onError }: Feedback) {
+  const [grants, setGrants] = useState<WindowRow[]>([]),
+    [candidates, setCandidates] = useState<WindowRow[] | null>(null),
+    [busy, setBusy] = useState(false);
+  const refresh = () => api<WindowRow[]>("GET", "/windows/grants").then(setGrants);
+  useEffect(() => {
+    refresh().catch(onError);
+  }, []);
+  return (
+    <details className="info-card windows-panel">
+      <summary>
+        <AppWindow size={14} /> Janelas do Windows autorizadas ({grants.length})
+      </summary>
+      <p className="setting-note">
+        Escolha uma janela aberta para a ALT ler botões e campos e, conforme o
+        modo de execução, clicar e digitar. Campos de senha, terminais e janelas
+        de segurança ficam de fora. Peça no chat, por exemplo: “Na janela,
+        digite meu nome no campo Nome”.
+      </p>
+      <div className="button-row">
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              setCandidates(await api<WindowRow[]>("GET", "/windows/candidates"));
+            } catch (e) {
+              onError(e);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <RefreshCw size={14} />
+          {candidates ? "Atualizar lista de janelas" : "Escolher uma janela aberta"}
+        </button>
+      </div>
+      {candidates?.map((c) => (
+        <div className="window-row" key={c.candidate_id}>
+          <span>
+            <strong>{c.title}</strong> <small>{c.app}</small>
+          </span>
+          <button
+            className="text-button"
+            onClick={() =>
+              window.alt
+                .authorizeWindow(c.candidate_id || "", c.title)
+                .then(async (r) => {
+                  if (r) {
+                    await refresh();
+                    setCandidates(null);
+                    notify(`Janela autorizada: ${c.title}`);
+                  }
+                })
+                .catch(onError)
+            }
+          >
+            Autorizar
+          </button>
+        </div>
+      ))}
+      {grants.map((g) => (
+        <div className="window-row" key={g.id}>
+          <span>
+            <Check size={13} /> <strong>{g.title}</strong> <small>{g.app}</small>
+          </span>
+          <button
+            className="text-button"
+            onClick={() =>
+              api("DELETE", `/windows/grants/${g.id}`)
+                .then(() => refresh())
+                .catch(onError)
+            }
+          >
+            Remover
+          </button>
+        </div>
+      ))}
+    </details>
+  );
+}
+
+type MaintenanceStatus = {
+  schema: number;
+  backups: number;
+  active_operations: number;
+};
+
+export function BackupPanel({ notify, onError }: Feedback) {
+  const [status, setStatus] = useState<MaintenanceStatus | null>(null);
+  useEffect(() => {
+    api<MaintenanceStatus>("GET", "/maintenance/status").then(setStatus).catch(onError);
+  }, []);
+  return (
+    <article className="info-card backup-panel">
+      <strong>
+        <Archive size={15} /> Backup e restauração
+      </strong>
+      <p className="setting-note">
+        A ALT guarda sozinha um backup por dia (os últimos 7) e outro antes de
+        atualizar o banco. Exporte um arquivo para levar ao outro PC ou guardar
+        fora daqui. Chaves de API e autorizações nunca entram no backup.
+        {status && ` · ${status.backups} cópias locais · esquema ${status.schema}`}
+      </p>
+      <div className="button-row">
+        <button
+          className="secondary"
+          onClick={() =>
+            window.alt
+              .exportBackup()
+              .then((r) => {
+                if (r.saved) notify(`Backup salvo em ${r.path}.`);
+              })
+              .catch(onError)
+          }
+        >
+          <Download size={14} />
+          Exportar backup
+        </button>
+        <button
+          className="secondary"
+          disabled={!!status?.active_operations}
+          title={status?.active_operations ? "Aguarde as respostas e tarefas em andamento" : ""}
+          onClick={() =>
+            window.alt
+              .restoreBackup()
+              .then((r) => {
+                if (r) notify("Backup restaurado. A ALT vai reiniciar.");
+              })
+              .catch(onError)
+          }
+        >
+          <RotateCcw size={14} />
+          Restaurar backup
+        </button>
+      </div>
+    </article>
   );
 }

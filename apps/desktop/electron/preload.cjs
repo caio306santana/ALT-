@@ -40,4 +40,7 @@ contextBridge.exposeInMainWorld("alt", {
     };
   },
   importDocument: (projectId) => ipcRenderer.invoke("document:import", projectId),
+  authorizeWindow: (candidateId, title) => ipcRenderer.invoke("windows:authorize", candidateId, title),
+  exportBackup: () => ipcRenderer.invoke("backup:export"),
+  restoreBackup: () => ipcRenderer.invoke("backup:restore"),
 });

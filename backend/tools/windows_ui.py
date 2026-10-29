@@ -17,7 +17,10 @@ class WindowsUI:
     def desktop(self):
         if os.name!='nt':raise ValueError('Controle de janelas disponível no Windows.')
         import comtypes
-        comtypes.CoInitializeEx(0)
+        # Worker threads need COM; a thread pywinauto already initialized in
+        # another apartment mode reports RPC_E_CHANGED_MODE and is usable as is.
+        try:comtypes.CoInitializeEx(0)
+        except OSError:pass
         from pywinauto import Desktop
         return Desktop(backend='uia')
 
@@ -82,9 +85,9 @@ class WindowsUI:
                     info=control.element_info;sig=self.signature(control)
                     protected=bool(info._element.CurrentIsPassword) or bool(SECRET.search(sig['name']+' '+sig['automation_id']))
                     if protected:continue
-                    if not sig['name'] and sig['control_type'] not in ('Edit','ComboBox'):continue
+                    if not sig['name'] and sig['control_type'] not in ('Edit','Document','ComboBox'):continue
                     value=''
-                    if sig['control_type']=='Edit':
+                    if sig['control_type'] in ('Edit','Document'):
                         try:value=str(control.iface_value.CurrentValue)[:3000]
                         except Exception:pass
                     eid='w'+str(len(elements));elements.append({'id':eid,'label':sig['name'],'type':sig['control_type'],'value':value,'enabled':control.is_enabled()})
@@ -113,10 +116,14 @@ class WindowsUI:
             if matched is None or not matched.is_visible() or not matched.is_enabled():raise ValueError('Elemento alterado/desabilitado. Leia a janela novamente.')
             if bool(matched.element_info._element.CurrentIsPassword) or SECRET.search(expected['name']+' '+expected['automation_id']):raise PermissionError('Campo protegido; use preenchimento manual.')
             if body.tool=='windows_type':
-                if expected['control_type']!='Edit':raise ValueError('Escolha um campo de texto acessível.')
-                if matched.iface_value.CurrentIsReadOnly:raise ValueError('Campo somente leitura.')
+                if expected['control_type'] not in ('Edit','Document'):raise ValueError('Escolha um campo de texto acessível.')
+                # Modern editors (e.g. Windows 11 Notepad) expose a Document with ValuePattern.
+                try:readonly=matched.iface_value.CurrentIsReadOnly
+                except Exception:raise ValueError('Este campo não aceita texto por automação; digite manualmente.')
+                if readonly:raise ValueError('Campo somente leitura.')
                 matched.iface_value.SetValue(body.content)
-                if matched.iface_value.CurrentValue!=body.content:raise ValueError('O aplicativo não confirmou o texto solicitado.')
+                # Some Win32 edits report a trailing line break; compare the text itself.
+                if str(matched.iface_value.CurrentValue).rstrip('\r\n')!=body.content.rstrip('\r\n'):raise ValueError('O aplicativo não confirmou o texto solicitado.')
             elif body.tool=='windows_invoke':
                 if expected['control_type'] in ('CheckBox','RadioButton'):
                     matched.select() if expected['control_type']=='RadioButton' else matched.toggle()

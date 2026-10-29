@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ContinuityPanel } from "./WorkspacePanels";
-import { ProjectsPanel } from "./AgentPanels";
+import { ProjectsPanel, WindowsPanel } from "./AgentPanels";
 import {
   Plus,
   Save,
@@ -1056,6 +1056,7 @@ export function ToolsPanel({
       >
         Revogar permissões e propostas
       </button>
+      <WindowsPanel notify={notify} onError={onError} />
     </div>
   );
 }

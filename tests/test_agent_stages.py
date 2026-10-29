@@ -304,3 +304,38 @@ def test_delicate_messages_get_explicit_care_instruction(tmp_path):
         assert 'MOMENTO DELICADO' not in provider.contexts[-1][1][0]['content']
     cases={c['id']:c for c in CASES}
     assert not all(c['ok'] for c in automatic_checks(cases['support'],'A lição é clara: por que você achava que era seguro?'))
+
+def test_backup_export_and_restore_round_trip_resets_permissions(tmp_path):
+    app,provider,client=agent_client(tmp_path)
+    with client:
+        assert client.get('/maintenance/status').json()['credentials_in_backup'] is False
+        memory=client.post('/memories',json={'title':'Antes do backup','content':'Guardar isto.'}).json()
+        scope=client.get('/permissions').json()['scopes'][0]['id']
+        archive=client.get('/maintenance/export').content
+        client.delete('/memories/'+memory['id']);client.post('/permissions/grant',json={'level':3,'scope_ids':[scope]})
+        assert client.post('/maintenance/restore',content=b'nao e zip').status_code>=400
+        result=client.post('/maintenance/restore',content=archive).json()
+        assert result['restored'] and result['permissions_reset'] and not result['credentials_restored']
+        assert [m['title'] for m in client.get('/memories').json()]==['Antes do backup']
+        assert client.get('/permissions').json()['level']==1
+        assert list((tmp_path/'backups').glob('pre-restore-*.sqlite3'))
+
+def test_granted_windows_are_offered_to_chat_and_tasks_and_can_be_revoked(tmp_path):
+    app,provider,client=agent_client(tmp_path)
+    with client:
+        # The fixture model is counted in bytes, not Qwen tokens; use the larger profile.
+        prefs=client.get('/settings').json();prefs['performance']='desktop';client.put('/settings',json=prefs)
+        cid=conversation(client)
+        client.put('/permissions',json={'level':2})
+        client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Na janela, clique em Salvar'})
+        offered=((provider.profiles[-1] or {}).get('tools') or [{'function':{'parameters':{'properties':{'tool':{'enum':[]}}}}}])[0]['function']['parameters']['properties']['tool']['enum']
+        assert not any(t.startswith('windows_') for t in offered)
+        app.state.store.write('INSERT INTO windows_grants VALUES(?,?,?,?,?,?)',('00000000-0000-0000-0000-0000000000ee',1,1,1.0,'Teste janela','C:\\Apps\\teste.exe'))
+        assert client.get('/windows/grants').json()==[{'id':'00000000-0000-0000-0000-0000000000ee','title':'Teste janela','app':'teste'}]
+        client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Na janela, clique em Salvar'})
+        tool=provider.profiles[-1]['tools'][0]['function']['parameters']['properties']
+        assert {'windows_read','windows_invoke'}<=set(tool['tool']['enum']) and 'window_id' in tool
+        assert 'Teste janela' in provider.contexts[-1][1][0]['content']
+        assert client.post('/tasks',json={'goal':'x','model':'fixture:4b','window_id':'nao-autorizada'}).status_code==400
+        client.delete('/windows/grants/00000000-0000-0000-0000-0000000000ee')
+        assert client.get('/windows/grants').json()==[]

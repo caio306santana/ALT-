@@ -95,6 +95,8 @@ const allowed = [
   ["POST", /^\/projects\/summaries\/[a-f0-9-]+\/(approve|discard)$/],
   ["PUT", /^\/(tasks\/[a-f0-9-]+\/plan|conversations\/[a-f0-9-]+\/project)$/],
   ["DELETE", /^\/(projects|documents)\/[a-f0-9-]+$/],
+  ["GET", /^\/(windows\/candidates|windows\/grants|maintenance\/status)$/],
+  ["DELETE", /^\/windows\/grants\/[a-f0-9-]+$/],
 ];
 function bindShortcut(shortcut) {
   if (
@@ -471,6 +473,84 @@ ipcMain.handle("document:import", async (event, projectId) => {
       path: file,
     })
   ).json();
+});
+ipcMain.handle("windows:authorize", async (event, candidateId, title) => {
+  validate(event);
+  if (!/^[a-f0-9]{32}$/.test(String(candidateId)))
+    throw new Error("Janela inválida");
+  const consent = await dialog.showMessageBox(win, {
+    type: "warning",
+    buttons: ["Cancelar", "Autorizar esta janela"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Permitir que a ALT leia e use esta janela?",
+    detail:
+      String(title).slice(0, 180) +
+      "\n\nA ALT poderá ler botões e campos visíveis e, conforme suas regras e o modo de execução, clicar e digitar nela. Campos de senha são ignorados. Vale só para esta janela aberta; se ela fechar, a autorização deixa de valer. Remova quando quiser em Ferramentas.",
+  });
+  if (consent.response !== 1) return null;
+  return (
+    await request("POST", "/windows/grants", { candidate_id: candidateId })
+  ).json();
+});
+ipcMain.handle("backup:export", async (event) => {
+  validate(event);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const chosen = await dialog.showSaveDialog(win, {
+    title: "Salvar backup da ALT",
+    defaultPath: path.join(app.getPath("documents"), "alt-ai-backup-" + stamp + ".zip"),
+    filters: [{ name: "Backup ALT", extensions: ["zip"] }],
+  });
+  if (chosen.canceled || !chosen.filePath) return { saved: false };
+  const data = Buffer.from(
+    await (await request("GET", "/maintenance/export")).arrayBuffer(),
+  );
+  fs.writeFileSync(chosen.filePath, data);
+  return { saved: true, path: chosen.filePath, bytes: data.length };
+});
+ipcMain.handle("backup:restore", async (event) => {
+  validate(event);
+  const chosen = await dialog.showOpenDialog(win, {
+    title: "Restaurar backup da ALT",
+    properties: ["openFile"],
+    filters: [{ name: "Backup ALT", extensions: ["zip"] }],
+  });
+  if (chosen.canceled) return null;
+  const file = chosen.filePaths[0];
+  if (fs.statSync(file).size > 64000000) throw new Error("Backup grande demais.");
+  const consent = await dialog.showMessageBox(win, {
+    type: "warning",
+    buttons: ["Cancelar", "Restaurar e reiniciar"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Substituir os dados atuais por este backup?",
+    detail:
+      file +
+      "\n\nConversas, memórias, projetos e configurações voltam ao estado do backup. Antes disso a ALT salva uma cópia dos dados atuais em backups. Autorizações de pastas e janelas são zeradas. A ALT será reiniciada.",
+  });
+  if (consent.response !== 1) return null;
+  const response = await fetch(base + "/maintenance/restore", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/octet-stream",
+    },
+    body: fs.readFileSync(file),
+  });
+  if (!response.ok) {
+    let message = "Falha ao restaurar o backup";
+    try {
+      const data = await response.json();
+      message = typeof data.detail === "string" ? data.detail : message;
+    } catch {}
+    throw new Error(message);
+  }
+  setTimeout(() => {
+    quitting = true;
+    app.relaunch();
+    app.quit();
+  }, 500);
+  return response.json();
 });
 ipcMain.handle("workspace:choose", async (event) => {
   validate(event);
