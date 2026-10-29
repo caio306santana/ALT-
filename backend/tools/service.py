@@ -16,9 +16,10 @@ from uuid import uuid4
 from pydantic import BaseModel,Field,ConfigDict
 from typing import Literal
 from backend.memory.store import now
-from backend.tools.research import read_page,search_web
+from backend.tools.research import read_page,search_web,download
 from backend.memory.library import reject_secrets
 from backend.security.policy import Policy
+from backend.tools.windows_ui import WindowsUI
 import fnmatch
 import threading
 
@@ -27,7 +28,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','download_file']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
@@ -35,6 +36,7 @@ class ToolProposal(BaseModel):
     app:str=Field(default='notepad',pattern=r'^[a-zA-Z0-9-]{1,64}$')
     target:str=Field(default='',max_length=160)
     snapshot_id:str=Field(default='',max_length=64)
+    window_id:str=Field(default='',max_length=64)
     url:str=Field(default='',max_length=2000)
     query:str=Field(default='',max_length=300)
 
@@ -65,8 +67,10 @@ class ToolService:
     def __init__(self,store,engine,data_dir,desktop=None):
         self.store,self.engine=store,engine
         self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
+        self.gui=WindowsUI(store)
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
+        self.file_history=data_dir/'file-history'
         store.db.executescript('''
           CREATE TABLE IF NOT EXISTS scopes(id TEXT PRIMARY KEY,path TEXT NOT NULL UNIQUE,created TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS actions(id TEXT PRIMARY KEY,tool TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,result TEXT,created TEXT NOT NULL,updated TEXT NOT NULL);
@@ -98,8 +102,8 @@ class ToolService:
 
     def status(self):
         scopes=self.store.rows('SELECT * FROM scopes ORDER BY created')
-        if self.level==4:scopes.append({'id':'windows-profile','path':str(Path.home()),'label':'Perfil pessoal Windows · sessão supervisionada'})
-        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':list(ToolProposal.model_fields['tool'].annotation.__args__),'windows_scope':'Perfil pessoal e pastas escolhidas; credenciais, AppData, sistema, shell e privilégios administrativos excluídos.'}
+        if self.level==4:scopes.append({'id':'windows-profile','path':str(Path.home()),'label':'Computador · acesso total (caminhos relativos ao seu perfil ou completos)'})
+        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':list(ToolProposal.model_fields['tool'].annotation.__args__),'windows_scope':'Acesso total: internet, downloads, arquivos do computador, aplicativos e navegador executam sem aprovação, salvo o que você bloquear. Arquivos de credenciais, shell e privilégios administrativos ficam excluídos; downloads nunca são executados.'}
 
     def set_level(self,level):
         if level not in (1,2):raise ValueError('Níveis 3 e 4 ainda indisponíveis.')
@@ -124,6 +128,8 @@ class ToolService:
         level=self.status()['level']
         decision=self.policy.decision(body.tool)
         if level not in (3,4) or decision=='deny':return False
+        # Full access: everything the owner did not block runs without review.
+        if level==4:return True
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             if body.scope_id not in self.auto_scopes:return False
             if body.tool=='write_text' and body.scope_id=='windows-profile':return False
@@ -180,10 +186,11 @@ class ToolService:
     def scoped(self,sid,relative):
         if sid=='windows-profile':
             if self.status()['level']!=4:raise PermissionError('A autorização ampla do Windows foi revogada ou alterada.')
-            roots=[{'path':str(Path.home())}]
-            if Path(relative).is_absolute():
-                try:relative=str(Path(relative).relative_to(Path.home()))
-                except ValueError:raise ValueError('O controle amplo cobre o perfil pessoal. Escolha outra pasta explicitamente para acessar fora dele.')
+            roots=[{'path':str(Path.home())}];absolute=PureWindowsPath(relative)
+            if Path(relative).is_absolute() or absolute.drive:
+                # Full access reaches any local drive; network shares stay out.
+                if relative.startswith(('\\\\','//')) or absolute.drive.startswith('\\\\') or not Path(relative).is_absolute():raise ValueError('Use um caminho local completo, como C:\\Pasta\\arquivo.txt.')
+                anchor=Path(relative).anchor;roots=[{'path':anchor}];relative=str(Path(relative).relative_to(anchor))
         else:roots=self.store.rows('SELECT path FROM scopes WHERE id=?',(sid,))
         if not roots:raise ValueError('Selecione uma pasta autorizada.')
         root=Path(roots[0]['path'])
@@ -199,6 +206,14 @@ class ToolService:
         resolved=candidate.resolve()
         if not resolved.is_relative_to(root.resolve()):raise ValueError('Caminho fora do escopo autorizado.')
         return resolved
+
+    def scope_name(self,sid,child):
+        """Path as the scope expects it: relative, or complete outside the profile in full access."""
+        root=Path.home() if sid=='windows-profile' else Path(self.store.rows('SELECT path FROM scopes WHERE id=?',(sid,))[0]['path'])
+        try:return str(child.relative_to(root))
+        except ValueError:
+            if sid!='windows-profile':raise
+            return str(child)
 
     def file_state(self,path):
         if not path.exists():return None
@@ -224,11 +239,34 @@ class ToolService:
                 preview['creates_file']=fingerprint is None
             if body.tool in ('list_files','find_files','open_folder') and not path.is_dir():raise ValueError('Pasta não encontrada.')
             if body.tool=='find_files':preview['query']=body.query
+        elif body.tool=='download_file':
+            reject_secrets(body.url)
+            parsed=urllib.parse.urlsplit(body.url)
+            if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or any(c.isspace() for c in body.url):raise ValueError('Use uma URL HTTPS pública, sem credenciais.')
+            if not body.scope_id:
+                if self.status()['level']!=4:raise ValueError('Escolha a pasta de destino do download.')
+                body.scope_id='windows-profile'
+            name=PureWindowsPath(urllib.parse.unquote(parsed.path)).name or 'download'
+            if not body.path:body.path=('Downloads/' if body.scope_id=='windows-profile' else '')+name
+            elif body.path=='.' or body.path.endswith(('/','\\')):body.path=body.path.rstrip('/\\.')+'/'+name if body.path!='.' else name
+            path=self.scoped(body.scope_id,body.path)
+            if not path.parent.is_dir():raise ValueError('A pasta de destino precisa existir.')
+            payload=body.model_dump()
+            preview.update({'url':body.url,'path':str(path),'external_notice':'O arquivo será baixado da internet e salvo sem ser aberto ou executado.'})
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
         elif body.tool in ('open_app','close_app'):
             if body.app not in {p['id'] for p in self.programs()}:raise ValueError('Escolha um aplicativo registrado no painel Controle.')
             preview['app']=body.app
             if body.tool=='close_app':preview['notice']='Solicita fechamento normal somente de janelas abertas pela ALT; o programa pode pedir para salvar documentos.'
+        elif body.tool.startswith('windows_'):
+            grant=next((g for g in self.gui.grants() if g['id']==body.window_id),None)
+            if not grant:raise PermissionError('Autorize uma janela no seletor nativo.')
+            preview.update({'window_id':body.window_id,'window_title':grant['title']})
+            if body.tool!='windows_read':
+                cached,index=self.gui.describe_target(body.window_id,body.snapshot_id,body.target)
+                preview['element']=cached['public']['elements'][index]
+                if body.tool=='windows_type':reject_secrets(body.content);preview['text']=body.content
+                preview['external_notice']='Interagir com este aplicativo pode modificar dados. Confira janela, elemento e conteúdo.'
         elif body.tool.startswith('browser_'):
             if not self.desktop:raise ValueError('Navegador disponível somente no aplicativo desktop.')
             if body.tool=='browser_open':
@@ -261,7 +299,8 @@ class ToolService:
             parsed=urllib.parse.urlsplit(body.url)
             if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password:raise ValueError('Use uma URL HTTPS pública, sem credenciais.')
             preview['url']=body.url;preview['external_notice']='A página será consultada sem cookies ou sessões pessoais.'
-        preview['critical']=body.tool=='write_text' and body.scope_id=='windows-profile'
+        # In full access the owner already accepted unattended writes.
+        preview['critical']=body.tool=='write_text' and body.scope_id=='windows-profile' and self.status()['level']!=4
         aid=str(uuid4())
         self.pending[aid]=(None,payload,fingerprint)
         self.previews[aid]=preview
@@ -280,7 +319,6 @@ class ToolService:
         result=self.proposal(ToolProposal(**json.loads(rows[0]['payload'])),contexts[0]['conversation_id'] if contexts else '')
         self.store.write("UPDATE actions SET status='superseded' WHERE id=?",(aid,))
         return result
-
 
     async def approve(self,aid):
         if self.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
@@ -303,12 +341,15 @@ class ToolService:
     def execute(self,body,fingerprint,event):
         if event.is_set() or self.engine.stopped:raise PermissionError('Ação interrompida.')
         self.policy.check(body.tool)
+        if body.tool.startswith('windows_'):
+            return self.gui.read(body.window_id) if body.tool=='windows_read' else self.gui.act(body)
         if body.tool.startswith('browser_'):
             if not self.desktop:raise ValueError('Abra o aplicativo desktop.')
             return self.desktop.request(body.model_dump(),event)
         if body.tool=='calculate':return {'value':calculate(body.expression)}
         if body.tool=='web_search':return search_web(body.query)
         if body.tool=='read_webpage':return read_page(body.url)
+        if body.tool=='download_file':return download(body.url,self.scoped(body.scope_id,body.path),event)
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             path=self.scoped(body.scope_id,body.path)
             if body.tool=='find_files':
@@ -320,8 +361,7 @@ class ToolService:
                     for child in children:
                         if event.is_set() or time.monotonic()>=deadline:cutoff=True;break
                         try:
-                            root=Path.home() if body.scope_id=='windows-profile' else Path(self.store.rows('SELECT path FROM scopes WHERE id=?',(body.scope_id,))[0]['path'])
-                            relative=str(child.relative_to(root));self.scoped(body.scope_id,relative)
+                            relative=self.scope_name(body.scope_id,child);self.scoped(body.scope_id,relative)
                             if child.is_dir():stack.append(child)
                             if not body.query or body.query.casefold() in child.name.casefold() or fnmatch.fnmatch(child.name.casefold(),body.query.casefold()):
                                 entries.append({'name':relative,'directory':child.is_dir()})
@@ -333,8 +373,7 @@ class ToolService:
                 for p in sorted(path.iterdir(),key=lambda p:p.name.lower()):
                     if len(entries)>=200:break
                     try:
-                        base=Path.home() if body.scope_id=='windows-profile' else Path(self.store.rows('SELECT path FROM scopes WHERE id=?',(body.scope_id,))[0]['path'])
-                        self.scoped(body.scope_id,str(p.relative_to(base)))
+                        self.scoped(body.scope_id,self.scope_name(body.scope_id,p))
                         entries.append({'name':p.name,'directory':p.is_dir(),'bytes':p.stat().st_size if p.is_file() else None})
                     except (OSError,ValueError):continue
                 return {'entries':entries,'limit':200}
@@ -350,10 +389,16 @@ class ToolService:
                     self.scoped(body.scope_id,body.path)
                     if event.is_set() or self.engine.stopped:raise PermissionError('Gravação cancelada antes da substituição.')
                     if self.file_state(path)!=fingerprint:raise ValueError('Arquivo alterado durante a gravação. Operação cancelada.')
+                    previous=None
+                    if fingerprint:
+                        # Keep the replaced version so unattended edits can be undone.
+                        self.file_history.mkdir(parents=True,exist_ok=True)
+                        previous=self.file_history/(time.strftime('%Y%m%d-%H%M%S')+'-'+str(uuid4())[:8]+'-'+path.name)
+                        previous.write_bytes(path.read_bytes())
                     os.replace(temporary,path)
                 finally:
                     if temporary.exists():temporary.unlink()
-                return {'path':str(path),'bytes':path.stat().st_size}
+                return {'path':str(path),'bytes':path.stat().st_size,**({'previous_version':str(previous)} if previous else {})}
             if os.name!='nt':raise ValueError('Abertura de pastas disponível no Windows.')
             os.startfile(str(path));return {'open_requested':str(path)}
         if body.tool=='open_app':
@@ -412,6 +457,7 @@ class ToolService:
     def cancel_pending(self):
         self.pending.clear();self.previews.clear();self.critical_confirmed.clear()
         if self.desktop:self.desktop.snapshot=None
+        self.gui.snapshots.clear()
         self.store.write("UPDATE actions SET status='cancelled' WHERE status='proposed'")
         for key,event in self.engine.active.items():
             if key.startswith('tool:'):event.set()

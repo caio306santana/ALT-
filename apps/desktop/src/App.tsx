@@ -38,6 +38,11 @@ import {
   Wrench,
   Gamepad2,
   Globe,
+  ListChecks,
+  PanelLeft,
+  History as HistoryIcon,
+  UserRound,
+  Cloud,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {version as appVersion} from '../../../package.json';
@@ -53,6 +58,11 @@ import type {
 } from "../../../packages/shared-types";
 import { themes } from "../../../packages/design-tokens/themes";
 import { ProfilePanel } from "./components/ProfilePanel";
+import {
+  TasksPanel,
+  UpdateNotice,
+  VerificationNote,
+} from "./components/AgentPanels";
 import { ApprovalMenu } from "./components/ApprovalMenu";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import {
@@ -103,7 +113,75 @@ type View =
   | "memory"
   | "tools"
   | "profile"
-  | "browser";
+  | "browser"
+  | "tasks";
+// One place for every screen's name, icon, title and one-line description.
+const VIEWS: Record<
+  View,
+  { label: string; icon: typeof MessageSquare; title: string; hint?: string }
+> = {
+  chat: { label: "Chat", icon: MessageSquare, title: "Conversa" },
+  tasks: {
+    label: "Tarefas",
+    icon: ListChecks,
+    title: "Tarefas",
+    hint: "Peça um objetivo; a ALT planeja, você revisa e ela executa passo a passo.",
+  },
+  memory: {
+    label: "Memória",
+    icon: Brain,
+    title: "Memória",
+    hint: "Memórias, projetos e documentos que a ALT pode usar.",
+  },
+  tools: {
+    label: "Ferramentas",
+    icon: Wrench,
+    title: "Ferramentas",
+    hint: "Modo de execução, pastas autorizadas e ações manuais.",
+  },
+  browser: {
+    label: "Navegador",
+    icon: Globe,
+    title: "Navegador ALT",
+    hint: "Janela isolada para a ALT ler e interagir com sites.",
+  },
+  models: {
+    label: "Inteligências",
+    icon: Boxes,
+    title: "Inteligências",
+    hint: "Modelos locais, provedores de nuvem e laboratório de comparação.",
+  },
+  history: {
+    label: "Histórico",
+    icon: HistoryIcon,
+    title: "Histórico",
+    hint: "Todas as suas conversas salvas neste computador.",
+  },
+  monitor: {
+    label: "Sistema",
+    icon: Activity,
+    title: "Sistema",
+    hint: "Uso de CPU, memória, disco e modelos carregados.",
+  },
+  security: {
+    label: "Controle e regras",
+    icon: Shield,
+    title: "Controle e regras",
+    hint: "O que a ALT pode fazer sozinha, o que pede aprovação e o que fica bloqueado.",
+  },
+  profile: { label: "Perfil", icon: UserRound, title: "Seu perfil" },
+};
+const NAV: View[] = [
+  "chat",
+  "tasks",
+  "memory",
+  "tools",
+  "browser",
+  "models",
+  "history",
+  "monitor",
+  "security",
+];
 type SystemData = {
   cpu: { name: string; percent: number; logical_cores: number };
   ram: { used: number; total: number; available: number; percent: number };
@@ -136,6 +214,9 @@ type ContextEstimate = {
 
 export default function App() {
   const [view, setView] = useState<View>("chat"),
+    [sidebarOpen, setSidebarOpen] = useState(
+      () => localStorage.getItem("alt-sidebar") !== "collapsed",
+    ),
     [settingsOpen, setSettingsOpen] = useState(false),
     [tab, setTab] = useState("Aparência");
   const [prefs, setPrefs] = useState(defaults),
@@ -600,16 +681,11 @@ export default function App() {
   const title =
     conversations.find((c) => c.id === cid)?.title ||
     "Seu espaço para pensar além.";
-  const nav = [
-    { id: "chat" as View, icon: MessageSquare, label: "Chat" },
-    { id: "models" as View, icon: Boxes, label: "Inteligências" },
-    { id: "history" as View, icon: Database, label: "Histórico" },
-    { id: "memory" as View, icon: Brain, label: "Memória" },
-    { id: "tools" as View, icon: Wrench, label: "Ferramentas" },
-    { id: "browser" as View, icon: Globe, label: "Navegador ALT" },
-    { id: "monitor" as View, icon: Activity, label: "Sistema" },
-    { id: "security" as View, icon: Shield, label: "Controle e regras" },
-  ];
+  const toggleSidebar = () => {
+    localStorage.setItem("alt-sidebar", sidebarOpen ? "collapsed" : "open");
+    setSidebarOpen(!sidebarOpen);
+  };
+  const screen = VIEWS[view];
   return (
     <div
       className={`app ${prefs.compact ? "compact" : ""} ${!prefs.animations || gameMode ? "no-animation" : ""} ${prefs.appearance === "light" ? "light" : ""} ${!prefs.effects || gameMode ? "no-effects" : ""}`}
@@ -660,96 +736,93 @@ export default function App() {
         </div>
       </header>
       <div className="workspace">
-        <aside className="rail">
+        <aside className={`sidebar ${sidebarOpen ? "open" : "collapsed"}`}>
           <button
-            className="new-chat"
+            className="side-item side-toggle"
+            title={sidebarOpen ? "Recolher barra lateral" : "Expandir barra lateral"}
+            aria-label={sidebarOpen ? "Recolher barra lateral" : "Expandir barra lateral"}
+            onClick={toggleSidebar}
+          >
+            <PanelLeft size={18} />
+          </button>
+          <button
+            className="side-item new-chat"
             title="Nova conversa · Ctrl+N"
             aria-label="Nova conversa"
             onClick={() => newConversation().catch(report)}
             disabled={busy}
           >
-            <Plus size={22} />
+            <Plus size={18} />
+            <span>Nova conversa</span>
           </button>
-          <div className="rail-nav">
-            {nav.map((n) => (
-              <button
-                key={n.id}
-                title={n.label}
-                aria-label={n.label}
-                className={view === n.id ? "selected" : ""}
-                onClick={() => setView(n.id)}
-              >
-                <n.icon size={21} />
-              </button>
-            ))}
-          </div>
-          <div className="rail-bottom">
+          <nav className="side-nav">
+            {NAV.map((id) => {
+              const item = VIEWS[id];
+              return (
+                <button
+                  key={id}
+                  title={item.label}
+                  aria-label={item.label}
+                  className={`side-item ${view === id ? "selected" : ""}`}
+                  onClick={() => setView(id)}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          {sidebarOpen && conversations.length > 0 && (
+            <div className="side-recent">
+              <span className="side-heading">Recentes</span>
+              {conversations.slice(0, 12).map((c) => (
+                <button
+                  key={c.id}
+                  title={c.title}
+                  className={`side-item recent ${c.id === cid && view === "chat" ? "selected" : ""}`}
+                  disabled={busy}
+                  onClick={() => openConversation(c.id).catch(report)}
+                >
+                  <span>{c.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="side-bottom">
             <button
               title="Configurações"
               aria-label="Configurações"
-              className={settingsOpen ? "active" : ""}
+              className={`side-item ${settingsOpen ? "selected" : ""}`}
               onClick={() => setSettingsOpen(!settingsOpen)}
             >
-              <Settings size={21} />
+              <Settings size={18} />
+              <span>Configurações</span>
             </button>
             <button
-              className="profile"
+              className={`side-item side-profile ${view === "profile" ? "selected" : ""}`}
               title="Seu perfil"
               aria-label="Seu perfil"
               onClick={() => setView("profile")}
             >
-              {prefs.user_name?.slice(0, 1).toUpperCase() || "A"}
-              <span />
+              <i className="avatar">
+                {prefs.user_name?.slice(0, 1).toUpperCase() || "A"}
+              </i>
+              <span>{prefs.user_name || "Seu perfil"}</span>
             </button>
           </div>
         </aside>
         <main className="main">
           <div className="sectionbar">
             <div>
-              <span className="eyebrow">
-                ALT-AI /{" "}
-                {view === "chat"
-                  ? "WORKSPACE"
-                  : view === "models"
-                    ? "SELECT INTELLIGENCE"
-                    : view === "monitor"
-                      ? "SYSTEM MONITOR"
-                      : view === "security"
-                        ? "ACCESS CONTROL"
-                        : view === "memory"
-                          ? "MEMORY CORE"
-                          : view === "tools"
-                            ? "ASSISTED TOOLS"
-                            : view === "profile"
-                              ? "IDENTITY CORE"
-                              : view === "browser"
-                                ? "WEB WORKSPACE"
-                                : "LOCAL HISTORY"}
-              </span>
               <h1>
-                {view === "chat"
-                  ? "Conversa"
-                  : view === "models"
-                    ? "Escolha sua inteligência"
-                    : view === "history"
-                      ? "Suas conversas"
-                      : view === "monitor"
-                        ? "Visão do sistema"
-                        : view === "memory"
-                          ? "O que vale lembrar"
-                          : view === "tools"
-                            ? "Ferramentas assistidas"
-                            : view === "profile"
-                              ? "Seu perfil"
-                              : view === "browser"
-                                ? "Navegador ALT"
-                                : "Você está no controle"}
-                <span className="small-tag">
-                  {prefs.model.startsWith("cloud:") && view === "chat"
-                    ? "NUVEM"
-                    : "LOCAL"}
-                </span>
+                {screen.title}
+                {view === "chat" && (
+                  <span className="small-tag">
+                    {prefs.model.startsWith("cloud:") ? "NUVEM" : "LOCAL"}
+                  </span>
+                )}
               </h1>
+              {screen.hint && <p className="section-hint">{screen.hint}</p>}
             </div>
             {view === "chat" ? (
               <button className="model-pill" onClick={() => setView("models")}>
@@ -785,6 +858,7 @@ export default function App() {
               </button>
             </div>
           )}
+          <UpdateNotice onError={report} />
           {pulling && (
             <div className="banner">
               <Download size={16} />
@@ -945,6 +1019,9 @@ export default function App() {
                               Copiar
                             </button>
                           </div>
+                        )}
+                        {m.role === "assistant" && m.status === "complete" && (
+                          <VerificationNote verification={m.metrics?.verification} />
                         )}
                       </article>
                     ))}
@@ -1476,6 +1553,15 @@ export default function App() {
           {view === "security" && (
             <OwnerControlPanel notify={setNotice} onError={report} />
           )}
+          {view === "tasks" && (
+            <TasksPanel
+              models={models}
+              model={prefs.model}
+              notify={setNotice}
+              onError={report}
+              onOpenConversation={(id) => openConversation(id).catch(report)}
+            />
+          )}
           {view === "browser" && (
             <BrowserPanel
               notify={setNotice}
@@ -1526,7 +1612,7 @@ export default function App() {
                 { name: "Personalidade", icon: Brain },
                 { name: "Comportamento", icon: SlidersHorizontal },
                 { name: "Modelos de IA", icon: Boxes },
-                { name: "Provedores", icon: ExternalLink },
+                { name: "Provedores", icon: Cloud },
                 { name: "Atalhos", icon: Keyboard },
                 { name: "Sobre", icon: Info },
               ].map((t) => (
@@ -1810,6 +1896,24 @@ export default function App() {
                   >
                     <ExternalLink size={14} />
                     Versões e instaladores
+                  </button>
+                  <button
+                    className="secondary full"
+                    onClick={() =>
+                      window.alt
+                        .checkUpdate()
+                        .then((r) => {
+                          if (r.available) {
+                            localStorage.removeItem("alt-dismissed-update");
+                            setNotice(`Nova versão ${r.version} disponível; confira as notas no aviso.`);
+                            window.dispatchEvent(new CustomEvent("alt-update", { detail: r }));
+                          } else setNotice(r.reason || "Nenhuma versão nova.");
+                        })
+                        .catch(report)
+                    }
+                  >
+                    <RefreshCw size={14} />
+                    Procurar nova versão
                   </button>
                   <button
                     className="secondary full"

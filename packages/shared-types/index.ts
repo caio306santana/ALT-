@@ -10,6 +10,13 @@ export interface Metrics {
   first_token_seconds: number | null;
   total_seconds: number | null;
   prompt_tokens: number | null;
+  verification?: Verification;
+}
+export interface Verification {
+  calculations: { claim: string; expression: string; stated: string; actual: number; ok: boolean; rounded?: boolean }[];
+  sources: { url: string; confirmed: boolean }[];
+  issues: number;
+  notice: string;
 }
 export interface Message {
   id: string;
@@ -82,7 +89,7 @@ export interface CloudPreview {
   billing_notice: string;
   context_truncated: boolean;
   tool_result_truncated?: boolean;
-  recalled_memories?: {id:string;title:string}[];
+  recalled_memories?: {id:string;title:string;kind?:string;score?:number|null;mode?:string}[];
 }
 export type StreamEvent = {
   type:

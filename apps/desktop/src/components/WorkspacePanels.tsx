@@ -10,7 +10,8 @@ type Feedback = {
 type Decision = "deny" | "ask" | "allow";
 export type OwnerPolicy = {
   rules: string;
-  memory_recall: "manual" | "automatic";
+  memory_recall: "manual" | "automatic" | "semantic";
+  auto_project_summaries: boolean;
   capabilities: Record<string, Decision>;
 };
 type PolicyState = {
@@ -26,6 +27,9 @@ const labels: Record<string, string> = {
   internet: "Pesquisa e leitura na internet",
   browser_navigation: "Abrir e ler no navegador ALT",
   browser_interaction: "Clicar e digitar no navegador ALT",
+  downloads: "Baixar arquivos da internet",
+  windows_read: "Ler janelas do Windows (em desenvolvimento)",
+  windows_control: "Controlar janelas do Windows (em desenvolvimento)",
 };
 
 export function OwnerControlPanel({ notify, onError }: Feedback) {
@@ -79,14 +83,29 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
           >
             <option value="manual">Somente as que eu selecionar</option>
             <option value="automatic">
-              Recuperar memórias relacionadas à mensagem
+              Recuperar memórias relacionadas à mensagem (por termos)
+            </option>
+            <option value="semantic">
+              Recuperação semântica de memórias e documentos (EmbeddingGemma)
             </option>
           </select>
         </label>
+        <label className="inline-check">
+          <input
+            type="checkbox"
+            checked={!!draft.auto_project_summaries}
+            onChange={(e) =>
+              setDraft({ ...draft, auto_project_summaries: e.target.checked })
+            }
+          />
+          Gerar rascunhos de resumo de conversas vinculadas a projetos (a cada
+          12 mensagens, sempre para revisão)
+        </label>
         <p className="setting-note">
-          A recuperação é por termos relacionados, não busca semântica. O chat
-          informa quais memórias entraram; a prévia de nuvem mostra o contexto
-          exato.
+          A semântica busca por significado nos itens indexados em Memória e
+          volta para a busca por termos se o EmbeddingGemma não estiver
+          disponível. O chat informa o que entrou; a prévia de nuvem mostra o
+          contexto exato.
         </p>
         {Object.entries(draft.capabilities).map(([key, value]) => (
           <label key={key}>
@@ -114,8 +133,10 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
           </label>
         ))}
         <p className="setting-note">
-          Observação não executa. Escopos e STOP continuam valendo. Fechamento
-          de aplicativos e gravação no perfil pessoal mantêm revisão individual.
+          Observação não executa. No modo 4 (acesso total), tudo que não
+          estiver bloqueado aqui executa sem pedir aprovação. STOP revoga na
+          hora. Arquivos de credenciais, shell e privilégios de administrador
+          ficam sempre de fora; downloads nunca são executados.
         </p>
         <button
           className="primary"

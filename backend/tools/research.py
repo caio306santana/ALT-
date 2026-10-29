@@ -96,3 +96,40 @@ def search_web(query):
         if link.startswith('https://'):results.append({'title':item.findtext('title','')[:250],'url':link,'snippet':item.findtext('description','')[:1500]})
     if not results:raise ValueError('O serviço não retornou fontes acessíveis. Nenhum resultado foi inventado.')
     return {'query':query,'provider':'Bing RSS público','results':results,'retrieved_at':datetime.now(timezone.utc).isoformat(),'notice':'Resultados recuperados da internet; não representam verificação independente dos fatos.'}
+
+DOWNLOAD_LIMIT=1_000_000_000
+
+def download(url,destination,cancel,limit=DOWNLOAD_LIMIT):
+    """Save a public HTTPS file. It is only written to disk, never opened or executed."""
+    import hashlib,os
+    from uuid import uuid4
+    for _ in range(5):
+        parsed,ip=public_url(url);connection=PublicConnection(parsed.hostname,ip);connection.timeout=60
+        try:
+            target=urllib.parse.urlunsplit(('', '', parsed.path or '/', parsed.query, ''))
+            connection.request('GET',target,headers={'User-Agent':'ALT-AI/0.4 download','Accept':'*/*','Accept-Encoding':'identity'})
+            response=connection.getresponse()
+            if response.status in (301,302,303,307,308):
+                location=response.getheader('Location')
+                if not location:raise ValueError('Redirecionamento sem destino.')
+                url=urllib.parse.urljoin(url,location);continue
+            if response.status!=200:raise ValueError(f'Download indisponível (HTTP {response.status}).')
+            declared=response.getheader('Content-Length')
+            if declared and declared.isdigit() and int(declared)>limit:raise ValueError('Arquivo excede o limite de 1 GB.')
+            temporary=destination.with_name('.alt-download-'+str(uuid4())+'.part');digest=hashlib.sha256();size=0
+            try:
+                with temporary.open('xb') as handle:
+                    while chunk:=response.read(1024*1024):
+                        if cancel.is_set():raise PermissionError('Download interrompido.')
+                        size+=len(chunk)
+                        if size>limit:raise ValueError('Arquivo excede o limite de 1 GB.')
+                        digest.update(chunk);handle.write(chunk)
+                final=destination;counter=1
+                while final.exists():final=destination.with_name(f'{destination.stem} ({counter}){destination.suffix}');counter+=1
+                os.replace(temporary,final)
+            finally:
+                if temporary.exists():temporary.unlink()
+            return {'path':str(final),'bytes':size,'sha256':digest.hexdigest(),'url':url,'content_type':response.getheader('Content-Type') or '',
+                'notice':'Arquivo salvo; a ALT não abre nem executa arquivos baixados.'}
+        finally:connection.close()
+    raise ValueError('Número máximo de redirecionamentos excedido.')

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ContinuityPanel } from "./WorkspacePanels";
+import { ProjectsPanel } from "./AgentPanels";
 import {
   Plus,
   Save,
@@ -12,6 +13,11 @@ import {
   Lock,
   RefreshCw,
   ExternalLink,
+  Eye,
+  Hand,
+  Zap,
+  Search,
+  AppWindow,
 } from "lucide-react";
 import type {
   Memory,
@@ -383,6 +389,13 @@ export function MemoryPanel({
   }
   return (
     <div className="page-scroll">
+      <ProjectsPanel
+        conversationId={conversationId}
+        model={model}
+        notify={notify}
+        onError={onError}
+        onSaved={() => refresh().catch(onError)}
+      />
       <ContinuityPanel
         conversationId={conversationId}
         model={model}
@@ -720,26 +733,26 @@ export function ToolsPanel({
           {
             level: 1,
             title: "Observação",
-            tag: "01 / OBSERVE",
+            icon: Eye,
             text: "Conversar e propor. Nenhuma ação executada.",
           },
           {
             level: 2,
             title: "Assistido",
-            tag: "02 / ASSIST",
+            icon: Hand,
             text: "Sem prazo. Você aprova cada ação.",
           },
           {
             level: 3,
             title: "Leitura autorizada",
-            tag: "03 / SCOPED",
+            icon: FolderOpen,
             text: "Até você alterar. Cálculos e leitura na pasta escolhida podem continuar sem novos cliques.",
           },
           {
             level: 4,
-            title: "Controle amplo Windows",
-            tag: "04 / SUPERVISED",
-            text: "Até você alterar. Perfil pessoal e pastas escolhidas; gravações, aplicativos e navegação supervisionados.",
+            title: "Acesso total",
+            icon: Zap,
+            text: "Até você alterar. Internet, downloads, arquivos do computador, aplicativos e tarefas executam sem pedir aprovação, salvo o que você bloquear em Controle e regras.",
           },
         ].map((mode) => (
           <button
@@ -761,17 +774,19 @@ export function ToolsPanel({
                   .catch(onError);
             }}
           >
-            <span className="eyebrow">{mode.tag}</span>
-            <strong>{mode.title}</strong>
+            <strong>
+              <mode.icon size={16} />
+              {mode.title}
+            </strong>
             <p>{mode.text}</p>
             {permissions?.level === mode.level && <Check size={15} />}
           </button>
         ))}
       </div>
       <p className="setting-note">
-        O modo amplo não inclui credenciais, AppData, arquivos de sistema, shell
-        arbitrário ou elevação de privilégios. Você verá o escopo antes de
-        autorizar.
+        Acesso total nunca inclui arquivos de credenciais, AppData, shell
+        arbitrário, privilégios de administrador ou executar arquivos baixados.
+        STOP revoga tudo na hora.
       </p>
       <div className="command-shortcuts">
         <button
@@ -781,15 +796,18 @@ export function ToolsPanel({
             )
           }
         >
-          Pesquisar na internet ↗
+          <Search size={14} />
+          Pesquisar na internet
         </button>
         <button onClick={() => onCommand("Abra o Bloco de Notas.")}>
-          Abrir um aplicativo ↗
+          <AppWindow size={14} />
+          Abrir um aplicativo
         </button>
         <button
           onClick={() => onCommand("Liste os arquivos da pasta autorizada.")}
         >
-          Explorar uma pasta ↗
+          <FolderOpen size={14} />
+          Explorar uma pasta
         </button>
       </div>
       <details className="manual-tools">

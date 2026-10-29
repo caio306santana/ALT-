@@ -1,4 +1,4 @@
-import { Brain, Shield, Boxes, ChevronRight } from "lucide-react";
+import { Brain, Wrench, Sparkles, ChevronRight } from "lucide-react";
 import type { Preferences } from "../../../../packages/shared-types";
 export function ProfilePanel({
   prefs,
@@ -46,7 +46,7 @@ export function ProfilePanel({
       </div>
       <div className="identity-cards">
         <button onClick={onIdentity}>
-          <Brain size={23} />
+          <Sparkles size={20} />
           <span>
             <strong>Personalidade</strong>
             <small>{prefs.personality.tone}</small>
@@ -54,7 +54,7 @@ export function ProfilePanel({
           <ChevronRight size={16} />
         </button>
         <button onClick={onMemory}>
-          <Boxes size={23} />
+          <Brain size={20} />
           <span>
             <strong>Memória</strong>
             <small>O que você decide guardar e compartilhar.</small>
@@ -62,7 +62,7 @@ export function ProfilePanel({
           <ChevronRight size={16} />
         </button>
         <button onClick={onTools}>
-          <Shield size={23} />
+          <Wrench size={20} />
           <span>
             <strong>Alcance no Windows</strong>
             <small>Modos de autorização, sessões e revogação.</small>

@@ -13,7 +13,7 @@ from backend.providers.ollama import Ollama, ProviderError, cancellable
 from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
 from backend.monitoring.performance import performance_profile
-from backend.personality import Personality,system_prompt
+from backend.personality import Personality,system_prompt,situational_guidance
 from backend.memory.library import MemoryLibrary
 from backend.tools.service import ToolService
 from backend.security.consent import ConsentReceipts
@@ -26,6 +26,8 @@ from backend.tools.service import ToolProposal
 from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer
 from backend.desktop import DesktopBridge
 from backend.workspace_features import install_workspace_features
+from backend.agent_features import install_agent_features
+from backend.verification import verify_reply,conversation_urls
 
 SYSTEM = ('Você é ALT-AI, uma assistente pessoal calma, natural e objetiva. Responda em português brasileiro. '
           'Modo observação: você não possui ferramentas para executar ações, pesquisar na internet ou acessar arquivos. '
@@ -87,7 +89,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     @asynccontextmanager
     async def lifespan(app):
         yield
-        engine.stop()
+        tasks.stop_all();engine.stop()
         evaluation=getattr(app.state,'evaluations',None)
         if evaluation and evaluation.task and not evaluation.task.done():
             try:await asyncio.wait_for(asyncio.shield(evaluation.task),5)
@@ -126,6 +128,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,ollama,receipts)
     continuity=install_workspace_features(app,auth,store,library,tools,engine,ollama,receipts,desktop)
+    tasks,knowledge=install_agent_features(app,auth,store,library,continuity,tools,engine,ollama)
 
     def preferences():return Settings(**{key:value for key,value in store.settings().items() if key in Settings.model_fields}).model_dump()
 
@@ -187,7 +190,19 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         engine.stopped=False;engine.game_mode=False;store.audit('resume')
         return {'stopped':False}
 
-    def context_for(body):
+    async def recall_candidates(body,mode):
+        """Related memories/document excerpts for automatic recall, and how they were found."""
+        if mode=='semantic' and not body.model.startswith('cloud:'):
+            try:
+                project=knowledge.project_for(body.conversation_id) if body.conversation_id else ''
+                rows=[r for r in await knowledge.search(body.content,project,limit=4) if r['id'] not in body.memory_ids]
+                return rows,'semântica (EmbeddingGemma)'
+            except (ValueError,ProviderError,OSError):pass
+            return continuity.recall(body.content,body.memory_ids)[:3],'termos (busca semântica indisponível: instale/indexe o EmbeddingGemma)'
+        if mode in ('automatic','semantic'):return continuity.recall(body.content,body.memory_ids)[:3],'termos'
+        return [],''
+
+    async def context_for(body):
         cost=lambda text:message_cost(text,body.model)
         previous=[m for m in store.messages(body.conversation_id) if m['status']=='complete']
         prefs=preferences();prefs['owner_policy']=tools.policy.current().model_dump();profile=performance_profile(prefs['performance'])
@@ -197,7 +212,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             definition=spec[0]['function']['parameters']['properties']['tool']['enum']
             definition[:]=[name for name in definition if tools.policy.decision(name)!='deny']
             if not definition:spec=None
-        prompt=system_prompt(prefs,memory,tools=bool(spec));tool_context=''
+        prompt=system_prompt(prefs,memory,tools=bool(spec));tool_context=situational_guidance(body.content)
+        if not spec:prompt+=tool_context
         if spec:
             scopes=[{'id':s['id'],'nome':s.get('label') or Path(s['path']).name} for s in status['scopes'][:4]]
             tool_context+='\nEscopos locais disponíveis: '+json.dumps(scopes,ensure_ascii=False,separators=(',',':'))
@@ -235,14 +251,15 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             chars=cost(user_content)+cost(prompt)+schema_cost
         context=[]
         recalled=[]
-        if prefs['owner_policy']['memory_recall']=='automatic':
-            for row in continuity.recall(body.content,body.memory_ids)[:3]:
+        candidates,recall_mode=await recall_candidates(body,prefs['owner_policy']['memory_recall'])
+        if candidates:
+            for row in candidates:
                 candidate=[*memory,{'id':row['id'],'title':row['title'],'content':row['content'],'category':row['category']}]
                 replacement=system_prompt(prefs,candidate,tools=bool(spec))
                 replacement+=tool_context
                 addition=cost(replacement)-cost(prompt)
                 if chars+addition>context_limit:continue
-                memory=candidate;chars+=addition;prompt=replacement;recalled.append({'id':row['id'],'title':row['title']})
+                memory=candidate;chars+=addition;prompt=replacement;recalled.append({'id':row['id'],'title':row['title'],'kind':row.get('kind','memory'),'score':row.get('score'),'mode':recall_mode})
         for message in reversed(previous):
             if chars+cost(message['content'])>context_limit:break
             context.insert(0,{'role':message['role'],'content':message['content']});chars+=cost(message['content'])
@@ -254,13 +271,13 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             'total_context':profile['options']['num_ctx'],'output_reserve':profile['options']['num_predict'],
             'history_included':len(context),'history_total':len(previous),
             'tokenizer':'Qwen 3.5' if has_qwen_tokenizer(body.model) else 'estimativa conservadora',
-            'tool_result_truncated':result_truncated,'profile':profile['effective']}
+            'tool_result_truncated':result_truncated,'profile':profile['effective'],'recall_mode':recall_mode}
         return payload,profile,len(previous),len(context),result_truncated,recalled,estimate
 
     @app.post('/chat/estimate',dependencies=[Depends(auth)])
     async def estimate_context(body:ContextBody):
         if body.conversation_id and not store.conversation(body.conversation_id):raise HTTPException(404,'Conversa não encontrada')
-        try:return context_for(body)[-1]
+        try:return (await context_for(body))[-1]
         except ContextLimitError as exc:return {**exc.estimate,'reason':str(exc),'tokenizer':'Qwen 3.5' if has_qwen_tokenizer(body.model) else 'estimativa conservadora'}
 
     @app.post('/chat/preview',dependencies=[Depends(auth)])
@@ -270,7 +287,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         if engine.stopped:raise PermissionError('Ações suspensas.')
         status=await asyncio.to_thread(codex.status) if body.model=='cloud:codex' else anthropic.status()
         if not status['available']:raise HTTPException(409,status['reason'])
-        payload,_,total,count,result_truncated,recalled,_=context_for(body)
+        payload,_,total,count,result_truncated,recalled,_=await context_for(body)
         return {'provider':status,'messages':payload['messages'],'consent_receipt':receipts.issue(payload),'expires_in':300,'context_truncated':count<total,'tool_result_truncated':result_truncated,'recalled_memories':recalled,'estimated_usd':anthropic.estimate(payload['messages']) if body.model=='cloud:anthropic' else None,'billing_notice':'Cobrança de API; estimativa pelos preços configurados.' if body.model=='cloud:anthropic' else 'Uso da assinatura ChatGPT pelo Codex CLI. Limites do plano se aplicam; saldo não é inventado.'}
 
     @app.post('/chat/cancel/{cid}',dependencies=[Depends(auth)])
@@ -302,7 +319,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     async def chat(body: ChatBody, request: Request):
         if not body.content.strip(): raise HTTPException(422,'Mensagem vazia')
         if not store.conversation(body.conversation_id): raise HTTPException(404,'Conversa não encontrada')
-        payload,profile,previous_count,context_count,result_truncated,recalled,estimate=context_for(body)
+        payload,profile,previous_count,context_count,result_truncated,recalled,estimate=await context_for(body)
         try:
             if body.model in ('cloud:codex','cloud:anthropic'):
                 status=await asyncio.to_thread(codex.status) if body.model=='cloud:codex' else anthropic.status()
@@ -366,9 +383,13 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             except Exception:
                 status='error'; yield line({'type':'error','code':'internal','message':'Erro interno. Histórico preservado; tente novamente.'})
             finally:
+                if status=='complete' and text.strip():
+                    try:metrics={**(metrics or {}),'verification':verify_reply(text,conversation_urls(store,cid))}
+                    except Exception:pass
                 store.checkpoint(mid,text,status,metrics)
                 engine.active.pop(cid,None)
                 store.audit('generation_'+status,body.model)
+                if status=='complete':knowledge.schedule_summary(cid,body.model)
             yield line({'type':'done','status':status,'metrics':metrics})
         return StreamingResponse(generate(),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
     return app

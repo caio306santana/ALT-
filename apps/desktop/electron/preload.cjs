@@ -27,4 +27,17 @@ contextBridge.exposeInMainWorld("alt", {
   openReleases: () => ipcRenderer.invoke("help:open"),
   verifyUpdate: () => ipcRenderer.invoke("updates:verify"),
   applyUpdate: () => ipcRenderer.invoke("updates:apply"),
+  checkUpdate: () => ipcRenderer.invoke("updates:check"),
+  downloadUpdate: () => ipcRenderer.invoke("updates:download"),
+  onUpdate: (callback) => {
+    const available = (_, info) => callback("available", info);
+    const progress = (_, info) => callback("progress", info);
+    ipcRenderer.on("updates:available", available);
+    ipcRenderer.on("updates:progress", progress);
+    return () => {
+      ipcRenderer.removeListener("updates:available", available);
+      ipcRenderer.removeListener("updates:progress", progress);
+    };
+  },
+  importDocument: (projectId) => ipcRenderer.invoke("document:import", projectId),
 });

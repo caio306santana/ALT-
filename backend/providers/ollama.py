@@ -79,6 +79,7 @@ class Ollama:
                 }
                 if 'qwen3.5' in model.lower(): payload['think']=False
                 if profile.get('tools'):payload['tools']=profile['tools']
+                if profile.get('format'):payload['format']=profile['format']
                 async with client.stream('POST', self.base_url+'/api/chat', json=payload) as response:
                     if response.status_code != 200:
                         await response.aread()
@@ -109,3 +110,15 @@ class Ollama:
             raise ProviderError('Ollama excedeu o tempo de espera. A resposta parcial foi preservada.', 'timeout') from exc
         except (httpx.HTTPError, ValueError) as exc:
             raise ProviderError('A conexão com o Ollama foi interrompida.', 'connection') from exc
+
+    async def embed(self,texts):
+        # Fixed, local-only model; no automatic download or cloud fallback.
+        entries=await self.models()
+        model=next((m['name'] for m in entries if m.get('name','').split(':')[0]=='embeddinggemma' and not m.get('remote_host')),None)
+        if not model:raise ValueError('Instale EmbeddingGemma para ativar a busca semântica local.')
+        async with httpx.AsyncClient(timeout=120,trust_env=False) as client:
+            response=await client.post(self.base_url+'/api/embed',json={'model':model,'input':texts,'truncate':False,'keep_alive':'5m'})
+            response.raise_for_status()
+            vectors=response.json().get('embeddings',[])
+            if len(vectors)!=len(texts):raise ValueError('O modelo não retornou todos os vetores.')
+            return vectors

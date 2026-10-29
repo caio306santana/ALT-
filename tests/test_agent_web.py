@@ -47,12 +47,17 @@ def test_limited_and_windows_authorizations_revoke_and_deny_secrets(tmp_path,mon
         assert app.state.tools.scoped('windows-profile','notes.txt')==personal/'notes.txt'
         with pytest.raises(ValueError):app.state.tools.scoped('windows-profile','AppData/secret.txt')
         with pytest.raises(ValueError):app.state.tools.scoped('windows-profile','../outside.txt')
-        proposal=client.post('/tools/propose',json={'tool':'write_text','scope_id':'windows-profile','path':'notes.txt','content':'new'}).json()
-        assert proposal['preview']['critical']
-        assert client.post('/tools/approve/'+proposal['id']).status_code==403
-        client.post('/tools/confirm/'+proposal['id'])
-        assert client.post('/tools/approve/'+proposal['id']).status_code==200
+        # Full access: the owner accepted unattended writes when granting mode 4.
+        body=ToolProposal(tool='write_text',scope_id='windows-profile',path='notes.txt',content='new')
+        assert app.state.tools.can_auto(body) and app.state.tools.can_auto(ToolProposal(tool='close_app',app='notepad'))
+        proposal=client.post('/tools/propose',json=body.model_dump()).json()
+        assert not proposal['preview']['critical']
+        result=client.post('/tools/approve/'+proposal['id']).json()['result']
         assert (personal/'notes.txt').read_text()=='new'
+        assert Path(result['previous_version']).read_text()=='personal note'
+        policy=client.get('/policy').json()['policy'];policy['capabilities']['files_write']='deny';client.put('/policy',json=policy)
+        client.post('/permissions/grant',json={'level':4,'scope_ids':[scope]})
+        assert not app.state.tools.can_auto(body)
         client.post('/actions/stop')
         assert client.get('/permissions').json()['level']==1
         assert client.post('/permissions/grant',json={'level':4,'scope_ids':[]}).status_code==403

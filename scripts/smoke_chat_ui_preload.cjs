@@ -16,11 +16,22 @@ contextBridge.exposeInMainWorld('alt',{
     if(route.endsWith('/actions'))return [];
     if(route==='/permissions'){if(method==='PUT')level=body.level;return {level,scopes:[{id:'fixture-scope',path:'C:\\Projetos\\Aurora'}],auto_scopes:['fixture-scope']};}
     if(route==='/chat/estimate')return {fits:failure!=='context',input_tokens:failure==='context'?3500:1550,input_limit:3200,history_included:2,history_total:2,tokenizer:'Qwen 3.5',reason:failure==='context'?'Mensagem sintética acima do contexto.':undefined};
+    if(route==='/knowledge/status')return {status:'complete',completed:3,total:3,indexed:3,items:3};
+    if(route.endsWith('/project'))return {project_id:''};
+    if(route==='/projects')return [{id:'00000000-0000-0000-0000-0000000000aa',name:'Aurora',created:conversation.created}];
+    if(route==='/tasks')return [{id:'00000000-0000-0000-0000-0000000000bb',conversation_id:cid,goal:'Calcule 15% de 2400 e grave em resultado.txt',model:'qwen3.5:4b',scope_id:'fixture-scope',state:'awaiting_approval',cursor:1,
+      plan:{steps:[{title:'Calcular 15% de 2400',action:{tool:'calculate',expression:'2400*0.15'}},{title:'Gravar resultado.txt',action:{tool:'write_text',path:'resultado.txt',content:'Resultado: 360'}}]},
+      history:[{step:'Calcular 15% de 2400',tool:'calculate',verified:true,reason:'Resultado conferido com a ferramenta.',result_excerpt:'{"value": 360.0}'}],
+      current_proposal:{id:'00000000-0000-0000-0000-0000000000cc',preview:{tool:'write_text',path:'C:\Projetos\Aurora\resultado.txt',diff:'+Resultado: 360',creates_file:true}},notice:'Executando o plano revisado.',created:conversation.created}];
+    // Lists the visual pass does not exercise in detail.
+    if(method==='GET')return [];
     throw new Error('Unexpected fixture route '+route);
   },
   stream:async()=>{streamCalls++;throw new Error('Falha sintética de transporte antes da aceitação.');},
   window:async()=>true,
   chooseWorkspace:async()=>null,
   grantWindows:async()=>{throw new Error('No real permission grants in a fixture.');},
+  onUpdate:()=>()=>{},
+  importDocument:async()=>null,
 });
 contextBridge.exposeInMainWorld('chatFixture',{setFailure:value=>{failure=value;},calls:()=>streamCalls});
