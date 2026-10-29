@@ -50,7 +50,6 @@ SQLite de conversas/memórias não é criptografado. Credencial Anthropic opcion
 
 ## Pendências reais
 
-1. Confirmar envio dos três assets da release 0.3 e digest no GitHub; depois manter este registro atualizado e Git limpo.
 1. Revisão visual completa de Controle/Navegador/Memória/Laboratório e instalação em Windows limpo/PC principal; teste prolongado e GPU real.
 2. Memória semântica/importação de documentos, resumos automáticos por projeto e recuperação mais refinada; hoje é rascunho revisado e busca por termos.
 3. Mais abas e tarefas longas de navegador, automação genérica da GUI Windows, tratamento de apps que mudam PID, rotinas e integrações adicionais.
