@@ -1,0 +1,27 @@
+{
+  "name": "alt-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ALT-AI — assistente pessoal local",
+  "author": "ALT-AI",
+  "main": "apps/desktop/electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit -p apps/desktop/tsconfig.json && vite build --config apps/desktop/vite.config.ts",
+    "start": "electron .",
+    "test": ".venv\\Scripts\\python.exe -m pytest tests -q",
+    "backend:build": ".venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean backend.spec",
+    "dist": "npm run build && npm run backend:build && electron-builder --win nsis --publish never",
+    "pack": "npm run build && npm run backend:build && electron-builder --win dir --publish never"
+  },
+  "dependencies": {"react": "^19.2.0", "react-dom": "^19.2.0", "lucide-react": "^0.468.0", "react-markdown": "^10.1.0", "remark-gfm": "^4.0.1"},
+  "devDependencies": {"@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "@types/node": "^24.0.0", "@vitejs/plugin-react": "^5.0.0", "typescript": "^5.9.0", "vite": "^7.2.0", "electron": "^42.0.0", "electron-builder": "^26.0.0"},
+  "build": {
+    "appId": "com.altai.desktop", "productName": "ALT-AI", "asar": true,
+    "directories": {"output": "release"},
+    "files": ["apps/desktop/dist/**/*", "apps/desktop/electron/**/*", "package.json"],
+    "extraResources": [{"from": "dist/alt-backend", "to": "backend"}],
+    "win": {"target": [{"target": "nsis", "arch": ["x64"]}], "signAndEditExecutable": false},
+    "nsis": {"oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "artifactName": "ALT-AI-Setup-${version}-${arch}.${ext}"}
+  }
+}

@@ -1,0 +1,68 @@
+import asyncio
+import json
+import httpx
+
+class ProviderError(Exception):
+    def __init__(self, message, code='provider_error'):
+        super().__init__(message)
+        self.code = code
+
+class Ollama:
+    # Fixed loopback endpoint. The renderer cannot supply a URL or credentials.
+    base_url = 'http://127.0.0.1:11434'
+
+    async def models(self):
+        try:
+            async with httpx.AsyncClient(timeout=5, trust_env=False) as client:
+                res = await client.get(self.base_url+'/api/tags')
+                res.raise_for_status()
+                return res.json().get('models', [])
+        except (httpx.HTTPError, ValueError) as exc:
+            raise ProviderError('Ollama não está acessível em 127.0.0.1:11434. Instale ou abra o Ollama.', 'connection') from exc
+
+    async def running(self):
+        try:
+            async with httpx.AsyncClient(timeout=5, trust_env=False) as client:
+                res = await client.get(self.base_url+'/api/ps')
+                res.raise_for_status()
+                return res.json().get('models', [])
+        except (httpx.HTTPError, ValueError):
+            return None
+
+    async def stream(self, model, messages, cancel):
+        timeout = httpx.Timeout(connect=5, read=300, write=30, pool=5)
+        try:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                async with client.stream('POST', self.base_url+'/api/chat', json={
+                    'model':model, 'messages':messages, 'stream':True,
+                    'options':{'num_ctx':8192, 'num_predict':4096}, 'keep_alive':'5m'
+                }) as response:
+                    if response.status_code != 200:
+                        await response.aread()
+                        raise ProviderError('Ollama recusou a geração. Confira o modelo e os logs locais.', 'inference')
+                    iterator = response.aiter_lines().__aiter__()
+                    while not cancel.is_set():
+                        pending = asyncio.create_task(anext(iterator))
+                        stopped = asyncio.create_task(cancel.wait())
+                        try:
+                            ready,_ = await asyncio.wait([pending,stopped],return_when=asyncio.FIRST_COMPLETED)
+                            if stopped in ready:
+                                return
+                            try:
+                                line = pending.result()
+                            except StopAsyncIteration:
+                                return
+                            if line:
+                                chunk = json.loads(line)
+                                if chunk.get('error'):
+                                    raise ProviderError('Falha de inferência informada pelo Ollama.', 'inference')
+                                yield chunk
+                        finally:
+                            for task in (pending,stopped):
+                                if not task.done():
+                                    task.cancel()
+                            await asyncio.gather(pending,stopped,return_exceptions=True)
+        except httpx.TimeoutException as exc:
+            raise ProviderError('Ollama excedeu o tempo de espera. A resposta parcial foi preservada.', 'timeout') from exc
+        except (httpx.HTTPError, ValueError) as exc:
+            raise ProviderError('A conexão com o Ollama foi interrompida.', 'connection') from exc
