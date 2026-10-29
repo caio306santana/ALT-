@@ -58,7 +58,7 @@ def extract_document(path):
 class Knowledge:
     def __init__(self,store,library,continuity,engine,ollama):
         self.store,self.library,self.continuity,self.engine,self.ollama=store,library,continuity,engine,ollama
-        self.index_task=None;self.summary_tasks={};self.index_state={'status':'idle','completed':0,'total':0}
+        self.index_task=None;self.summary_tasks={};self.query_vectors={};self.index_state={'status':'idle','completed':0,'total':0}
         store.db.executescript('''
           CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,name TEXT NOT NULL,created TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS conversation_projects(conversation_id TEXT PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,last_summary_count INTEGER NOT NULL DEFAULT 0);
@@ -83,7 +83,7 @@ class Knowledge:
         return {'project_id':pid}
     def project_for(self,cid):
         rows=self.store.rows('SELECT project_id FROM conversation_projects WHERE conversation_id=?',(cid,));return rows[0]['project_id'] if rows else ''
-    def documents(self,pid):return self.store.rows('SELECT * FROM documents WHERE project_id=? ORDER BY created DESC',(pid,))
+    def documents(self,pid):return self.store.rows('SELECT d.*,(SELECT COUNT(*) FROM document_chunks c WHERE c.document_id=d.id) AS chunks FROM documents d WHERE d.project_id=? ORDER BY d.created DESC',(pid,))
     def import_document(self,pid,path):
         if not self.store.rows('SELECT id FROM projects WHERE id=?',(pid,)):raise ValueError('Projeto não encontrado.')
         sections=extract_document(path);all_text='\n'.join(t for _,t in sections);digest=hashlib.sha256(all_text.encode()).hexdigest()
@@ -96,7 +96,7 @@ class Knowledge:
                 self.store.db.execute('INSERT INTO documents VALUES(?,?,?,?,?)',(did,pid,Path(path).name,digest,now()))
                 self.store.db.executemany('INSERT INTO document_chunks VALUES(?,?,?,?)',rows);self.store.db.commit()
             except Exception:self.store.db.rollback();raise
-        self.store.audit('document_imported',did);return {'id':did,'chunks':len(rows),'name':Path(path).name}
+        self.store.audit('document_imported',did);return {'id':did,'chunks':len(rows),'name':Path(path).name,'duplicate':False}
 
     async def model_digest(self):
         model=next((m for m in await self.ollama.models() if m.get('name','').split(':')[0]=='embeddinggemma' and not m.get('remote_host')),None)
@@ -144,17 +144,38 @@ class Knowledge:
             self.index_state['status']='cancelled' if cancel.is_set() else 'complete'
         except Exception as exc:self.index_state.update({'status':'error','error':str(exc)[:400]})
         finally:self.engine.active.pop('semantic-index',None)
-    async def search(self,query,pid='',limit=6):
-        digest=await self.model_digest();vector=unit((await self.ollama.embed([query[:1500]]))[0]);ranked=[]
+    async def search(self,query,pid='',limit=6,minimum=.25):
+        query=query.strip()
+        if not query:return []
+        digest=await self.model_digest();key=(digest,query[:1500])
+        if key not in self.query_vectors:
+            # Typing re-estimates context; repeated queries reuse their vector.
+            if len(self.query_vectors)>=64:self.query_vectors.pop(next(iter(self.query_vectors)))
+            self.query_vectors[key]=unit((await self.ollama.embed([query[:1500]]))[0])
+        vector=self.query_vectors[key];ranked=[]
+        stored={(r['kind'],r['item_id']):r for r in self.store.rows('SELECT * FROM semantic_vectors WHERE model_digest=?',(digest,))}
         for item in self.items(pid):
-            fingerprint=hashlib.sha256((item['title']+'\n'+item['content']).encode()).hexdigest()
-            rows=self.store.rows('SELECT vector FROM semantic_vectors WHERE kind=? AND item_id=? AND content_hash=? AND model_digest=?',(item['kind'],item['id'],fingerprint,digest))
-            if not rows:continue
-            indexed=json.loads(rows[0]['vector'])
+            row=stored.get((item['kind'],item['id']))
+            # Vectors of edited items are stale until re-indexed; never rank them.
+            if not row or row['content_hash']!=hashlib.sha256((item['title']+'\n'+item['content']).encode()).hexdigest():continue
+            indexed=json.loads(row['vector'])
             if len(indexed)!=len(vector):continue
             score=sum(a*b for a,b in zip(vector,indexed))
-            if score>=.25:ranked.append({**item,'score':round(score,4)})
+            if score>=minimum:ranked.append({**item,'score':round(score,4)})
         ranked.sort(key=lambda r:r['score'],reverse=True);return ranked[:limit]
+    def status(self):
+        indexed=self.store.rows('SELECT COUNT(*) AS n FROM semantic_vectors')[0]['n']
+        return {**self.index_state,'indexed':indexed,'items':len(self.items())}
+    def delete_document(self,did):
+        with self.store.lock:
+            chunk_ids=[r['id'] for r in self.store.rows('SELECT id FROM document_chunks WHERE document_id=?',(did,))]
+            self.store.db.executemany("DELETE FROM semantic_vectors WHERE kind='chunk' AND item_id=?",[(c,) for c in chunk_ids])
+            self.store.db.execute('DELETE FROM document_chunks WHERE document_id=?',(did,));self.store.db.execute('DELETE FROM documents WHERE id=?',(did,));self.store.db.commit()
+        self.store.audit('document_deleted',did);return {'ok':True}
+    def delete_project(self,pid):
+        for doc in self.documents(pid):self.delete_document(doc['id'])
+        # Approved memories survive; they only lose the project link.
+        self.store.write('DELETE FROM projects WHERE id=?',(pid,));self.store.audit('project_deleted',pid);return {'ok':True}
 
     def summary_drafts(self,pid):return [{**r,'payload':json.loads(r['payload'])} for r in self.store.rows("SELECT * FROM project_summary_drafts WHERE project_id=? AND status='draft' ORDER BY created DESC",(pid,))]
     async def draft_summary(self,cid,model):

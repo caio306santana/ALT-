@@ -1,0 +1,230 @@
+{
+  "model": "qwen3.5:4b",
+  "profile": "notebook",
+  "started": "2026-10-29T16:32:01-0300",
+  "stages": {
+    "3_semantic_memory": {
+      "document_chunks": 1,
+      "index": {
+        "status": "complete",
+        "completed": 3,
+        "total": 3,
+        "indexed": 3,
+        "items": 3
+      },
+      "searches": {
+        "que horas sai meu avião?": {
+          "top": "Preferência de estudo :: Prefiro estudar programação à noite, em blocos de 50 minutos.",
+          "score": 0.4031,
+          "expected_in_top": false
+        },
+        "como faço o doce de cenoura?": {
+          "top": "receitas.md · texto :: # Caderno de receitas\r\nBolo de cenoura: bata cenoura, ovos e óleo; misture farinha e açúca",
+          "score": 0.4768,
+          "expected_in_top": true
+        },
+        "quando estudo melhor?": {
+          "top": "Preferência de estudo :: Prefiro estudar programação à noite, em blocos de 50 minutos.",
+          "score": 0.5918,
+          "expected_in_top": true
+        },
+        "manutenção do veículo": {
+          "top": "Carro :: A revisão do carro vence em março; oficina do bairro.",
+          "score": 0.4744,
+          "expected_in_top": true
+        }
+      },
+      "seconds": 32.4
+    },
+    "3_chat_recall": {
+      "recalled": [
+        {
+          "id": "923a5029-348e-4155-952c-2a721faab34c",
+          "title": "receitas.md · texto",
+          "kind": "chunk",
+          "score": 0.4874,
+          "mode": "semântica (EmbeddingGemma)"
+        },
+        {
+          "id": "115612c3-8b7e-488f-aaf2-554d5010d3a0",
+          "title": "Preferência de estudo",
+          "kind": "memory",
+          "score": 0.3095,
+          "mode": "semântica (EmbeddingGemma)"
+        },
+        {
+          "id": "e2899fc4-4ce8-433c-993e-370400e65620",
+          "title": "Carro",
+          "kind": "memory",
+          "score": 0.281,
+          "mode": "semântica (EmbeddingGemma)"
+        }
+      ],
+      "reply": "O seu voo sai às 22h do terminal 2 e lembre-se de levar um adaptador de tomada tipo F, pois a Europa é literalmente uma outra dimensão se você esquecer a adaptação básica.",
+      "status": "complete",
+      "mentions_22h": true,
+      "verification": {
+        "calculations": [],
+        "sources": [],
+        "issues": 0,
+        "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+      },
+      "seconds": 261.2
+    },
+    "2_multi_step_task": {
+      "state": "draft",
+      "notice": "Revise o plano antes de iniciar. Nenhuma ação foi executada.",
+      "plan": {
+        "steps": [
+          {
+            "title": "Calcular 15% de 2400",
+            "action": {
+              "tool": "calculate",
+              "scope_id": "",
+              "path": "",
+              "content": "",
+              "expression": "2400 * 0.15",
+              "app": "notepad",
+              "target": "",
+              "snapshot_id": "",
+              "window_id": "",
+              "url": "",
+              "query": ""
+            },
+            "expected": ""
+          },
+          {
+            "title": "Criar arquivo resultado.txt com o texto 'Resultado: 360'",
+            "action": {
+              "tool": "write_text",
+              "scope_id": "",
+              "path": ".",
+              "content": "Resultado: 360",
+              "expression": "",
+              "app": "notepad",
+              "target": "",
+              "snapshot_id": "",
+              "window_id": "",
+              "url": "",
+              "query": ""
+            },
+            "expected": ""
+          },
+          {
+            "title": "Ler o conteúdo de resultado.txt para conferência",
+            "action": {
+              "tool": "read_text",
+              "scope_id": "",
+              "path": ".//resultado.txt",
+              "content": "",
+              "expression": "",
+              "app": "notepad",
+              "target": "",
+              "snapshot_id": "",
+              "window_id": "",
+              "url": "",
+              "query": ""
+            },
+            "expected": ""
+          }
+        ]
+      },
+      "planning_seconds": 64.8,
+      "final_state": "completed",
+      "final_notice": "Plano aprovado executado; resultados conferidos. Revise as evidências para confirmar o alcance do objetivo.",
+      "history": [
+        {
+          "step": "Calcular 15% de 2400",
+          "tool": "calculate",
+          "verified": true,
+          "reason": "Resultado conferido com a ferramenta; isso não garante fatos além do resultado observado."
+        },
+        {
+          "step": "Calcular 15% de 2400",
+          "tool": "calculate",
+          "verified": true,
+          "reason": "Resultado conferido com a ferramenta; isso não garante fatos além do resultado observado."
+        },
+        {
+          "step": "Criar arquivo resultado.txt com texto",
+          "tool": "write_text",
+          "verified": true,
+          "reason": "Resultado conferido com a ferramenta; isso não garante fatos além do resultado observado."
+        },
+        {
+          "step": "Ler arquivo resultado.txt",
+          "tool": "read_text",
+          "verified": true,
+          "reason": "Resultado conferido com a ferramenta; isso não garante fatos além do resultado observado."
+        }
+      ],
+      "file_written": "Resultado: 360",
+      "total_seconds": 185.0
+    },
+    "2_pause_resume": {
+      "planned_state": "draft",
+      "plan": {
+        "steps": [
+          {
+            "title": "Calcular o valor de 12*12",
+            "action": {
+              "tool": "calculate",
+              "scope_id": "",
+              "path": "",
+              "content": "",
+              "expression": "12 * 12",
+              "app": "notepad",
+              "target": "",
+              "snapshot_id": "",
+              "window_id": "",
+              "url": "",
+              "query": ""
+            },
+            "expected": ""
+          },
+          {
+            "title": "Gravar o resultado em quadrado.txt",
+            "action": {
+              "tool": "write_text",
+              "scope_id": "",
+              "path": "quadrado.txt",
+              "content": "144",
+              "expression": "",
+              "app": "notepad",
+              "target": "",
+              "snapshot_id": "",
+              "window_id": "",
+              "url": "",
+              "query": ""
+            },
+            "expected": ""
+          }
+        ]
+      },
+      "first_stop": "awaiting_approval",
+      "cursor_before_pause": 1,
+      "final_state": "completed",
+      "completed_actions": [
+        "write_text",
+        "calculate",
+        "read_text",
+        "write_text",
+        "calculate",
+        "calculate"
+      ],
+      "history": [
+        {
+          "step": "Calcular o valor de 12*12",
+          "tool": "calculate",
+          "verified": true
+        },
+        {
+          "step": "Gravar o resultado em quadrado.txt",
+          "tool": "write_text",
+          "verified": true
+        }
+      ],
+      "actions_proposed_after_resume": 1
+    }
+  }
+}

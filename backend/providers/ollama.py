@@ -117,7 +117,7 @@ class Ollama:
         model=next((m['name'] for m in entries if m.get('name','').split(':')[0]=='embeddinggemma' and not m.get('remote_host')),None)
         if not model:raise ValueError('Instale EmbeddingGemma para ativar a busca semântica local.')
         async with httpx.AsyncClient(timeout=120,trust_env=False) as client:
-            response=await client.post(self.base_url+'/api/embed',json={'model':model,'input':texts,'truncate':False,'keep_alive':0})
+            response=await client.post(self.base_url+'/api/embed',json={'model':model,'input':texts,'truncate':False,'keep_alive':'5m'})
             response.raise_for_status()
             vectors=response.json().get('embeddings',[])
             if len(vectors)!=len(texts):raise ValueError('O modelo não retornou todos os vetores.')

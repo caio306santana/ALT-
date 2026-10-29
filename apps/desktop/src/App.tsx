@@ -38,6 +38,7 @@ import {
   Wrench,
   Gamepad2,
   Globe,
+  ListChecks,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {version as appVersion} from '../../../package.json';
@@ -53,6 +54,11 @@ import type {
 } from "../../../packages/shared-types";
 import { themes } from "../../../packages/design-tokens/themes";
 import { ProfilePanel } from "./components/ProfilePanel";
+import {
+  TasksPanel,
+  UpdateNotice,
+  VerificationNote,
+} from "./components/AgentPanels";
 import { ApprovalMenu } from "./components/ApprovalMenu";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import {
@@ -103,7 +109,8 @@ type View =
   | "memory"
   | "tools"
   | "profile"
-  | "browser";
+  | "browser"
+  | "tasks";
 type SystemData = {
   cpu: { name: string; percent: number; logical_cores: number };
   ram: { used: number; total: number; available: number; percent: number };
@@ -606,6 +613,7 @@ export default function App() {
     { id: "history" as View, icon: Database, label: "Histórico" },
     { id: "memory" as View, icon: Brain, label: "Memória" },
     { id: "tools" as View, icon: Wrench, label: "Ferramentas" },
+    { id: "tasks" as View, icon: ListChecks, label: "Tarefas" },
     { id: "browser" as View, icon: Globe, label: "Navegador ALT" },
     { id: "monitor" as View, icon: Activity, label: "Sistema" },
     { id: "security" as View, icon: Shield, label: "Controle e regras" },
@@ -724,7 +732,9 @@ export default function App() {
                               ? "IDENTITY CORE"
                               : view === "browser"
                                 ? "WEB WORKSPACE"
-                                : "LOCAL HISTORY"}
+                                : view === "tasks"
+                                  ? "AGENT TASKS"
+                                  : "LOCAL HISTORY"}
               </span>
               <h1>
                 {view === "chat"
@@ -743,7 +753,9 @@ export default function App() {
                               ? "Seu perfil"
                               : view === "browser"
                                 ? "Navegador ALT"
-                                : "Você está no controle"}
+                                : view === "tasks"
+                                  ? "Tarefas com várias ações"
+                                  : "Você está no controle"}
                 <span className="small-tag">
                   {prefs.model.startsWith("cloud:") && view === "chat"
                     ? "NUVEM"
@@ -785,6 +797,7 @@ export default function App() {
               </button>
             </div>
           )}
+          <UpdateNotice onError={report} />
           {pulling && (
             <div className="banner">
               <Download size={16} />
@@ -945,6 +958,9 @@ export default function App() {
                               Copiar
                             </button>
                           </div>
+                        )}
+                        {m.role === "assistant" && m.status === "complete" && (
+                          <VerificationNote verification={m.metrics?.verification} />
                         )}
                       </article>
                     ))}
@@ -1476,6 +1492,15 @@ export default function App() {
           {view === "security" && (
             <OwnerControlPanel notify={setNotice} onError={report} />
           )}
+          {view === "tasks" && (
+            <TasksPanel
+              models={models}
+              model={prefs.model}
+              notify={setNotice}
+              onError={report}
+              onOpenConversation={(id) => openConversation(id).catch(report)}
+            />
+          )}
           {view === "browser" && (
             <BrowserPanel
               notify={setNotice}
@@ -1810,6 +1835,24 @@ export default function App() {
                   >
                     <ExternalLink size={14} />
                     Versões e instaladores
+                  </button>
+                  <button
+                    className="secondary full"
+                    onClick={() =>
+                      window.alt
+                        .checkUpdate()
+                        .then((r) => {
+                          if (r.available) {
+                            localStorage.removeItem("alt-dismissed-update");
+                            setNotice(`Nova versão ${r.version} disponível; confira as notas no aviso.`);
+                            window.dispatchEvent(new CustomEvent("alt-update", { detail: r }));
+                          } else setNotice(r.reason || "Nenhuma versão nova.");
+                        })
+                        .catch(report)
+                    }
+                  >
+                    <RefreshCw size={14} />
+                    Procurar nova versão
                   </button>
                   <button
                     className="secondary full"

@@ -14,6 +14,7 @@ def tool_spec(content,status):
     if not browser and any(word in text for word in ('abra','abrir','calculadora','bloco de notas','notepad')):names+=['open_app']
     if any(word in text for word in ('feche','fechar')):names+=['close_app']
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
+    if any(word in text for word in ('baixe','baixar','download')):names+=['download_file']
     if not names:return None
     schema=ToolProposal.model_json_schema();properties={key:value for key,value in schema['properties'].items() if key in {'tool','query','url','scope_id','path','content','app','expression','target','snapshot_id'}}
     relevant={'tool'}
@@ -23,6 +24,7 @@ def tool_spec(content,status):
     if browser:relevant.add('url')
     if any(name in names for name in ('browser_click','browser_type')):relevant.update(('target','snapshot_id','content'))
     if 'calculate' in names:relevant.add('expression')
+    if 'download_file' in names:relevant.update(('url','path','scope_id'))
     properties={key:{k:v for k,v in value.items() if k in ('type','enum')} for key,value in properties.items() if key in relevant}
     properties['tool']={'type':'string','enum':list(dict.fromkeys(names))}
     description='Propor ação; aplicativo aplica permissões. Só afirme execução com resultado.'

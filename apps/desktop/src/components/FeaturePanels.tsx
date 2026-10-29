@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ContinuityPanel } from "./WorkspacePanels";
+import { ProjectsPanel } from "./AgentPanels";
 import {
   Plus,
   Save,
@@ -383,6 +384,13 @@ export function MemoryPanel({
   }
   return (
     <div className="page-scroll">
+      <ProjectsPanel
+        conversationId={conversationId}
+        model={model}
+        notify={notify}
+        onError={onError}
+        onSaved={() => refresh().catch(onError)}
+      />
       <ContinuityPanel
         conversationId={conversationId}
         model={model}
@@ -737,9 +745,9 @@ export function ToolsPanel({
           },
           {
             level: 4,
-            title: "Controle amplo Windows",
-            tag: "04 / SUPERVISED",
-            text: "Até você alterar. Perfil pessoal e pastas escolhidas; gravações, aplicativos e navegação supervisionados.",
+            title: "Acesso total",
+            tag: "04 / FULL ACCESS",
+            text: "Até você alterar. Internet, downloads, arquivos do computador, aplicativos e tarefas executam sem pedir aprovação, salvo o que você bloquear em Controle e regras.",
           },
         ].map((mode) => (
           <button

@@ -19,7 +19,7 @@ class DraftBody(Strict):
 class ImportBody(Strict): items:list[MemoryBody]=Field(min_length=1,max_length=300)
 class EvaluationBody(Strict):
     models:list[str]=Field(min_length=1,max_length=3)
-    case_ids:list[Literal['debate','discussion','accuracy']]=Field(default_factory=lambda:['debate','discussion','accuracy'],min_length=1,max_length=3)
+    case_ids:list[Literal['debate','discussion','accuracy','practical','support','sources','math_prose']]=Field(default_factory=lambda:['debate','discussion','accuracy','practical','support','sources','math_prose'],min_length=1,max_length=7)
 class RatingBody(Strict):
     model:str=Field(max_length=120)
     portuguese:int=Field(ge=1,le=5)

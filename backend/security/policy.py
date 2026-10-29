@@ -16,6 +16,7 @@ class Capabilities(BaseModel):
     browser_interaction: Decision = 'ask'
     windows_read:Decision='ask'
     windows_control:Decision='ask'
+    downloads:Decision='ask'
 
 class OwnerPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -32,6 +33,7 @@ CAPABILITY = {
     'browser_click':'browser_interaction', 'browser_type':'browser_interaction',
     'browser_back':'browser_navigation',
     'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control',
+    'download_file':'downloads',
 }
 
 class Policy:
@@ -57,7 +59,7 @@ class Policy:
             'boundaries': [
                 {'source':'Aplicativo', 'text':'Nenhum filtro adicional por assunto. Suas regras de conversa entram no prompt; instruções de operação e a personalidade efetiva ficam visíveis aqui.'},
                 {'source':'Modelo', 'text':'O modelo instalado tem comportamentos aprendidos. Regras do aplicativo não reescrevem seus pesos nem garantem respostas sem recusas.'},
-                {'source':'Autorização', 'text':'Observação não executa. Permitir automaticamente atua nos modos 3/4 e nos escopos autorizados. Aprovação não amplia os direitos do usuário Windows.'},
+                {'source':'Autorização', 'text':'Observação não executa. No modo 3, permitir automaticamente atua nos escopos autorizados. No modo 4 (acesso total) tudo que não estiver bloqueado executa sem aprovação. Nenhum modo amplia os direitos do usuário Windows.'},
                 {'source':'Implementação atual', 'text':'Sem shell genérico ou privilégios administrativos. Credenciais/AppData/sistema ficam fora das ferramentas de arquivos; gravação no perfil exige confirmação nativa adicional. Heurística de credenciais evita salvar/expor segredos conhecidos.'},
                 {'source':'Navegador', 'text':'Janela isolada, HTTPS público, sem permissões de câmera/microfone, downloads ou acesso à sessão do seu navegador pessoal. Conteúdo pode estar incorreto; cliques e digitação seguem suas regras.'},
                 {'source':'Serviços externos', 'text':'Codex/Claude e sites mantêm regras próprias. Envio à nuvem continua exigindo prévia e consentimento; API paga não é ativada automaticamente.'},

@@ -9,6 +9,7 @@ from backend.security.permissions import PermissionEngine
 from backend.desktop import DesktopBridge
 from test_features import fixture_client
 from test_backend import conversation,send,events
+from backend.evaluations import CASES
 
 def test_policy_is_persistent_visible_and_enforced_again_at_execution(tmp_path):
     app,local,_,client=fixture_client(tmp_path)
@@ -73,7 +74,8 @@ def test_comparison_uses_only_installed_local_models_and_preserves_results_and_r
             latest=client.get('/evaluations').json()['runs'][0]
             if latest['status']!='running':break
             time.sleep(.02)
-        assert latest['status']=='complete' and len(latest['results'])==6
+        assert latest['status']=='complete' and len(latest['results'])==2*len(CASES)
+        assert all('checks' in r for r in latest['results'])
         assert {m for m,_ in local.contexts}=={'fixture:4b','fixture:9b'}
         rating={'model':'fixture:4b','portuguese':4,'personality':3,'usefulness':4,'freedom':4,'notes':'Revisão humana.'}
         assert client.put('/evaluations/'+run['id']+'/rating',json=rating).json()['ratings']['fixture:4b']['freedom']==4

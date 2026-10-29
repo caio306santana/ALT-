@@ -83,6 +83,18 @@ const allowed = [
   ["POST", /^\/continuity\/approve\/[a-f0-9-]+$/],
   ["PUT", /^\/evaluations\/[a-f0-9-]+\/rating$/],
   ["DELETE", /^\/programs\/[a-f0-9-]+$/],
+  ["GET", /^\/(tasks|projects|knowledge\/status)$/],
+  ["GET", /^\/tasks\/[a-f0-9-]+$/],
+  ["GET", /^\/conversations\/[a-f0-9-]+\/project$/],
+  ["GET", /^\/projects\/[a-f0-9-]+\/(documents|summaries)$/],
+  [
+    "POST",
+    /^\/(tasks|projects|knowledge\/index|knowledge\/index\/cancel|knowledge\/search|projects\/summaries\/draft)$/,
+  ],
+  ["POST", /^\/tasks\/[a-f0-9-]+\/(start|pause)$/],
+  ["POST", /^\/projects\/summaries\/[a-f0-9-]+\/(approve|discard)$/],
+  ["PUT", /^\/(tasks\/[a-f0-9-]+\/plan|conversations\/[a-f0-9-]+\/project)$/],
+  ["DELETE", /^\/(projects|documents)\/[a-f0-9-]+$/],
 ];
 function bindShortcut(shortcut) {
   if (
@@ -430,6 +442,36 @@ ipcMain.handle("memory:import", async (event) => {
   if (consent.response !== 1) return null;
   return (await request("POST", "/memories/import", { items })).json();
 });
+ipcMain.handle("document:import", async (event, projectId) => {
+  validate(event);
+  if (!/^[a-f0-9-]{36}$/.test(String(projectId)))
+    throw new Error("Projeto inválido");
+  const chosen = await dialog.showOpenDialog(win, {
+    title: "Importar documento para o projeto",
+    properties: ["openFile"],
+    filters: [
+      { name: "Documentos", extensions: ["pdf", "docx", "txt", "md"] },
+    ],
+  });
+  if (chosen.canceled) return null;
+  const file = chosen.filePaths[0];
+  const consent = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Importar"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Importar este documento para a memória do projeto?",
+    detail:
+      file +
+      "\n\nO texto é extraído e guardado localmente, sem envio à nuvem. O original não é alterado. Possíveis credenciais bloqueiam a importação.",
+  });
+  if (consent.response !== 1) return null;
+  return (
+    await request("POST", "/projects/" + projectId + "/documents", {
+      path: file,
+    })
+  ).json();
+});
 ipcMain.handle("workspace:choose", async (event) => {
   validate(event);
   const chosen = await dialog.showOpenDialog(win, {
@@ -462,19 +504,19 @@ ipcMain.handle("windows:grant", async (event, level, scopeId) => {
     );
   const detail =
     level === 4
-      ? "Sem prazo; permanece autorizado até você alterar ou revogar, inclusive ao reabrir a ALT: leitura automática de arquivos texto no seu perfil pessoal e pastas escolhidas. Abrir aplicativos, navegação e gravações continuam supervisionados. Gravações no perfil exigem confirmação adicional. Credenciais, AppData, sistema, shell arbitrário e privilégios administrativos ficam excluídos. STOP e Revogar encerram a sessão."
+      ? "ACESSO TOTAL, sem prazo, até você alterar ou revogar, inclusive ao reabrir a ALT. A ALT executará SEM PEDIR APROVAÇÃO tudo que não estiver bloqueado em Controle e regras: pesquisar e ler sites, baixar arquivos, ler, criar e sobrescrever arquivos em qualquer pasta local do seu usuário, abrir e fechar aplicativos, usar o navegador ALT e executar tarefas com várias etapas. Versões anteriores de arquivos sobrescritos ficam guardadas em file-history. Continuam sempre excluídos: arquivos de credenciais/AppData, shell arbitrário, privilégios de administrador e executar arquivos baixados. Conteúdo de sites pode tentar enganar o modelo; STOP e Revogar encerram tudo na hora."
       : `Sem prazo; permanece autorizado até você alterar ou revogar, inclusive ao reabrir a ALT: cálculo e leitura automática apenas em ${scope.path}. Gravações e consultas externas ainda pedem aprovação.`;
   const confirmation = await dialog.showMessageBox(win, {
     type: "warning",
     buttons: [
       "Cancelar",
-      level === 4 ? "Autorizar controle amplo" : "Autorizar leitura limitada",
+      level === 4 ? "Autorizar acesso total" : "Autorizar leitura limitada",
     ],
     defaultId: 0,
     cancelId: 0,
     message:
       level === 4
-        ? "Autorizar controle amplo supervisionado do Windows?"
+        ? "Dar acesso total à ALT, sem aprovação a cada ação?"
         : "Autorizar sessão de leitura limitada?",
     detail,
   });
@@ -575,6 +617,43 @@ ipcMain.handle("game:mode", async (event, enabled) => {
 ipcMain.handle("help:open", (event) => {
   validate(event);
   return shell.openExternal("https://github.com/caio306santana/ALT-/releases");
+});
+let releaseInfo = null;
+async function checkForRelease() {
+  const { checkRelease } = require("./update-feed.cjs");
+  const result = await checkRelease(app.getVersion());
+  releaseInfo = result.available ? result : null;
+  return result;
+}
+ipcMain.handle("updates:check", async (event) => {
+  validate(event);
+  return checkForRelease();
+});
+ipcMain.handle("updates:download", async (event) => {
+  validate(event);
+  if (!releaseInfo) throw new Error("Verifique se há uma nova versão primeiro.");
+  verifiedUpdate = null;
+  const { stageRelease } = require("./update-feed.cjs");
+  const { verifyUpdate } = require("./update-security.cjs");
+  const folder = path.join(app.getPath("userData"), "updates");
+  let last = 0;
+  const staged = await stageRelease(releaseInfo, folder, (received, total) => {
+    if (received - last < 1024 * 1024 && received !== total) return;
+    last = received;
+    win.webContents.send("updates:progress", { received, total });
+  });
+  const args = {
+    installerPath: staged.installerPath,
+    manifest: staged.manifest,
+    publicKey: fs.readFileSync(
+      path.join(root, "assets", "update-public-key.pem"),
+      "utf8",
+    ),
+    currentVersion: app.getVersion(),
+  };
+  const result = await verifyUpdate(args);
+  verifiedUpdate = { args, expires: Date.now() + 1800000 };
+  return result;
 });
 ipcMain.handle("updates:verify", async (event) => {
   validate(event);
@@ -765,6 +844,13 @@ else {
       await createWindow();
       desktopTimer = setInterval(pollDesktop, 500);
       desktopTimer.unref();
+      // Quietly look for a newer release; the renderer shows notes and asks.
+      const announce = () =>
+        checkForRelease()
+          .then((r) => r.available && win.webContents.send("updates:available", r))
+          .catch(() => {});
+      setTimeout(announce, 15000).unref();
+      setInterval(announce, 6 * 3600 * 1000).unref();
     } catch (error) {
       dialog.showErrorBox("ALT-AI — erro de inicialização", error.message);
       app.quit();

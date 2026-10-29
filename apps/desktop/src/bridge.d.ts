@@ -1,4 +1,15 @@
 import type { StreamEvent } from "../../../packages/shared-types";
+export type ReleaseCheck = {
+  available: boolean;
+  reason?: string;
+  version?: string;
+  name?: string;
+  notes?: string;
+  published_at?: string;
+  page?: string;
+  downloadable?: boolean;
+  installer?: { name: string; size: number } | null;
+};
 declare global {
   interface Window {
     alt: {
@@ -43,6 +54,22 @@ declare global {
         size: number;
       } | null>;
       applyUpdate(): Promise<{ started: boolean }>;
+      checkUpdate(): Promise<ReleaseCheck>;
+      downloadUpdate(): Promise<{
+        version: string;
+        file: string;
+        sha256: string;
+        size: number;
+      }>;
+      onUpdate(
+        callback: (
+          kind: "available" | "progress",
+          info: ReleaseCheck | { received: number; total: number },
+        ) => void,
+      ): () => void;
+      importDocument(
+        projectId: string,
+      ): Promise<{ id: string; chunks?: number; name?: string; duplicate: boolean } | null>;
     };
   }
 }
