@@ -1,1 +1,7 @@
-export const themes=[{name:'Night City Pink',color:'#ff0057'},{name:'Netrunner Blue',color:'#00c9f5'},{name:'Arasaka Red',color:'#ff3747'},{name:'Matrix Green',color:'#00e89d'},{name:'Minimal Dark',color:'#9aa3b7'}];
+export const themes = [
+  { name: "Night City Pink", color: "#ff0057" },
+  { name: "Netrunner Blue", color: "#00c9f5" },
+  { name: "Arasaka Red", color: "#ff3747" },
+  { name: "Matrix Green", color: "#00e89d" },
+  { name: "Minimal Dark", color: "#9aa3b7" },
+];

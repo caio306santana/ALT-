@@ -12,12 +12,13 @@ HEADERS={'Authorization':'Bearer '+TOKEN}
 
 class FixtureProvider:
     """Explicit test double. Never shipped as a runtime provider."""
-    def __init__(self): self.contexts=[]; self.fail=False; self.offline=False
+    def __init__(self): self.contexts=[]; self.profiles=[]; self.fail=False; self.offline=False
     async def models(self):
         if self.offline: raise ProviderError('offline','connection')
         return [{'name':'fixture:4b','size':123},{'name':'fixture:9b','size':456},{'name':'example:cloud','size':0,'remote_host':'example.org'}]
     async def running(self): return []
-    async def stream(self,model,messages,cancel):
+    async def stream(self,model,messages,cancel,profile=None):
+        self.profiles.append(profile)
         self.contexts.append((model,messages))
         yield {'message':{'content':'Olá, '}}
         if self.fail: raise ProviderError('conexão interrompida','connection')
@@ -164,3 +165,32 @@ def test_delete_cascades_without_other_history_loss(tmp_path):
         assert client.delete(f'/conversations/{one}').status_code==200
         assert client.get(f'/conversations/{one}/messages').status_code==404
         assert len(client.get(f'/conversations/{two}/messages').json())==2
+
+def test_notebook_profile_limits_generation_and_can_be_overridden(tmp_path):
+    provider=FixtureProvider()
+    with client_at(tmp_path,provider) as client:
+        settings=client.get('/settings').json();settings['performance']='notebook'
+        assert client.put('/settings',json=settings).status_code==200
+        cid=conversation(client);send(client,cid)
+        profile=provider.profiles[-1]
+        assert profile['options']['num_ctx']==4096
+        assert profile['options']['num_predict']<=1024
+        assert profile['options']['num_thread']<=4
+        assert profile['keep_alive']=='2m'
+        settings['performance']='desktop';client.put('/settings',json=settings)
+        send(client,cid)
+        assert provider.profiles[-1]['options']['num_ctx']>profile['options']['num_ctx']
+
+def test_auto_profile_recognizes_portable_or_low_memory(monkeypatch):
+    from backend.monitoring.performance import performance_profile
+    from types import SimpleNamespace
+    import psutil
+    monkeypatch.setattr(psutil,'virtual_memory',lambda:SimpleNamespace(total=32*1024**3))
+    monkeypatch.setattr(psutil,'cpu_count',lambda logical=False:12)
+    monkeypatch.setattr(psutil,'sensors_battery',lambda:None)
+    assert performance_profile()['effective']=='desktop'
+    monkeypatch.setattr(psutil,'sensors_battery',lambda:object())
+    assert performance_profile()['effective']=='notebook'
+    monkeypatch.setattr(psutil,'sensors_battery',lambda:None)
+    monkeypatch.setattr(psutil,'virtual_memory',lambda:SimpleNamespace(total=8*1024**3))
+    assert performance_profile()['effective']=='notebook'

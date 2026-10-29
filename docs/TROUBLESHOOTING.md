@@ -12,6 +12,8 @@ Abra o Ollama. O serviço precisa responder em `http://127.0.0.1:11434`. O app n
 
 O primeiro pedido carrega pesos em RAM/VRAM e pode levar mais tempo. Confira Sistema e os logs do Ollama; CPU pode ser significativamente mais lenta. O chat Qwen 3.5 desativa raciocínio interno nesta versão. A janela mostra processamento até chegar conteúdo real, sem resposta fictícia. Interrompa pelo quadrado ou STOP. Não é necessário disparar mensagens repetidas, pois elas podem entrar em fila no Ollama.
 
+Em notebook, use Automático ou Notebook econômico em Comportamento. O limite de saída menor pode encerrar textos longos; peça continuação quando necessário. O perfil reduz contexto e threads, mas não garante baixa temperatura ou aceleração de GPU. Qwen 2B é opcional para tarefas mais leves. O perfil desktop permanece para o Ryzen/RX 7600 do computador principal.
+
 ## Modelo 9B / GPU
 
 Comece pelo 4B. O 9B é opcional. O tamanho em disco não equivale à memória total de inferência. Não trocar drivers nem forçar overrides de GPU sem diagnóstico. O coletor mostra nome/driver da GPU e alocação de modelos quando informada pelo Ollama; uso/temperatura/VRAM total ainda podem estar indisponíveis.

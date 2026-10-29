@@ -13,7 +13,7 @@ Distribuição: React compilado pelo Vite; FastAPI empacotado por PyInstaller; a
 ## Riscos e decisões
 
 - Aceleração AMD depende do driver/backend real. A documentação do Ollama lista RX 7600 para Windows com pilha compatível, mas isso não valida o PC de destino. Confirmar com `/api/ps` e logs, sem alterar drivers automaticamente. [Hardware Ollama](https://docs.ollama.com/gpu).
-- 8K de contexto e limite de saída 4096 são escolhas iniciais para conter consumo. Não são a capacidade máxima declarada pelo modelo.
+- Perfil desktop: 8K de contexto, saída até 4096 e keep-alive 5 minutos. Perfil notebook: 4K, saída até 768, no máximo 4 threads e keep-alive 2 minutos. Automático considera bateria, RAM e núcleos físicos; o usuário pode escolher manualmente. Esses limites não são a capacidade máxima declarada pelo modelo.
 - Só o Qwen 3.5 usa `think:false` por padrão no MVP para evitar longos silêncios de raciocínio em chat curto. Outros modelos usam seus padrões. [Contrato de chat](https://docs.ollama.com/api/chat).
 - Não assumir créditos genéricos de API por existir assinatura. Codex SDK automatiza tarefas de código; App Server é a via documentada para clientes personalizados com auth/histórico/aprovações/eventos. A fase 5 precisa validar esses fluxos e o plano do usuário antes de habilitar. [Codex SDK](https://learn.chatgpt.com/docs/codex-sdk), [autenticação oficial](https://learn.chatgpt.com/docs/auth).
 - Claude Code/Agent SDK precisa de investigação oficial equivalente na fase 5. Nenhum token de outro aplicativo é extraído.

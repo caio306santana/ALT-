@@ -61,13 +61,14 @@ class Ollama:
         except (httpx.HTTPError,ValueError) as exc:
             raise ProviderError('Falha no download. Verifique se o Ollama está aberto e tente novamente.','download') from exc
 
-    async def stream(self, model, messages, cancel):
+    async def stream(self, model, messages, cancel, profile=None):
         timeout = httpx.Timeout(connect=5, read=300, write=30, pool=5)
         try:
             async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                profile=profile or {'options':{'num_ctx':8192,'num_predict':4096},'keep_alive':'5m'}
                 payload={
                     'model':model, 'messages':messages, 'stream':True,
-                    'options':{'num_ctx':8192, 'num_predict':4096}, 'keep_alive':'5m'
+                    'options':profile['options'], 'keep_alive':profile['keep_alive']
                 }
                 if model.startswith('qwen3.5:'): payload['think']=False
                 async with client.stream('POST', self.base_url+'/api/chat', json=payload) as response:

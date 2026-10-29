@@ -12,6 +12,7 @@ from backend.memory.store import Store
 from backend.providers.ollama import Ollama, ProviderError, cancellable
 from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
+from backend.monitoring.performance import performance_profile
 
 SYSTEM = ('Você é ALT-AI, uma assistente pessoal calma, natural e objetiva. Responda em português brasileiro. '
           'Modo observação: você não possui ferramentas para executar ações, pesquisar na internet ou acessar arquivos. '
@@ -34,10 +35,11 @@ class Settings(BaseModel):
     compact: bool = False
     animations: bool = True
     model: str = Field(default='',max_length=200)
+    performance: Literal['auto','notebook','desktop'] = 'auto'
 
 class PullBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    model: Literal['qwen3.5:4b','qwen3.5:9b']
+    model: Literal['qwen3.5:2b','qwen3.5:4b','qwen3.5:9b']
 
 def create_app(data_dir: Path, token: str, provider=None):
     if len(token) < 32:
@@ -116,6 +118,7 @@ def create_app(data_dir: Path, token: str, provider=None):
     async def system():
         data = await asyncio.to_thread(snapshot,data_dir)
         data['running_models'] = await ollama.running()
+        data['performance'] = performance_profile(store.settings().get('performance','auto'))
         return data
 
     @app.post('/actions/stop',dependencies=[Depends(auth)])
@@ -167,9 +170,11 @@ def create_app(data_dir: Path, token: str, provider=None):
         cid = body.conversation_id
         previous = [m for m in store.messages(cid) if m['status']=='complete']
         # Bounded history, newest messages first for selection. Full history stays on disk.
+        profile=performance_profile(store.settings().get('performance','auto'))
+        context_limit=6000 if profile['effective']=='notebook' else 12000
         context, chars = [], len(body.content)
         for m in reversed(previous):
-            if chars+len(m['content']) > 12000: break
+            if chars+len(m['content']) > context_limit: break
             context.insert(0,{'role':m['role'],'content':m['content']}); chars+=len(m['content'])
         store.add(cid,'user',body.content)
         if not previous:
@@ -182,7 +187,7 @@ def create_app(data_dir: Path, token: str, provider=None):
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
                 yield line({'type':'start','message_id':mid,'context_messages':len(context),'context_truncated':len(context)<len(previous)})
-                async for chunk in cancellable(ollama.stream(body.model,[{'role':'system','content':SYSTEM}]+context+[{'role':'user','content':body.content}],event),event):
+                async for chunk in cancellable(ollama.stream(body.model,[{'role':'system','content':SYSTEM}]+context+[{'role':'user','content':body.content}],event,profile),event):
                     if event.is_set() or await request.is_disconnected(): break
                     delta = chunk.get('message',{}).get('content','')
                     if delta:

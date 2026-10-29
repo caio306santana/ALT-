@@ -57,6 +57,7 @@ Teste opcional com modelo real já instalado (não baixa modelos):
 - O quadrado no campo de mensagem interrompe apenas a resposta atual.
 - Trocar modelo preserva o histórico local. Apenas mensagens completas da conversa atual são enviadas ao modelo; respostas parciais ficam visíveis e são excluídas do próximo contexto.
 - O temporizador é um controle local da interface; o modelo não o aciona por texto.
+- Em **Configurações → Comportamento → Desempenho**, escolha Automático, Notebook econômico ou Desktop. O automático adapta contexto/saída/threads e tempo mantendo o modelo em memória. O Qwen 2B é uma opção adicional mais leve; não é baixado sem confirmação.
 
 ## Dados e privacidade
 

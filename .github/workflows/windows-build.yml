@@ -1,0 +1,26 @@
+name: Build Windows preview
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm.cmd ci
+      - run: python -m venv .venv
+      - run: .\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
+      - run: npm.cmd test
+      - run: npm.cmd run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ALT-AI-Windows-x64
+          path: release/ALT-AI-Setup-*.exe
