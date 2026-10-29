@@ -38,7 +38,7 @@ Notebook atual i5-1135G7/Iris Xe usa CPU. PC principal Ryzen 9 3900/32 GB/RX 760
 
 ## Distribuição e instalação
 
-Pacote 0.3 concluído: NSIS, smoke empacotado e manifesto Ed25519/hash verificados. Instalador ALT-AI-Setup-0.3.0-x64.exe com 129.517.936 bytes. SHA256: 3365e2660c75c518d68af91d5bb4b669c2d4c991290f8cf04352782003b9dab0. Browser empacotado corresponde ao fonte testado e runtime backend corresponde ao smoke aprovado. Manifesto regenerado após ajuste final de versão na interface. Publicação privada em andamento: https://github.com/caio306santana/ALT-/releases/tag/v0.3.0
+Pacote 0.3 concluído: NSIS, smoke empacotado e manifesto Ed25519/hash verificados. Instalador ALT-AI-Setup-0.3.0-x64.exe com 129.517.936 bytes. SHA256: 3365e2660c75c518d68af91d5bb4b669c2d4c991290f8cf04352782003b9dab0. Browser empacotado corresponde ao fonte testado e runtime backend corresponde ao smoke aprovado. Manifesto regenerado após ajuste final de versão na interface. Release privada publicada: https://github.com/caio306santana/ALT-/releases/tag/v0.3.0. Os três assets estão uploaded; tamanho e digest SHA256 do instalador no GitHub conferem com o arquivo local. Tag de código: eca1776. Commits posteriores de documentação não modificam o binário.
 
 Build: npm.cmd run dist. Wrapper scripts/build-windows.cjs preserva ambiente no passo NSIS electron-builder 26.18 e evita configuração duplicada/extraResources concorrentes. Não publicar o pequeno gerador intermediário de uninstaller. release:manifest recusa arquivos abaixo de 10 MB.
 
@@ -51,9 +51,9 @@ SQLite de conversas/memórias não é criptografado. Credencial Anthropic opcion
 ## Pendências reais
 
 1. Confirmar envio dos três assets da release 0.3 e digest no GitHub; depois manter este registro atualizado e Git limpo.
-2. Revisão visual completa de Controle/Navegador/Memória/Laboratório e instalação em Windows limpo/PC principal; teste prolongado e GPU real.
-3. Memória semântica/importação de documentos, resumos automáticos por projeto e recuperação mais refinada; hoje é rascunho revisado e busca por termos.
-4. Mais abas e tarefas longas de navegador, automação genérica da GUI Windows, tratamento de apps que mudam PID, rotinas e integrações adicionais.
-5. Certificado Authenticode, feed autenticado, backup/migrações, coletores GPU/temperatura, voz e iOS, conforme ROADMAP.
+1. Revisão visual completa de Controle/Navegador/Memória/Laboratório e instalação em Windows limpo/PC principal; teste prolongado e GPU real.
+2. Memória semântica/importação de documentos, resumos automáticos por projeto e recuperação mais refinada; hoje é rascunho revisado e busca por termos.
+3. Mais abas e tarefas longas de navegador, automação genérica da GUI Windows, tratamento de apps que mudam PID, rotinas e integrações adicionais.
+4. Certificado Authenticode, feed autenticado, backup/migrações, coletores GPU/temperatura, voz e iOS, conforme ROADMAP.
 
 Não confundir ampliação dos passos solicitados com todas as fases do MASTER PROMPT concluídas.
