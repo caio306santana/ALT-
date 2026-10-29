@@ -49,7 +49,9 @@ def test_limited_and_windows_authorizations_revoke_and_deny_secrets(tmp_path,mon
         with pytest.raises(ValueError):app.state.tools.scoped('windows-profile','../outside.txt')
         # Full access: the owner accepted unattended writes when granting mode 4.
         body=ToolProposal(tool='write_text',scope_id='windows-profile',path='notes.txt',content='new')
-        assert app.state.tools.can_auto(body) and app.state.tools.can_auto(ToolProposal(tool='close_app',app='notepad'))
+        assert app.state.tools.can_auto(body)
+        # Closing a program the ALT did not open can lose unsaved work: reviewed even in full access.
+        assert not app.state.tools.can_auto(ToolProposal(tool='close_app',app='notepad'))
         proposal=client.post('/tools/propose',json=body.model_dump()).json()
         assert not proposal['preview']['critical']
         result=client.post('/tools/approve/'+proposal['id']).json()['result']

@@ -53,10 +53,24 @@ class WindowsUI:
         if identity['pid']!=row['pid'] or identity['created']!=row['created']:raise ValueError('A janela foi substituída.')
         return identity
 
-    def grant(self,key):
+    def find(self,name):
+        """Full access: grant the open window whose title or program best matches the name the model used."""
+        from backend.tools.app_catalog import normalize
+        words=set(normalize(name).split())
+        if not words:raise ValueError('Diga qual janela usar.')
+        best=None
+        for row in self.inventory():
+            title=set(normalize(row['title']).split());program=normalize(os.path.basename(row['exe']).removesuffix('.exe'))
+            score=2 if words<=title else 1 if program in words or words&title else 0
+            if score and (not best or score>best[0]):best=(score,row['candidate_id'])
+        if not best:raise ValueError(f'Nenhuma janela aberta corresponde a "{name}". Abra o programa primeiro.')
+        return self.grant(best[1],evict=True)
+
+    def grant(self,key,evict=False):
         row=self.candidate(key);gid=str(uuid4())
         old=self.store.rows('SELECT id FROM windows_grants WHERE handle=? AND pid=? AND created=?',(row['handle'],row['pid'],row['created']))
         if old:return old[0]['id']
+        if evict:self.store.write('DELETE FROM windows_grants WHERE rowid IN (SELECT rowid FROM windows_grants ORDER BY rowid DESC LIMIT -1 OFFSET 29)')
         if len(self.store.rows('SELECT id FROM windows_grants'))>=30:raise ValueError('Remova uma autorização antiga antes de conceder outra.')
         self.store.write('INSERT INTO windows_grants VALUES(?,?,?,?,?,?)',(gid,row['handle'],row['pid'],row['created'],row['title'],row['exe']))
         self.store.audit('window_granted',gid);return gid

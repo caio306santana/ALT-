@@ -77,7 +77,7 @@ const allowed = [
   ["PUT", /^\/memories\/[a-f0-9-]+$/],
   ["DELETE", /^\/(memories|scopes)\/[a-f0-9-]+$/],
   ["POST", /^\/tools\/(approve|reject|renew)\/[a-f0-9-]+$/],
-  ["GET", /^\/(policy|programs|evaluations)$/],
+  ["GET", /^\/(policy|programs|programs\/installed|evaluations)$/],
   ["GET", /^\/memories\/search\?q=[^#]{0,1600}$/],
   ["POST", /^\/(evaluations|evaluations\/cancel|continuity\/draft)$/],
   ["POST", /^\/continuity\/approve\/[a-f0-9-]+$/],
@@ -584,7 +584,7 @@ ipcMain.handle("windows:grant", async (event, level, scopeId) => {
     );
   const detail =
     level === 4
-      ? "ACESSO TOTAL, sem prazo, até você alterar ou revogar, inclusive ao reabrir a ALT. A ALT executará SEM PEDIR APROVAÇÃO tudo que não estiver bloqueado em Controle e regras: pesquisar e ler sites, baixar arquivos, ler, criar e sobrescrever arquivos em qualquer pasta local do seu usuário, abrir e fechar aplicativos, usar o navegador ALT e executar tarefas com várias etapas. Versões anteriores de arquivos sobrescritos ficam guardadas em file-history. Continuam sempre excluídos: arquivos de credenciais/AppData, shell arbitrário, privilégios de administrador e executar arquivos baixados. Conteúdo de sites pode tentar enganar o modelo; STOP e Revogar encerram tudo na hora."
+      ? "ACESSO TOTAL, sem prazo, até você alterar ou revogar, inclusive ao reabrir a ALT. A ALT executará SEM PEDIR APROVAÇÃO tudo que não estiver bloqueado em Controle e regras: pesquisar e ler sites, baixar arquivos, ler, criar e sobrescrever arquivos em qualquer pasta local do seu usuário, abrir qualquer programa instalado e sites no seu navegador padrão, ler e controlar janelas abertas (exceto terminais, segurança e gerenciadores de senha), usar o navegador ALT e executar tarefas com várias etapas. Comandos do PowerShell sempre mostram um cartão e só rodam depois que você aprovar. Versões anteriores de arquivos sobrescritos ficam guardadas em file-history. Continuam sempre excluídos: arquivos de credenciais/AppData, privilégios de administrador e executar arquivos baixados. Conteúdo de sites pode tentar enganar o modelo; STOP e Revogar encerram tudo na hora."
       : `Sem prazo; permanece autorizado até você alterar ou revogar, inclusive ao reabrir a ALT: cálculo e leitura automática apenas em ${scope.path}. Gravações e consultas externas ainda pedem aprovação.`;
   const confirmation = await dialog.showMessageBox(win, {
     type: "warning",

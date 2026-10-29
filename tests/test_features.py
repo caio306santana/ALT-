@@ -29,8 +29,8 @@ def test_personality_real_prompt_persists_across_models(tmp_path):
     app,local,cloud,client=fixture_client(tmp_path)
     with client:
         settings=client.get('/settings').json()
-        assert 'provocadora' in settings['personality']['tone']
-        assert 'Calma' in settings['personality']['tone']
+        assert 'Alt Cunningham' in settings['personality']['tone']
+        assert 'JARVIS' in settings['personality']['tone']
         settings['personality']['name']='ALT pessoal'
         settings['personality']['irony']=80
         assert client.put('/settings',json=settings).status_code==200
@@ -68,7 +68,7 @@ def test_cloud_context_requires_exact_one_use_consent(tmp_path):
         assert cloud.calls==[]
         preview=client.post('/chat/preview',json=body).json()
         assert preview['messages'][-1]['content']=='Olá de teste'
-        assert 'provocadora' in preview['messages'][0]['content']
+        assert 'Alt Cunningham' in preview['messages'][0]['content']
         authorized={**body,'consent_receipt':preview['consent_receipt']}
         assert events(client.post('/chat',json=authorized))[-1]['status']=='complete'
         assert len(cloud.calls)==1

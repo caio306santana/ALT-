@@ -1204,19 +1204,16 @@ export default function App() {
                     {!contextEstimate.fits ? ` · ${contextEstimate.reason}` : ""}
                   </span> : contextProblem}
                 </div>}
-                <div className="composer-caption">
-                  <span>
-                    <i />
-                    {selected
-                      ? prefs.model.startsWith("cloud:")
+                {(!selected || prefs.model.startsWith("cloud:")) && (
+                  <div className="composer-caption">
+                    <span>
+                      <i />
+                      {selected
                         ? "Nuvem · revisão antes do envio"
-                        : "Processamento local pelo Ollama"
-                      : "Selecione um modelo para começar"}
-                  </span>
-                  <span>
-                    Enter para enviar <span className="key">↵</span>
-                  </span>
-                </div>
+                        : "Selecione um modelo para começar"}
+                    </span>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -1582,12 +1579,17 @@ export default function App() {
               <span className="tiny-slash" /> ALT-AI <b>{appVersion}</b>
             </span>
             <button
-              className={stopped ? "halted" : ""}
+              className={"stop-all" + (stopped ? " halted" : "")}
+              title={
+                stopped
+                  ? "Retomar as ações"
+                  : "Parar todas as ações agora e revogar o acesso"
+              }
               onClick={() =>
                 stopped ? resume().catch(report) : stopAll().catch(report)
               }
             >
-              <span className="dot" />
+              {stopped ? <Play size={12} /> : <Square size={12} />}
               {stopped ? "SUSPENSO · RETOMAR" : "STOP ALL ACTIONS"}
             </button>
             <span>

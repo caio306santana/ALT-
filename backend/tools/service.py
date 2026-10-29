@@ -1,4 +1,4 @@
-"""Small typed tools with per-action approval. No shell executor or arbitrary executable."""
+"""Small typed tools with per-action approval. PowerShell commands always need an explicit approval card."""
 import ast
 import asyncio
 import difflib
@@ -20,6 +20,7 @@ from backend.tools.research import read_page,search_web,download
 from backend.memory.library import reject_secrets
 from backend.security.policy import Policy
 from backend.tools.windows_ui import WindowsUI
+from backend.tools.app_catalog import AppCatalog,normalize
 import fnmatch
 import threading
 
@@ -28,12 +29,14 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','download_file']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','download_file','run_command']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
     expression:str=Field(default='',max_length=200)
-    app:str=Field(default='notepad',pattern=r'^[a-zA-Z0-9-]{1,64}$')
+    # No default: a missing name used to open Notepad instead of what the user asked for.
+    app:str=Field(default='',max_length=120,pattern=r'^[^\x00-\x1f]*$')
+    command:str=Field(default='',max_length=4000)
     target:str=Field(default='',max_length=160)
     snapshot_id:str=Field(default='',max_length=64)
     window_id:str=Field(default='',max_length=64)
@@ -63,11 +66,19 @@ def calculate(expression):
     try:return walk(tree.body)
     except (SyntaxError,ZeroDivisionError,OverflowError) as exc:raise ValueError('Expressão inválida.') from exc
 
+def normalize_url(url,query=''):
+    """'google.com' -> https://google.com; only a query -> a Google search in the default browser."""
+    url=url.strip()
+    if not url and query.strip():return 'https://www.google.com/search?q='+urllib.parse.quote_plus(query.strip())
+    if url.startswith('http://'):return 'https://'+url[7:]
+    if url and '://' not in url:return 'https://'+url.lstrip('/')
+    return url
+
 class ToolService:
     def __init__(self,store,engine,data_dir,desktop=None):
         self.store,self.engine=store,engine
         self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
-        self.gui=WindowsUI(store)
+        self.gui=WindowsUI(store);self.catalog=AppCatalog()
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         self.file_history=data_dir/'file-history'
@@ -95,7 +106,7 @@ class ToolService:
             self.level=saved[0]['level']
             valid={s['id'] for s in store.rows('SELECT id FROM scopes')}
             self.auto_scopes=set(json.loads(saved[0]['scopes'])) & valid
-            if self.level==4:self.auto_scopes.add('windows-profile')
+            if self.level==4:self.auto_scopes.add('windows-profile');self.catalog.prewarm()
 
     def save_authorization(self):
         self.store.write('INSERT INTO tool_authorization VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET level=excluded.level,scopes=excluded.scopes',(self.level,json.dumps(sorted(self.auto_scopes))))
@@ -103,7 +114,7 @@ class ToolService:
     def status(self):
         scopes=self.store.rows('SELECT * FROM scopes ORDER BY created')
         if self.level==4:scopes.append({'id':'windows-profile','path':str(Path.home()),'label':'Computador · acesso total (caminhos relativos ao seu perfil ou completos)'})
-        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':list(ToolProposal.model_fields['tool'].annotation.__args__),'windows_scope':'Acesso total: internet, downloads, arquivos do computador, aplicativos e navegador executam sem aprovação, salvo o que você bloquear. Arquivos de credenciais, shell e privilégios administrativos ficam excluídos; downloads nunca são executados.'}
+        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':list(ToolProposal.model_fields['tool'].annotation.__args__),'windows_scope':'Acesso total: internet, sites no seu navegador padrão, downloads, arquivos do computador, qualquer programa instalado e janelas abertas executam sem aprovação, salvo o que você bloquear. Comandos do PowerShell sempre mostram um cartão para você aprovar. Arquivos de credenciais e privilégios administrativos ficam excluídos; downloads nunca são executados.'}
 
     def set_level(self,level):
         if level not in (1,2):raise ValueError('Níveis 3 e 4 ainda indisponíveis.')
@@ -119,7 +130,7 @@ class ToolService:
         valid={s['id'] for s in self.store.rows('SELECT id FROM scopes')}
         if any(sid not in valid for sid in scope_ids):raise ValueError('Escopo não encontrado.')
         self.revoke();self.level=level;self.auto_scopes=set(scope_ids)
-        if level==4:self.auto_scopes.add('windows-profile')
+        if level==4:self.auto_scopes.add('windows-profile');self.catalog.prewarm()
         self.save_authorization()
         self.store.audit('supervised_session_granted',json.dumps({'level':level,'scopes':sorted(self.auto_scopes),'persistent':True}))
         return self.status()
@@ -128,8 +139,11 @@ class ToolService:
         level=self.status()['level']
         decision=self.policy.decision(body.tool)
         if level not in (3,4) or decision=='deny':return False
+        # A command is free-form code: it always waits for the owner's approval card.
+        if body.tool=='run_command':return False
         # Full access: everything the owner did not block runs without review.
-        if level==4:return True
+        # Closing a program the ALT did not open can lose unsaved work, so it is reviewed.
+        if level==4:return body.tool!='close_app' or body.app in self.launched
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             if body.scope_id not in self.auto_scopes:return False
             if body.tool=='write_text' and body.scope_id=='windows-profile':return False
@@ -139,6 +153,26 @@ class ToolService:
 
     def programs(self):
         return [{'id':'notepad','name':'Bloco de Notas'},{'id':'calculator','name':'Calculadora'}]+self.store.rows('SELECT id,name,path FROM programs ORDER BY name')
+
+    def resolve_app(self,name):
+        """Registered id, a registered name, or (full access) any program installed in the Start Menu."""
+        if not name.strip():raise ValueError('Diga qual aplicativo abrir.')
+        programs=self.programs()
+        if name in {p['id'] for p in programs}:return name
+        wanted=normalize(name)
+        builtin={'bloco de notas':'notepad','notepad':'notepad','calculadora':'calculator','calculator':'calculator','calc':'calculator'}
+        match=next((p['id'] for p in programs if normalize(p['name'])==wanted),None) or builtin.get(wanted)
+        if self.status()['level']==4 and match in (None,'notepad','calculator'):
+            try:return 'catalog:'+self.catalog.resolve(name)['name']
+            except ValueError:
+                if not match:raise
+        if match:return match
+        raise ValueError('Ative o Acesso total para abrir qualquer programa pelo nome, ou registre este aplicativo em Controle e regras.')
+
+    def catalog_entry(self,app):
+        name=app.removeprefix('catalog:');entry=self.catalog.resolve(name)
+        if entry['name']!=name:raise ValueError('O programa mudou desde a prévia. Peça novamente.')
+        return entry
 
     def add_program(self,path):
         candidate=Path(path)
@@ -255,11 +289,22 @@ class ToolService:
             preview.update({'url':body.url,'path':str(path),'external_notice':'O arquivo será baixado da internet e salvo sem ser aberto ou executado.'})
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
         elif body.tool in ('open_app','close_app'):
-            if body.app not in {p['id'] for p in self.programs()}:raise ValueError('Escolha um aplicativo registrado no painel Controle.')
-            preview['app']=body.app
-            if body.tool=='close_app':preview['notice']='Solicita fechamento normal somente de janelas abertas pela ALT; o programa pode pedir para salvar documentos.'
+            body.app=self.resolve_app(body.app);payload=body.model_dump()
+            preview['app']=body.app.removeprefix('catalog:')
+            if body.tool=='close_app':
+                tracked=body.app in self.launched
+                preview['notice']=('Solicita fechamento normal da janela aberta pela ALT' if tracked else 'Solicita fechamento normal das janelas abertas deste programa')+'; o programa pode pedir para salvar documentos.'
+        elif body.tool=='run_command':
+            command=body.command.strip() or body.content.strip()
+            if not command:raise ValueError('Informe o comando do PowerShell.')
+            reject_secrets(command);body.command=command;body.content='';payload=body.model_dump()
+            preview.update({'command':command,'external_notice':'Comando do PowerShell com os direitos do seu usuário Windows (sem administrador). Confira o comando inteiro antes de aprovar.'})
         elif body.tool.startswith('windows_'):
             grant=next((g for g in self.gui.grants() if g['id']==body.window_id),None)
+            if not grant and self.status()['level']==4 and body.window_id:
+                # Full access reaches any open window by title or program; exclusions in WindowsUI still apply.
+                body.window_id=self.gui.find(body.window_id);payload=body.model_dump()
+                grant=next((g for g in self.gui.grants() if g['id']==body.window_id),None)
             if not grant:raise PermissionError('Autorize uma janela no seletor nativo.')
             preview.update({'window_id':body.window_id,'window_title':grant['title']})
             if body.tool!='windows_read':
@@ -286,6 +331,7 @@ class ToolService:
                 if body.tool=='browser_type':preview['text']=body.content
                 preview['external_notice']='Interação com site externo; clicar ou digitar pode enviar dados ao site.'
         elif body.tool=='open_url':
+            body.url=normalize_url(body.url,body.query);payload=body.model_dump()
             reject_secrets(body.url)
             url=urllib.parse.urlsplit(body.url)
             if url.scheme!='https' or not url.hostname or url.username or url.password or any(c.isspace() for c in body.url):raise ValueError('Use uma URL HTTPS válida, sem credenciais.')
@@ -401,8 +447,10 @@ class ToolService:
                 return {'path':str(path),'bytes':path.stat().st_size,**({'previous_version':str(previous)} if previous else {})}
             if os.name!='nt':raise ValueError('Abertura de pastas disponível no Windows.')
             os.startfile(str(path));return {'open_requested':str(path)}
+        if body.tool=='run_command':return self.run_command(body.command,event)
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
+            if body.app.startswith('catalog:'):return self.catalog.open(self.catalog_entry(body.app))
             if body.app in ('notepad','calculator'):
                 executable=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32'/('notepad.exe' if body.app=='notepad' else 'calc.exe')
             else:
@@ -417,12 +465,64 @@ class ToolService:
             except psutil.NoSuchProcess:pass
             return {'launch_requested':body.app,'pid':process.pid}
         if body.tool=='close_app':
+            if body.app not in self.launched and self.status()['level']==4:return self.close_by_name(body.app.removeprefix('catalog:'))
             return self.close_launched(body.app)
         if body.tool=='open_url':
             opened=webbrowser.open(body.url)
             if not opened:raise ValueError('O sistema não confirmou a abertura do navegador.')
             return {'opened':body.url}
         raise ValueError('Ferramenta indisponível.')
+
+    def run_command(self,command,event):
+        if os.name!='nt':raise ValueError('Comandos disponíveis no Windows.')
+        process=subprocess.Popen(['powershell.exe','-NoProfile','-NonInteractive','-Command','[Console]::OutputEncoding=[Text.Encoding]::UTF8;'+command],
+            cwd=str(Path.home()),stdout=subprocess.PIPE,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,creationflags=subprocess.CREATE_NO_WINDOW)
+        chunks=[];reader=threading.Thread(target=lambda:chunks.append(process.stdout.read()),daemon=True);reader.start()
+        deadline=time.monotonic()+60;stopped=None
+        while process.poll() is None:
+            if event.is_set() or self.engine.stopped:stopped='Interrompido pelo STOP.'
+            elif time.monotonic()>deadline:stopped='Tempo limite de 60 s atingido.'
+            if stopped:
+                subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW);break
+            time.sleep(.1)
+        code=process.wait();reader.join(5)
+        output=b''.join(chunks).decode('utf-8','replace')
+        result={'command':command,'exit_code':code,'output':output[-8000:],'truncated':len(output)>8000}
+        if stopped:result['stopped']=stopped
+        return result
+
+    def close_by_name(self,name):
+        """Normal close (WM_CLOSE) for visible windows of a program the ALT did not launch."""
+        if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
+        import ctypes
+        from ctypes import wintypes
+        import psutil
+        from backend.tools.windows_ui import EXCLUDED
+        words=set(normalize(name).split())
+        if not words:raise ValueError('Diga qual aplicativo fechar.')
+        user32=ctypes.WinDLL('user32',use_last_error=True);sent=[];own=os.getpid()
+        callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+        user32.EnumWindows.argtypes=[callback_type,wintypes.LPARAM]
+        user32.IsWindowVisible.argtypes=[wintypes.HWND];user32.IsWindowVisible.restype=wintypes.BOOL
+        user32.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
+        user32.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
+        user32.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+        @callback_type
+        def visit(hwnd,_):
+            if not user32.IsWindowVisible(hwnd):return True
+            title=ctypes.create_unicode_buffer(256);user32.GetWindowTextW(hwnd,title,256)
+            if not title.value:return True
+            owner=wintypes.DWORD();user32.GetWindowThreadProcessId(hwnd,ctypes.byref(owner))
+            try:exe=psutil.Process(owner.value).name().casefold()
+            except psutil.Error:return True
+            if owner.value==own or exe in EXCLUDED:return True
+            stem=normalize(exe.removesuffix('.exe'))
+            if stem in words or words<=set(normalize(title.value).split()):
+                if user32.PostMessageW(hwnd,0x0010,0,0):sent.append(title.value)
+            return True
+        user32.EnumWindows(visit,0)
+        if not sent:raise ValueError(f'Nenhuma janela aberta de "{name}" foi encontrada.')
+        return {'close_requested':True,'windows':sent[:10],'notice':'Fechamento normal solicitado; o programa pode pedir para salvar. Nenhum processo foi forçado.'}
 
     def close_launched(self,app_id):
         if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')

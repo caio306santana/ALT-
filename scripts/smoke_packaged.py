@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             estimate=client.post('/chat/estimate',headers=headers,json={'conversation_id':cid,'model':'qwen3.5:4b','content':'Estou organizando meus projetos e quero discutir ideias com calma. '*70})
             assert estimate.status_code==200,estimate.text
             assert estimate.json()['fits'] and estimate.json()['tokenizer']=='Qwen 3.5',estimate.text
-            assert 'provocadora' in prefs['personality']['tone']
+            assert 'Alt Cunningham' in prefs['personality']['tone']
             policy=client.get('/policy',headers=headers).json()
             assert policy['policy']['memory_recall']=='manual' and policy['boundaries']
             assert len(client.get('/programs',headers=headers).json())==2

@@ -50,6 +50,15 @@ export function ChatActionCard({
     }
   }
   const preview = action.preview;
+  // Opening things needs no analysis: once done it collapses to one line.
+  const done = action.state === "complete" ? summary(preview, action.result) : null;
+  if (done)
+    return (
+      <div className="chat-action-done">
+        <Check size={14} />
+        <span>{done}</span>
+      </div>
+    );
   return (
     <div className="chat-action-card">
       <div className="chat-action-heading">
@@ -85,6 +94,7 @@ export function ChatActionCard({
         </p>
       )}
       {preview.text !== undefined && <pre>{String(preview.text)}</pre>}
+      {preview.command !== undefined && <pre>{String(preview.command)}</pre>}
       {!!preview.external_notice && (
         <p className="setting-note">{String(preview.external_notice)}</p>
       )}
@@ -124,7 +134,7 @@ export function ChatActionCard({
       )}
       {action.state === "complete" && (
         <>
-          <details open>
+          <details>
             <summary>Resultado da ferramenta</summary>
             <pre>{JSON.stringify(action.result, null, 2)}</pre>
           </details>
@@ -136,4 +146,22 @@ export function ChatActionCard({
       )}
     </div>
   );
+}
+
+function summary(preview: Record<string, unknown>, result: unknown) {
+  const value = (result || {}) as Record<string, unknown>;
+  switch (preview.tool) {
+    case "open_app":
+      return `${String(preview.app)} aberto`;
+    case "open_url":
+      return `Aberto no navegador: ${String(value.opened || preview.url)}`;
+    case "open_folder":
+      return `Pasta aberta: ${String(preview.path)}`;
+    case "close_app":
+      return `Fechamento solicitado: ${String(preview.app)}`;
+    case "calculate":
+      return `${String(preview.expression)} = ${String(value.value)}`;
+    default:
+      return null;
+  }
 }

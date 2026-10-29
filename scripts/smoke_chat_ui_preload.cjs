@@ -2,7 +2,7 @@
 const { contextBridge } = require('electron');
 let failure='stream',level=4,streamCalls=0;
 const cid='00000000-0000-0000-0000-000000000001';
-const preferences={accent:'#ff0057',theme:'Night City Pink',opacity:94,font_size:15,glow:35,compact:false,animations:false,model:'qwen3.5:4b',performance:'notebook',personality:{name:'ALT-AI',tone:'Calma e provocadora nas ideias.',irony:55,challenge:75,warmth:50,formality:35,instructions:''},secondary:'#00c9f5',appearance:'dark',scale:1,chat_opacity:100,effects:true,radius:13,shortcut:'Control+Shift+Space',always_on_top:false,user_name:''};
+const preferences={accent:'#ff0057',theme:'Night City Pink',opacity:94,font_size:15,glow:35,compact:false,animations:false,model:'qwen3.5:4b',performance:'notebook',personality:{name:'ALT-AI',tone:'Direta, calma e precisa; obedece primeiro.',irony:20,challenge:15,warmth:45,formality:50,instructions:''},secondary:'#00c9f5',appearance:'dark',scale:1,chat_opacity:100,effects:true,radius:13,shortcut:'Control+Shift+Space',always_on_top:false,user_name:''};
 const conversation={id:cid,title:'Teste visual sintético',created:new Date().toISOString(),updated:new Date().toISOString()};
 const messages=[{id:'user-1',role:'user',content:'Quero organizar meus projetos com calma. Por onde começamos?',status:'complete',created:conversation.created,metrics:null,model:null},{id:'assistant-1',role:'assistant',content:'Vamos separar o que precisa acontecer hoje do que só está fazendo barulho.\n\nQual projeto merece sua primeira hora de atenção? Podemos começar com uma lista curta de prioridades e definir um próximo passo concreto para cada uma.',status:'complete',created:conversation.created,metrics:null,model:'qwen3.5:4b'}];
 contextBridge.exposeInMainWorld('alt',{

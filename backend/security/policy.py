@@ -17,6 +17,8 @@ class Capabilities(BaseModel):
     windows_read:Decision='ask'
     windows_control:Decision='ask'
     downloads:Decision='ask'
+    # Commands always show an approval card; 'deny' removes the tool entirely.
+    shell:Decision='ask'
 
 class OwnerPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -33,7 +35,7 @@ CAPABILITY = {
     'browser_click':'browser_interaction', 'browser_type':'browser_interaction',
     'browser_back':'browser_navigation',
     'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control',
-    'download_file':'downloads',
+    'download_file':'downloads','run_command':'shell',
 }
 
 class Policy:
@@ -59,8 +61,8 @@ class Policy:
             'boundaries': [
                 {'source':'Aplicativo', 'text':'Nenhum filtro adicional por assunto. Suas regras de conversa entram no prompt; instruções de operação e a personalidade efetiva ficam visíveis aqui.'},
                 {'source':'Modelo', 'text':'O modelo instalado tem comportamentos aprendidos. Regras do aplicativo não reescrevem seus pesos nem garantem respostas sem recusas.'},
-                {'source':'Autorização', 'text':'Observação não executa. No modo 3, permitir automaticamente atua nos escopos autorizados. No modo 4 (acesso total) tudo que não estiver bloqueado executa sem aprovação. Nenhum modo amplia os direitos do usuário Windows.'},
-                {'source':'Implementação atual', 'text':'Sem shell genérico ou privilégios administrativos. Credenciais/AppData/sistema ficam fora das ferramentas de arquivos; gravação no perfil exige confirmação nativa adicional. Heurística de credenciais evita salvar/expor segredos conhecidos.'},
-                {'source':'Navegador', 'text':'Janela isolada, HTTPS público, sem permissões de câmera/microfone, downloads ou acesso à sessão do seu navegador pessoal. Conteúdo pode estar incorreto; cliques e digitação seguem suas regras.'},
+                {'source':'Autorização', 'text':'Observação não executa. No modo 3, permitir automaticamente atua nos escopos autorizados. No modo 4 (acesso total) tudo que não estiver bloqueado executa sem aprovação, exceto comandos do PowerShell, que sempre pedem aprovação no cartão. Nenhum modo amplia os direitos do usuário Windows.'},
+                {'source':'Implementação atual', 'text':'Comandos do PowerShell rodam como seu usuário, sem administrador, e só depois de aprovados no cartão. Credenciais/AppData/sistema ficam fora das ferramentas de arquivos; fora do acesso total, gravação no perfil exige confirmação nativa adicional. Heurística de credenciais evita salvar/expor segredos conhecidos.'},
+                {'source':'Navegador', 'text':'Navegador ALT: janela isolada, HTTPS público, sem câmera/microfone nem downloads. No acesso total, sites também abrem no seu navegador padrão e as janelas dele podem ser lidas e controladas. Conteúdo de sites pode estar incorreto ou tentar enganar o modelo; STOP corta tudo.'},
                 {'source':'Serviços externos', 'text':'Codex/Claude e sites mantêm regras próprias. Envio à nuvem continua exigindo prévia e consentimento; API paga não é ativada automaticamente.'},
             ]}

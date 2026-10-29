@@ -14,6 +14,7 @@ from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
 from backend.monitoring.performance import performance_profile
 from backend.personality import Personality,system_prompt,situational_guidance
+from backend.tools.app_catalog import default_browser
 from backend.memory.library import MemoryLibrary
 from backend.tools.service import ToolService
 from backend.security.consent import ConsentReceipts
@@ -99,7 +100,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 evaluation.task.cancel();await asyncio.gather(evaluation.task,return_exceptions=True)
         store.db.close()
 
-    app = FastAPI(title='ALT-AI local API',version='0.4.1',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
+    app = FastAPI(title='ALT-AI local API',version='0.4.2',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
     app.state.store = store
     app.state.engine = engine
     app.state.tools=tools;app.state.codex=codex;app.state.receipts=receipts
@@ -147,7 +148,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.get('/health',dependencies=[Depends(auth)])
     async def health():
-        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.4.1'}
+        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.4.2'}
 
     @app.get('/models',dependencies=[Depends(auth)])
     async def models():
@@ -220,7 +221,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         previous=[m for m in store.messages(body.conversation_id) if m['status']=='complete']
         prefs=preferences();prefs['owner_policy']=tools.policy.current().model_dump();profile=performance_profile(prefs['performance'])
         memory=library.selected(body.memory_ids)
-        status=tools.status();status['windows']=tools.gui.grants();spec=None if body.model.startswith('cloud:') or body.tool_result_id else tool_spec(body.content,status)
+        status=tools.status();status['windows']=tools.gui.grants();status['browser_page']=bool(desktop.snapshot);spec=None if body.model.startswith('cloud:') or body.tool_result_id else tool_spec(body.content,status)
         if spec:
             definition=spec[0]['function']['parameters']['properties']['tool']['enum']
             definition[:]=[name for name in definition if tools.policy.decision(name)!='deny']
@@ -230,10 +231,21 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         if spec:
             scopes=[{'id':s['id'],'nome':s.get('label') or Path(s['path']).name} for s in status['scopes'][:4]]
             tool_context+='\nEscopos locais disponíveis: '+json.dumps(scopes,ensure_ascii=False,separators=(',',':'))
+            if 'url' in spec[0]['function']['parameters']['properties']:
+                browser=default_browser()
+                if browser:tool_context+=f'\nNavegador padrão do usuário: {browser}. open_url abre sites nele, em nova aba.'
             if 'app' in spec[0]['function']['parameters']['properties']:
-                tool_context+='\nAplicativos: '+json.dumps([{'id':p['id'],'nome':p['name'][:30]} for p in tools.programs()[:6]],ensure_ascii=False,separators=(',',':'))
+                if status['level']==4:
+                    installed=tools.catalog.cached_names()
+                    tool_context+='\nProgramas: abra qualquer programa instalado pelo nome em open_app.'+(' Alguns instalados: '+', '.join(installed[:25])+'.' if installed else '')
+                else:
+                    tool_context+='\nAplicativos: '+json.dumps([{'id':p['id'],'nome':p['name'][:30]} for p in tools.programs()[:6]],ensure_ascii=False,separators=(',',':'))
             if 'window_id' in spec[0]['function']['parameters']['properties']:
                 tool_context+='\nJanelas autorizadas: '+json.dumps([{'window_id':g['id'],'titulo':g['title'][:60]} for g in status['windows'][:5]],ensure_ascii=False,separators=(',',':'))
+                if status['level']==4:
+                    try:opened=await asyncio.to_thread(tools.gui.inventory)
+                    except Exception:opened=[]
+                    tool_context+='\nJanelas abertas (use o título como window_id): '+json.dumps([w['title'][:60] for w in opened[:12]],ensure_ascii=False,separators=(',',':'))
                 for grant in status['windows'][:5]:
                     observed=(tools.gui.snapshots.get(grant['id']) or {}).get('public')
                     if observed:

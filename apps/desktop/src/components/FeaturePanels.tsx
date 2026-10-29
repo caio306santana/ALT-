@@ -33,11 +33,11 @@ type Feedback = {
 };
 export const defaultPersonality: Personality = {
   name: "ALT-AI",
-  tone: "Calma na forma de falar; provocadora, irônica e desafiadora nas ideias.",
-  irony: 55,
-  challenge: 75,
-  warmth: 50,
-  formality: 35,
+  tone: "Inspirada na Alt Cunningham e no JARVIS: direta, calma e precisa; obedece primeiro e comenta depois; humor seco e raro; leal ao usuário.",
+  irony: 20,
+  challenge: 15,
+  warmth: 45,
+  formality: 50,
   instructions: "",
 };
 
@@ -61,7 +61,8 @@ export function PersonalityPanel({
         </button>
       </div>
       <p className="setting-note">
-        Calma na voz. Incisiva nas ideias. O mesmo jeito em qualquer modelo.
+        Faz primeiro, comenta depois. Ironia e debate só aparecem com os
+        controles acima de 40 e 60. O mesmo jeito em qualquer modelo.
       </p>
       <label>
         Nome
@@ -710,7 +711,7 @@ export function ToolsPanel({
         <span>
           Modo:{" "}
           {permissions && permissions.level >= 2
-            ? `${["", "", "Assistido", "Leitura autorizada", "Windows supervisionado"][permissions.level]} · sem prazo · até você alterar`
+            ? `${["", "", "Assistido", "Leitura autorizada", "Acesso total"][permissions.level]} · sem prazo · até você alterar`
             : "Observação"}
         </span>
         <button
@@ -752,7 +753,7 @@ export function ToolsPanel({
             level: 4,
             title: "Acesso total",
             icon: Zap,
-            text: "Até você alterar. Internet, downloads, arquivos do computador, aplicativos e tarefas executam sem pedir aprovação, salvo o que você bloquear em Controle e regras.",
+            text: "Até você alterar. Internet, sites no seu navegador, downloads, arquivos, qualquer programa instalado, janelas e tarefas executam sem pedir aprovação, salvo o que você bloquear. Comandos do PowerShell pedem aprovação.",
           },
         ].map((mode) => (
           <button
@@ -784,9 +785,9 @@ export function ToolsPanel({
         ))}
       </div>
       <p className="setting-note">
-        Acesso total nunca inclui arquivos de credenciais, AppData, shell
-        arbitrário, privilégios de administrador ou executar arquivos baixados.
-        STOP revoga tudo na hora.
+        Acesso total nunca inclui arquivos de credenciais, AppData, privilégios
+        de administrador ou executar arquivos baixados. Comandos do PowerShell
+        sempre mostram um cartão para aprovar. STOP revoga tudo na hora.
       </p>
       <div className="command-shortcuts">
         <button

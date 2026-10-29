@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Shield } from "lucide-react";
+import { Check, ChevronDown, Shield, Zap } from "lucide-react";
 
 type Permissions = { level: number; auto_scopes: string[]; scopes: { id: string; path: string }[] };
 export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError: (e: unknown) => void }) {
@@ -14,6 +14,8 @@ export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError
     setScope(old => value.scopes.some(s => s.id === old && s.id !== "windows-profile") ? old : value.scopes.find(s => s.id !== "windows-profile")?.id || "");
   }
   useEffect(() => { refresh().catch(onError); }, []);
+  // The composer glows red while full access is on, so the mode is never forgotten.
+  useEffect(() => { document.body.classList.toggle("full-access", permissions?.level === 4); }, [permissions?.level]);
   useEffect(() => {
     if (!open) return;
     refresh().catch(onError);
@@ -28,7 +30,7 @@ export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError
     { level: 1, name: "Somente conversar", text: "Conversa e propostas, sem executar ações." },
     { level: 2, name: "Pedir aprovação", text: "Você revisa e aprova cada ação." },
     { level: 3, name: "Usar minhas regras", text: "Pasta escolhida, leitura e cálculo autorizados; demais ações seguem suas regras." },
-    { level: 4, name: "Acesso amplo", text: "Perfil pessoal e pastas autorizadas. Suas regras valem; ações sensíveis continuam supervisionadas." },
+    { level: 4, name: "Acesso total", text: "Abre programas, sites no seu navegador, arquivos e janelas sem perguntar. Comandos do PowerShell pedem aprovação." },
   ];
   async function change(level: number) {
     setWorking(true);
@@ -40,7 +42,12 @@ export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError
     } catch (e) { onError(e); }
     finally { setWorking(false); }
   }
+  const full = permissions?.level === 4;
   return <div className="approval-control" ref={root}>
+    <button type="button" className={"full-access-toggle" + (full ? " on" : "")} disabled={disabled || working} aria-pressed={full}
+      title={full ? "Desligar o acesso total (volta para Pedir aprovação)" : "Ligar o acesso total"} onClick={() => change(full ? 2 : 4)}>
+      <Zap size={13} /><span>{full ? "ACESSO TOTAL" : "Acesso total"}</span>
+    </button>
     <button type="button" className="approval-trigger" disabled={disabled || working} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(!open)}>
       <Shield size={13} /><span>{modes.find(m => m.level === permissions?.level)?.name || "Permissões"}</span><ChevronDown size={12} />
     </button>
@@ -52,7 +59,7 @@ export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError
       </button>)}
       <label>Pasta para “Usar minhas regras”<select value={scope} disabled={working} onChange={e => setScope(e.target.value)}>{permissions?.scopes.filter(s => s.id !== "windows-profile").map(s => <option value={s.id} key={s.id}>{s.path}</option>)}</select></label>
       <button type="button" disabled={working} onClick={async () => { try { await window.alt.chooseWorkspace(); await refresh(); } catch (e) { onError(e); } }}>Escolher outra pasta</button>
-      <small className="approval-note">O alcance é o da sua conta Windows. Sistema, credenciais e elevação administrativa ficam fora deste modo. Ajuste cada capacidade em Controle e regras.</small>
+      <small className="approval-note">O alcance é o da sua conta Windows. Credenciais e elevação administrativa ficam sempre de fora. STOP corta tudo na hora. Ajuste cada capacidade em Controle e regras.</small>
     </div>}
   </div>;
 }

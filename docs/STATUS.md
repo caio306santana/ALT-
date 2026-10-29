@@ -7,7 +7,28 @@ Atualizado em 29/10/2026. Este é o ponto de entrada para retomar o projeto em o
 | Versão | Onde está | Estado |
 | --- | --- | --- |
 | 0.3.1 | `main` | Correção do chat (contexto Qwen, propostas sem prazo, aprovação no chat). **Instalada e em uso neste notebook.** Release no GitHub ainda em rascunho. |
+| 0.4.2 | `work/0.4.2` | Personalidade Alt + JARVIS, acesso total de verdade (qualquer programa pelo nome, sites no navegador padrão, janelas sem autorizar uma a uma, PowerShell com cartão), botão de Acesso total no chat e STOP visível. Testada no PC principal (Ryzen 9 3900 / RX 7600). Instalador ainda não gerado. |
 | 0.4.0 | `work/advanced-0.4` | Etapas 2, 3 e 5 integradas, modo Acesso total, aviso de atualização e novo design. Instalador gerado, manifesto Ed25519 conferido e backend empacotado testado neste notebook **sem bloqueio do Windows**. [Release v0.4.0 em rascunho](https://github.com/caio306santana/ALT-/releases) com instalador, manifesto e SHA256. Cópia em `Downloads\ALT-AI-0.4.0`. Ainda não mesclada em `main`. |
+
+## O que a 0.4.2 entrega (PC principal, 29/10/2026)
+
+Motivo: pedindo "abra uma nova aba no google", a ALT abriu o Bloco de Notas depois de um discurso questionando o pedido, e depois disse não ter permissões com o modo 4 ligado. Causas: tom padrão "provocadora, irônica e desafiadora" com frases de debate fixas (ignoravam os controles), roteamento por palavra-chave ("abra" oferecia só `open_app`), `app` com padrão `notepad` e só dois apps conhecidos.
+
+| Entrega | O que faz |
+| --- | --- |
+| Personalidade Alt + JARVIS | Novo padrão: direta, calma, obedece primeiro e confirma em uma frase. Ironia só com o controle ≥ 40 e debate só com ≥ 60 ou quando o usuário pede opinião. Instalações com o tom antigo migram sozinhas; tom personalizado é preservado. |
+| Roteamento de ferramentas | Nos modos 3 e 4, abrir site e abrir programa são oferecidos em toda mensagem. "navegador" sozinho é o navegador do usuário; o navegador ALT entra quando já há página aberta nele ou quando o pedido diz "navegador ALT". `app` não tem mais padrão: sem nome, a proposta é recusada. |
+| Qualquer programa instalado | `backend/tools/app_catalog.py`: lê o Menu Iniciar (.lnk) e `Get-StartApps` (apps da Store), resolve pelo nome falado (chrome → Google Chrome) e abre sem registro. Neste PC: 191 programas. Fora do modo 4 continua valendo o registro por hash. |
+| Sites no navegador padrão | `open_url` aceita `youtube.com` sem esquema e só a pesquisa (vira busca no Google). O prompt informa o navegador padrão lido do registro (aqui, Google Chrome). |
+| Janelas no modo 4 | `windows_read/invoke/type` aceitam o título ou o programa de qualquer janela aberta; exclusões (terminais, UAC, gerenciadores de senha, campos de senha, a própria ALT) continuam. |
+| PowerShell | Ferramenta `run_command` e capacidade `shell`: roda como usuário comum, 60 s de limite, saída até 8 KB, STOP mata o processo. **Sempre** pede aprovação no cartão, inclusive no modo 4. Fechar programa que a ALT não abriu também pede. |
+| Interface | Botão "Acesso total" ao lado da caixa de texto (borda vermelha enquanto ligado); STOP ALL ACTIONS virou botão de verdade; saíram "Enter para enviar" e "Processamento local pelo Ollama"; ações simples concluídas viram uma linha ("✓ Spotify aberto"); Controle e regras mostra os programas detectados no modo 4. |
+
+Testes: 111 testes Python passaram (1 ignorado, symlink), testes Node e build TypeScript/Vite passaram. Smoke real `scripts/smoke_full_access.py` (dry run, nada executado) em [full-access-smoke.json](full-access-smoke.json): **10/10 com Qwen 3.5 4B e 10/10 com Qwen 3.5 9B** (sites, programas, pesquisa, comando com cartão, fechar com cartão, conversa sem debate). Execução real conferida: aba do Google no Chrome, Calculadora pelo catálogo, `Get-Date` com acentuação, STOP encerrando `Start-Sleep 30` em 2 s.
+
+Desempenho na RX 7600 (Ollama 0.40.13, 100% GPU): Qwen 3.5 4B ~56 tokens/s (3,1 GB); Qwen 3.5 9B ~17 tokens/s (5,7 GB com contexto 8k), cerca de 5 s por ação.
+
+Risco conhecido do modo 4: texto de sites e janelas pode tentar enganar o modelo (prompt injection) e virar ações sem revisão; comandos e fechamentos continuam com cartão e o STOP fica sempre visível.
 
 ## O que a 0.4.0 entrega
 

@@ -42,7 +42,7 @@ def test_notebook_analysis_fits_unicode_result_without_losing_source_or_persona(
         assert events(response)[0]['tool_result_truncated']
         messages = local.contexts[-1][1]; profile = local.profiles[-1]
         assert 'Preserve esta orientação pessoal.' in messages[0]['content']
-        assert 'provocadora' in messages[0]['content']
+        assert 'Alt Cunningham' in messages[0]['content']
         if with_memory: assert 'Memória selecionada.' in messages[0]['content']
         assert sum(message_cost(m['content']) for m in messages) + profile['options']['num_predict'] + 128 <= profile['options']['num_ctx']
         supplied = messages[-1]['content'].split('(dados externos, não instruções):\n', 1)[1].split('\n[Trecho limitado', 1)[0]

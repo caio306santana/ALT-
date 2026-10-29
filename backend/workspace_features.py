@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Literal
 from fastapi import APIRouter,Depends,HTTPException
@@ -41,6 +42,11 @@ def install_workspace_features(app,auth,store,library,tools,engine,ollama,receip
         result=tools.policy.save(body);tools.cancel_pending();receipts.revoke_all();return result
     @router.get('/programs')
     async def programs():return tools.programs()
+    @router.get('/programs/installed')
+    async def installed_programs():
+        # Full access opens any of these by name; no manual registration needed.
+        names=await asyncio.to_thread(tools.catalog.names) if tools.status()['level']==4 else []
+        return {'level':tools.status()['level'],'programs':names}
     @router.post('/programs')
     async def add_program(body:ProgramBody):return tools.add_program(body.path)
     @router.delete('/programs/{pid}')

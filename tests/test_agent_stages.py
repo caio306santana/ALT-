@@ -69,8 +69,8 @@ def test_task_is_planned_reviewed_paused_and_resumed_without_repeating_actions(t
         run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
         assert run['state']=='draft' and len(run['plan']['steps'])==3
         assert 'windows_read' not in provider.profiles[-1]['format']['properties']['steps']['items']['properties']['action']['properties']['tool']['enum']
-        # Empty optional arguments from the model fall back to field defaults.
-        assert run['plan']['steps'][2]['action']['app']=='notepad'
+        # Empty optional arguments fall back to field defaults; the app has none (it used to open Notepad).
+        assert run['plan']['steps'][2]['action']['app']==''
         assert client.post(f"/tasks/{run['id']}/start",json={}).status_code==200
         run=wait(client,'/tasks/'+run['id'],lambda r:r['state']=='awaiting_approval')
         assert run['cursor']==1 and run['history'][0]['verified'] and run['current_proposal']['preview']['tool']=='write_text'

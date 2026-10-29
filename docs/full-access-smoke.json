@@ -1,0 +1,319 @@
+{
+  "started": "2026-10-29T20:36:58-0300",
+  "dry_run": true,
+  "models": {
+    "qwen3.5:9b": [
+      {
+        "message": "abra uma nova aba no google",
+        "seconds": 7.2,
+        "tool": "open_url",
+        "state": "complete",
+        "preview": {
+          "tool": "open_url",
+          "url": "https://google.com"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o youtube",
+        "seconds": 5.0,
+        "tool": "open_url",
+        "state": "complete",
+        "preview": {
+          "tool": "open_url",
+          "url": "https://youtube.com"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o spotify",
+        "seconds": 5.2,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Spotify"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre a calculadora",
+        "seconds": 4.9,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Calculadora"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o chrome",
+        "seconds": 5.0,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Google Chrome"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "pesquisa no google o preço da RTX 5070",
+        "seconds": 5.3,
+        "tool": "web_search",
+        "state": "complete",
+        "preview": {
+          "tool": "web_search",
+          "query": "preço RTX 5070 Brasil"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "rode ipconfig",
+        "seconds": 7.2,
+        "tool": "run_command",
+        "state": "proposed",
+        "preview": {
+          "tool": "run_command",
+          "command": "ipconfig",
+          "external_notice": "Comando do PowerShell com os direitos do seu usuário Windows (sem administrador). Confira o comando inteiro antes de aprovar.",
+          "critical": false
+        },
+        "reply": "\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "fecha o discord",
+        "seconds": 6.8,
+        "tool": "close_app",
+        "state": "proposed",
+        "preview": {
+          "tool": "close_app",
+          "app": "Discord",
+          "notice": "Solicita fechamento normal das janelas abertas deste programa; o programa pode pedir para salvar documentos.",
+          "critical": false
+        },
+        "reply": "\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "oi, tudo bem?",
+        "seconds": 4.6,
+        "tool": null,
+        "state": null,
+        "preview": null,
+        "reply": "Estou processando. Como posso ajudar?",
+        "errors": [],
+        "checks": [
+          {
+            "check": "words:120",
+            "label": "Até 120 palavras (5)",
+            "ok": true
+          },
+          {
+            "check": "no_debate",
+            "label": "Sem tom de debate ou lição",
+            "ok": true
+          }
+        ],
+        "ok": true
+      },
+      {
+        "message": "me ajuda a organizar meu dia, tenho academia às 7h e trabalho das 9h às 18h",
+        "seconds": 13.8,
+        "tool": null,
+        "state": null,
+        "preview": null,
+        "reply": "Organizei seu fluxo:\n06:30 – Levantar e café rápido;\n06:45 – Chegar na academia;\n07:00 – Treino concluído;\n07:30 – Lanche pós-treino e banho rápido;\n08:30 – Sair para o trabalho (ou trabalhar em casa, se preferir);\n09:00 – Início do expediente;\n12:00 – Almoço no horário;\n14:30 – Café da tarde ou pausa curta;\n17:50 – Preparar para sair;\n18:00 – Fim do trabalho;\n18:15 – Caminho para casa (ou academia noturna se quiser treinar à noite).\n\nQuer que eu ajeite algo específico nesse horário?",
+        "errors": [],
+        "checks": [
+          {
+            "check": "words:120",
+            "label": "Até 120 palavras (87)",
+            "ok": true
+          },
+          {
+            "check": "no_debate",
+            "label": "Sem tom de debate ou lição",
+            "ok": true
+          }
+        ],
+        "ok": true
+      }
+    ],
+    "qwen3.5:4b": [
+      {
+        "message": "abra uma nova aba no google",
+        "seconds": 19.6,
+        "tool": "open_url",
+        "state": "complete",
+        "preview": {
+          "tool": "open_url",
+          "app": "Google Chrome",
+          "url": "https://google.com"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o youtube",
+        "seconds": 1.9,
+        "tool": "open_url",
+        "state": "complete",
+        "preview": {
+          "tool": "open_url",
+          "url": "https://youtube.com"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o spotify",
+        "seconds": 2.5,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Spotify"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre a calculadora",
+        "seconds": 2.2,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Calculadora"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o chrome",
+        "seconds": 2.0,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Google Chrome"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "pesquisa no google o preço da RTX 5070",
+        "seconds": 2.3,
+        "tool": "web_search",
+        "state": "complete",
+        "preview": {
+          "tool": "web_search",
+          "query": "preço da NVIDIA GeForce RTX 5070"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "rode ipconfig",
+        "seconds": 2.2,
+        "tool": "run_command",
+        "state": "proposed",
+        "preview": {
+          "tool": "run_command",
+          "command": "ipconfig",
+          "external_notice": "Comando do PowerShell com os direitos do seu usuário Windows (sem administrador). Confira o comando inteiro antes de aprovar.",
+          "critical": false
+        },
+        "reply": "\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "fecha o discord",
+        "seconds": 2.2,
+        "tool": "close_app",
+        "state": "proposed",
+        "preview": {
+          "tool": "close_app",
+          "app": "Discord",
+          "notice": "Solicita fechamento normal das janelas abertas deste programa; o programa pode pedir para salvar documentos.",
+          "critical": false
+        },
+        "reply": "\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "oi, tudo bem?",
+        "seconds": 1.5,
+        "tool": null,
+        "state": null,
+        "preview": null,
+        "reply": "Olá. Sim, estou operacional. Como posso ajudar?",
+        "errors": [],
+        "checks": [
+          {
+            "check": "words:120",
+            "label": "Até 120 palavras (7)",
+            "ok": true
+          },
+          {
+            "check": "no_debate",
+            "label": "Sem tom de debate ou lição",
+            "ok": true
+          }
+        ],
+        "ok": true
+      },
+      {
+        "message": "me ajuda a organizar meu dia, tenho academia às 7h e trabalho das 9h às 18h",
+        "seconds": 3.2,
+        "tool": null,
+        "state": null,
+        "preview": null,
+        "reply": "Para criar uma rotina eficiente com essas horas, sugiro um esquema de manhã focado em recuperação: acorda por volta das 03:30, tem 45 minutos para higiene e café, chega à academia às 04:15 (para terminar com tempo sobrando), janta entre 06:30 e 07:15 e retira-se cedo o suficiente para dormir. \n\nPosso gerar um plano de tarefas detalhado se desejar.",
+        "errors": [],
+        "checks": [
+          {
+            "check": "words:120",
+            "label": "Até 120 palavras (64)",
+            "ok": true
+          },
+          {
+            "check": "no_debate",
+            "label": "Sem tom de debate ou lição",
+            "ok": true
+          }
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "summary": {
+    "qwen3.5:9b": "10/10",
+    "qwen3.5:4b": "10/10"
+  }
+}

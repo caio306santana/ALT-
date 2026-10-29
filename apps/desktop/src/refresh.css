@@ -368,3 +368,81 @@
   align-items: center;
   gap: 8px;
 }
+
+/* STOP is an emergency control: it must look like a button, not a caption. */
+.app .statusbar {
+  height: 34px;
+}
+.app .statusbar .stop-all {
+  gap: 6px;
+  padding: 4px 14px;
+  border: 1px solid color-mix(in srgb, #ff2a4f 70%, transparent);
+  border-radius: var(--control-radius);
+  background: color-mix(in srgb, #ff2a4f 16%, transparent);
+  color: #ff6b84;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+}
+.app .statusbar .stop-all:hover {
+  background: #ff2a4f;
+  color: #fff;
+}
+.app .statusbar .stop-all.halted {
+  border-color: var(--secondary, #00c9f5);
+  background: color-mix(in srgb, var(--secondary, #00c9f5) 16%, transparent);
+  color: var(--secondary, #00c9f5);
+}
+
+/* Full access: one click to switch, and the composer glows red while it is on. */
+.full-access-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  margin-right: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.full-access-toggle.on {
+  border-color: #ff2a4f;
+  background: color-mix(in srgb, #ff2a4f 20%, transparent);
+  color: #ff6b84;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+.approval-control {
+  display: inline-flex;
+  align-items: center;
+}
+body.full-access .composer {
+  border-color: #ff2a4f;
+  box-shadow: 0 0 14px color-mix(in srgb, #ff2a4f 45%, transparent);
+}
+
+/* Installed programs list in Controle e regras. */
+.program-search {
+  width: 100%;
+  margin: 6px 0 10px;
+}
+.program-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+/* Completed simple actions: a single confirmation line instead of a card. */
+.chat-action-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  color: var(--secondary, #00c9f5);
+  font-size: 13px;
+}

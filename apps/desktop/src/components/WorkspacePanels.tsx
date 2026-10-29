@@ -30,6 +30,7 @@ const labels: Record<string, string> = {
   downloads: "Baixar arquivos da internet",
   windows_read: "Ler janelas do Windows autorizadas",
   windows_control: "Clicar e digitar em janelas autorizadas",
+  shell: "Comandos do PowerShell (sempre com cartão de aprovação)",
 };
 
 export function OwnerControlPanel({ notify, onError }: Feedback) {
@@ -38,13 +39,24 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
     [busy, setBusy] = useState(false),
     [programs, setPrograms] = useState<
       { id: string; name: string; path?: string }[]
-    >([]);
+    >([]),
+    [installed, setInstalled] = useState<{
+      level: number;
+      programs: string[];
+    } | null>(null),
+    [programQuery, setProgramQuery] = useState("");
   async function refresh() {
     const p = await api<PolicyState>("GET", "/policy");
     setState(p);
     setDraft(p.policy);
     setPrograms(await api("GET", "/programs"));
+    setInstalled(await api("GET", "/programs/installed"));
   }
+  const fullAccess = installed?.level === 4,
+    query = programQuery.trim().toLocaleLowerCase(),
+    matching = (installed?.programs || []).filter((name) =>
+      name.toLocaleLowerCase().includes(query),
+    );
   useEffect(() => {
     refresh().catch(onError);
   }, []);
@@ -134,9 +146,10 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
         ))}
         <p className="setting-note">
           Observação não executa. No modo 4 (acesso total), tudo que não
-          estiver bloqueado aqui executa sem pedir aprovação. STOP revoga na
-          hora. Arquivos de credenciais, shell e privilégios de administrador
-          ficam sempre de fora; downloads nunca são executados.
+          estiver bloqueado aqui executa sem pedir aprovação, menos comandos do
+          PowerShell, que sempre mostram um cartão. STOP revoga na hora.
+          Arquivos de credenciais e privilégios de administrador ficam sempre de
+          fora; downloads nunca são executados.
         </p>
         <button
           className="primary"
@@ -174,19 +187,53 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
         </p>
         <pre className="prompt-preview">{state.effective_prompt}</pre>
       </details>
-      <h3>Aplicativos registrados</h3>
-      <button
-        className="secondary"
-        onClick={() =>
-          window.alt
-            .chooseProgram()
-            .then(() => refresh())
-            .catch(onError)
-        }
-      >
-        Escolher aplicativo .exe
-      </button>
-      {programs.map((p) => (
+      {fullAccess ? (
+        <>
+          <h3>
+            Programas instalados (detectados automaticamente):{" "}
+            {installed?.programs.length ?? 0}
+          </h3>
+          <p className="setting-note">
+            No acesso total a ALT abre qualquer um pelo nome, como “abre o
+            Spotify”. Não é preciso registrar nada.
+          </p>
+          <input
+            className="program-search"
+            value={programQuery}
+            placeholder="Procurar programa…"
+            onChange={(e) => setProgramQuery(e.target.value)}
+          />
+          <div className="program-chips">
+            {matching.slice(0, 80).map((name) => (
+              <span className="small-tag" key={name}>
+                {name}
+              </span>
+            ))}
+            {matching.length > 80 && (
+              <span className="setting-note">+{matching.length - 80}</span>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <h3>Aplicativos registrados</h3>
+          <p className="setting-note">
+            Fora do acesso total, a ALT só abre os aplicativos registrados aqui.
+          </p>
+          <button
+            className="secondary"
+            onClick={() =>
+              window.alt
+                .chooseProgram()
+                .then(() => refresh())
+                .catch(onError)
+            }
+          >
+            Escolher aplicativo .exe
+          </button>
+        </>
+      )}
+      {!fullAccess && programs.map((p) => (
         <article className="info-card" key={p.id}>
           <strong>{p.name}</strong>
           <p>{p.path || "Aplicativo do Windows"}</p>
