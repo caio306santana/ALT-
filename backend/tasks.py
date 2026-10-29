@@ -41,6 +41,18 @@ def normalize_plan(text):
             if not step.get('expected'):step.pop('expected',None)
     return TaskPlan.model_validate(data)
 
+def plan_problems(plan):
+    """Arguments a step cannot run without, caught before the owner reviews it."""
+    problems=[]
+    for number,step in enumerate(plan.steps,1):
+        action=step.action;path=action.path.strip().rstrip('/\\')
+        if action.tool in ('read_text','write_text') and (not path or path=='.' or '.' not in path.replace('\\','/').split('/')[-1]):
+            problems.append(f'etapa {number} ({action.tool}) precisa de path com nome de arquivo, ex.: "resultado.txt"')
+        if action.tool=='calculate' and not action.expression.strip():problems.append(f'etapa {number} precisa de expression')
+        if action.tool in ('web_search',) and not action.query.strip():problems.append(f'etapa {number} precisa de query')
+        if action.tool in ('read_webpage','open_url','download_file','browser_open') and not action.url.strip():problems.append(f'etapa {number} precisa de url')
+    return problems
+
 class TaskManager:
     def __init__(self,store,engine,tools,ollama):
         self.store,self.engine,self.tools,self.ollama=store,engine,tools,ollama;self.workers={}
@@ -82,14 +94,21 @@ class TaskManager:
         room=profile['options']['num_ctx']-sum(message_cost(m['content'],model) for m in messages)-128
         if room<256:raise ValueError('Objetivo grande demais para planejar neste perfil. Divida em tarefas menores.')
         profile['options']['num_predict']=min(1536,room);profile['format']=plan_schema(available);text='';done=False
-        async with asyncio.timeout(420):
-            async for chunk in cancellable(self.ollama.stream(model,messages,cancel,profile),cancel):
-                text+=chunk.get('message',{}).get('content','');done=done or bool(chunk.get('done'))
-        if cancel.is_set() or not done:raise ValueError('Planejamento interrompido; nenhuma ação executada.')
-        try:plan=normalize_plan(text)
-        except Exception as exc:raise ValueError('O modelo não concluiu um plano válido. Simplifique o objetivo ou edite o plano.') from exc
-        if any(step.action.tool not in available for step in plan.steps):raise ValueError('O plano usou uma ferramenta indisponível para esta tarefa.')
-        return plan
+        if feedback:messages[0]['content']+=' Planeje SOMENTE o que ainda falta: não repita etapas que aparecem como concluídas no feedback.'
+        for attempt in range(2):
+            text='';done=False
+            async with asyncio.timeout(420):
+                async for chunk in cancellable(self.ollama.stream(model,messages,cancel,profile),cancel):
+                    text+=chunk.get('message',{}).get('content','');done=done or bool(chunk.get('done'))
+            if cancel.is_set() or not done:raise ValueError('Planejamento interrompido; nenhuma ação executada.')
+            try:plan=normalize_plan(text)
+            except Exception as exc:raise ValueError('O modelo não concluiu um plano válido. Simplifique o objetivo ou edite o plano.') from exc
+            if any(step.action.tool not in available for step in plan.steps):raise ValueError('O plano usou uma ferramenta indisponível para esta tarefa.')
+            problems=plan_problems(plan)
+            if not problems:return plan
+            # One correction round with concrete feedback, before anything runs.
+            messages+=[{'role':'assistant','content':text},{'role':'user','content':'Corrija o plano: '+'; '.join(problems)+'. Retorne o plano completo corrigido.'}]
+        raise ValueError('O plano do modelo continua incompleto: '+'; '.join(problems)+'. Edite o plano antes de iniciar.')
 
     def plan(self,goal,model,scope_id='',window_id='',conversation_id=''):
         if self.busy():raise ValueError('Já existe uma tarefa em planejamento ou execução.')

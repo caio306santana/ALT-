@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import json
 import math
+import re
 import stat
 import zipfile
 from pathlib import Path
@@ -16,11 +17,38 @@ def unit(vector):
     if not norm:raise ValueError('Vetor vazio do modelo local.')
     return [x/norm for x in vector]
 
+# EmbeddingGemma was trained with these task prompts; bump FORMAT to re-index.
+FORMAT='egemma-prompts-v1'
+def query_prompt(text):return 'task: search result | query: '+text
+def document_prompt(title,text):return 'title: '+(title or 'none')+' | text: '+text
+
 def chunks(text,size=1100,overlap=100):
-    text=text.strip()
-    for start in range(0,len(text),size-overlap):
-        part=text[start:start+size]
-        if part.strip():yield part
+    """Whole paragraphs grouped up to size; only oversized paragraphs are windowed."""
+    current=''
+    for paragraph in re.split(r'\n\s*\n',text.strip()):
+        paragraph=paragraph.strip()
+        if not paragraph:continue
+        if len(paragraph)>size:
+            if current:yield current;current=''
+            for start in range(0,len(paragraph),size-overlap):
+                part=paragraph[start:start+size]
+                if part.strip():yield part
+            continue
+        if current and len(current)+2+len(paragraph)>size:yield current;current=''
+        current=current+'\n\n'+paragraph if current else paragraph
+    if current:yield current
+
+def text_sections(text,default='texto'):
+    """Split at Markdown headings so unrelated topics never share a chunk."""
+    sections=[];title=default;lines=[]
+    for line in text.splitlines():
+        heading=re.match(r'^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$',line)
+        if heading:
+            if '\n'.join(lines).strip():sections.append((title,'\n'.join(lines)))
+            title=heading.group(1).strip()[:120];lines=[line]
+        else:lines.append(line)
+    if '\n'.join(lines).strip():sections.append((title,'\n'.join(lines)))
+    return sections or [(default,text)]
 
 def extract_document(path):
     path=Path(path)
@@ -41,14 +69,16 @@ def extract_document(path):
         with zipfile.ZipFile(path) as archive:
             if sum(i.file_size for i in archive.infolist())>50_000_000:raise ValueError('DOCX expandido excede o limite.')
         document=Document(path)
-        sections=[(f'parágrafo {i+1}',p.text) for i,p in enumerate(document.paragraphs) if p.text.strip()]
+        # Heading styles become sections; body paragraphs stay together under them.
+        lines=[('# '+p.text if (p.style is not None and (p.style.name or '').lower().startswith(('heading','título','titulo','title'))) else p.text) for p in document.paragraphs if p.text.strip()]
+        sections=text_sections('\n\n'.join(lines),'documento')
         for index,table in enumerate(document.tables):sections.append((f'tabela {index+1}','\n'.join(' | '.join(cell.text for cell in row.cells) for row in table.rows)))
     else:
         raw=path.read_bytes()
         if b'\x00' in raw:raise ValueError('Arquivo não é texto UTF-8/Windows-1252.')
         try:text=raw.decode('utf-8-sig')
         except UnicodeDecodeError:text=raw.decode('cp1252')
-        sections=[('texto',text)]
+        sections=text_sections(text)
     text='\n'.join(t for _,t in sections)
     if not text.strip():raise ValueError('Não há texto extraível. PDFs digitalizados precisam de OCR, ainda não incluído.')
     if len(text)>200_000:raise ValueError('Texto extraído excede 200.000 caracteres.')
@@ -101,7 +131,7 @@ class Knowledge:
     async def model_digest(self):
         model=next((m for m in await self.ollama.models() if m.get('name','').split(':')[0]=='embeddinggemma' and not m.get('remote_host')),None)
         if not model:raise ValueError('EmbeddingGemma não está instalado. Autorize o download para ativar busca semântica.')
-        return model.get('digest') or model['name']
+        return (model.get('digest') or model['name'])+':'+FORMAT
     def items(self,pid=''):
         memories=self.library.list();rows=[]
         for row in memories:
@@ -128,7 +158,7 @@ class Knowledge:
                 if not existing or existing[0]['content_hash']!=fingerprint or existing[0]['model_digest']!=digest:
                     # Long memories are encoded in chunks and averaged, not silently
                     # truncated beyond the embedding model's input window.
-                    segments=list(chunks(text));embedding=asyncio.create_task(self.ollama.embed(segments));stopped=asyncio.create_task(cancel.wait())
+                    segments=[document_prompt(item['title'],part) for part in chunks(item['content'])] or [document_prompt(item['title'],item['title'])];embedding=asyncio.create_task(self.ollama.embed(segments));stopped=asyncio.create_task(cancel.wait())
                     try:
                         ready,_=await asyncio.wait([embedding,stopped],return_when=asyncio.FIRST_COMPLETED)
                         if stopped in ready:break
@@ -151,7 +181,7 @@ class Knowledge:
         if key not in self.query_vectors:
             # Typing re-estimates context; repeated queries reuse their vector.
             if len(self.query_vectors)>=64:self.query_vectors.pop(next(iter(self.query_vectors)))
-            self.query_vectors[key]=unit((await self.ollama.embed([query[:1500]]))[0])
+            self.query_vectors[key]=unit((await self.ollama.embed([query_prompt(query[:1500])]))[0])
         vector=self.query_vectors[key];ranked=[]
         stored={(r['kind'],r['item_id']):r for r in self.store.rows('SELECT * FROM semantic_vectors WHERE model_digest=?',(digest,))}
         for item in self.items(pid):

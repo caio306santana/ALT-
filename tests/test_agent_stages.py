@@ -17,6 +17,9 @@ PLAN={'steps':[
     {'title':'Conferir nota','action':{'tool':'read_text','path':'notas.txt','app':''},'expected':'Resultado 42'},
 ]}
 
+# EmbeddingGemma task-prompt words carry no meaning in the fake vectors.
+PROMPT_WORDS={'task','search','result','query','title','text','none'}
+
 class AgentProvider(FixtureProvider):
     def __init__(self):
         super().__init__();self.plan=PLAN;self.reply=['Olá, ','mundo!'];self.embed_fail=False;self.embedded=0
@@ -25,7 +28,9 @@ class AgentProvider(FixtureProvider):
     async def stream(self,model,messages,cancel,profile=None):
         self.profiles.append(profile);self.contexts.append((model,messages))
         if profile and profile.get('format'):
-            yield {'message':{'content':json.dumps(self.plan)}}
+            # A list holds successive answers, e.g. a flawed plan and its correction.
+            plan=self.plan.pop(0) if isinstance(self.plan,list) and len(self.plan)>1 else self.plan[0] if isinstance(self.plan,list) else self.plan
+            yield {'message':{'content':json.dumps(plan)}}
         else:
             for part in self.reply:yield {'message':{'content':part}}
         yield {'done':True,'eval_count':4,'eval_duration':2_000_000_000,'prompt_eval_count':10}
@@ -34,10 +39,10 @@ class AgentProvider(FixtureProvider):
         self.embedded+=len(texts);vectors=[]
         for text in texts:
             # Deterministic bag of words: shared words give similar vectors.
-            vector=[0.0]*32
+            vector=[0.0]*256
             for word in re.findall(r'\w+',text.casefold()):
-                if len(word)>3:vector[int(hashlib.sha256(word.encode()).hexdigest(),16)%32]+=1
-            vectors.append(vector if any(vector) else [1.0]+[0.0]*31)
+                if len(word)>3 and word not in PROMPT_WORDS:vector[int(hashlib.sha256(word.encode()).hexdigest(),16)%256]+=1
+            vectors.append(vector if any(vector) else [1.0]+[0.0]*255)
         return vectors
 
 def agent_client(tmp_path):
@@ -237,3 +242,37 @@ def test_full_access_runs_tasks_unattended_reaches_other_folders_and_downloads(t
         assert run['state']=='completed' and (tmp_path/'workspace'/'r.txt').read_text()=='42'
         client.post('/actions/stop')
         assert client.get('/permissions').json()['level']==1
+
+def test_flawed_plan_gets_one_correction_round_before_review(tmp_path):
+    app,provider,client=agent_client(tmp_path)
+    flawed={'steps':[{'title':'Gravar','action':{'tool':'write_text','path':'.','content':'360'}}]}
+    fixed={'steps':[{'title':'Gravar','action':{'tool':'write_text','path':'resultado.txt','content':'360'}}]}
+    with client:
+        scope=client.get('/permissions').json()['scopes'][0]['id']
+        provider.plan=[flawed,fixed]
+        run=client.post('/tasks',json={'goal':'Grave 360','model':'fixture:4b','scope_id':scope}).json()
+        run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
+        assert run['state']=='draft' and run['plan']['steps'][0]['action']['path']=='resultado.txt'
+        assert 'nome de arquivo' in provider.contexts[-1][1][-1]['content']
+        provider.plan=[flawed,flawed]
+        run=client.post('/tasks',json={'goal':'Grave 360','model':'fixture:4b','scope_id':scope}).json()
+        run=wait(client,'/tasks/'+run['id'],lambda r:r['state']!='planning')
+        assert run['state']=='error' and 'nome de arquivo' in run['notice']
+
+def test_documents_split_by_heading_and_use_embedding_prompts(tmp_path):
+    from backend.memory.knowledge import extract_document,chunks
+    doc=tmp_path/'notas.md';doc.write_text('# Receitas\nBolo de cenoura.\n\nCobertura de chocolate.\n\n# Viagem\nVoo às 22h.',encoding='utf-8')
+    sections=extract_document(doc)
+    assert [s[0] for s in sections]==['Receitas','Viagem'] and 'Voo' not in sections[0][1]
+    assert list(chunks('a'*30+'\n\n'+'b'*30,size=40,overlap=5))==['a'*30,'b'*30]
+    app,provider,client=agent_client(tmp_path)
+    seen=[];original=provider.embed
+    async def recording(texts):seen.extend(texts);return await original(texts)
+    provider.embed=recording
+    with client:
+        project=client.post('/projects',json={'name':'Casa'}).json()
+        client.post(f"/projects/{project['id']}/documents",json={'path':str(doc)})
+        client.post('/knowledge/index');wait(client,'/knowledge/status',lambda s:s['status']=='complete')
+        found=client.post('/knowledge/search',json={'query':'detalhes da viagem'}).json()
+        assert found[0]['title'].endswith('Viagem')
+    assert any(t.startswith('title: notas.md · Viagem | text: ') for t in seen) and 'task: search result | query: detalhes da viagem' in seen
