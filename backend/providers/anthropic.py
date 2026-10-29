@@ -27,8 +27,18 @@ class AnthropicProvider:
         return AnthropicConfig(**json.loads(rows[0]['value'])) if rows else AnthropicConfig()
     def save(self,body):self.store.set_settings({'anthropic':body.model_dump()});return body.model_dump()
     def status(self):
-        config=self.config();available=config.enabled and bool(config.model) and self.vault.configured() and config.input_usd_per_million>0 and config.output_usd_per_million>0
+        config=self.config();available=config.enabled and bool(config.model) and self.vault.configured() and self.vault.validated() and self.vault.model_available(config.model) and config.input_usd_per_million>0 and config.output_usd_per_million>0
         return {'id':'anthropic','name':'Claude · API Anthropic','available':available,'location':'cloud','billing':'api','reason':'API configurada; cobrança por uso e confirmação a cada envio.' if available else 'API desativada ou sem chave/modelo/preços configurados. Assinatura Claude não é usada.'}
+    async def verify_key(self):
+        try:
+            async with httpx.AsyncClient(timeout=15,trust_env=False) as client:
+                response=await client.get('https://api.anthropic.com/v1/models',params={'limit':1000},headers={'x-api-key':self.vault.get(),'anthropic-version':'2023-06-01'})
+                response.raise_for_status();models=[m['id'] for m in response.json().get('data',[]) if m.get('lifecycle')!='retired']
+                self.vault.validate(models)
+                return {'configured':True,'verified':bool(models),'models':models,'message':'Chave verificada. Configure um modelo listado e os limites de gasto.' if models else 'Chave salva, mas nenhum modelo disponível foi confirmado.'}
+        except (httpx.HTTPError,ValueError,OSError):
+            self.vault.validate([])
+            return {'configured':True,'verified':False,'models':[],'message':'Chave protegida no Windows, mas autenticação/modelos não foram confirmados. A API permanece indisponível.'}
     def estimate(self,messages):
         config=self.config();input_bound=len(json.dumps(messages,ensure_ascii=False).encode('utf-8'))+1000
         return round((input_bound*config.input_usd_per_million+768*config.output_usd_per_million)/1e6,6)
@@ -59,6 +69,7 @@ class AnthropicProvider:
             async with httpx.AsyncClient(timeout=httpx.Timeout(120,connect=10),trust_env=False) as client:
                 async with client.stream('POST','https://api.anthropic.com/v1/messages',json=payload,headers={'x-api-key':self.vault.get(),'anthropic-version':'2023-06-01'}) as response:
                     if response.status_code!=200:
+                        if response.status_code in (401,403):self.vault.validate([])
                         code='usage_limit' if response.status_code==429 else 'authentication' if response.status_code in (401,403) else 'provider_error'
                         raise ProviderError('A API Anthropic recusou o pedido. Verifique autenticação, disponibilidade e limites.',code)
                     async for line in response.aiter_lines():

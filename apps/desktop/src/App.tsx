@@ -34,6 +34,9 @@ import {
   StopCircle,
   Lock,
   ExternalLink,
+  Brain,
+  Wrench,
+  Gamepad2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -43,8 +46,18 @@ import type {
   Model,
   Preferences,
   StreamEvent,
+  ProviderStatus,
+  CloudPreview,
 } from "../../../packages/shared-types";
 import { themes } from "../../../packages/design-tokens/themes";
+import {
+  AdvancedAppearance,
+  PersonalityPanel,
+  MemoryPanel,
+  ToolsPanel,
+  ProvidersPanel,
+  defaultPersonality,
+} from "./components/FeaturePanels";
 
 const defaults: Preferences = {
   accent: "#ff0057",
@@ -56,12 +69,22 @@ const defaults: Preferences = {
   animations: true,
   model: "",
   performance: "auto",
+  personality: defaultPersonality,
+  secondary: "#00c9f5",
+  appearance: "dark",
+  scale: 1,
+  chat_opacity: 100,
+  effects: true,
+  radius: 13,
+  shortcut: "Control+Shift+Space",
+  always_on_top: false,
 };
 const api = <T,>(method: string, path: string, body?: unknown) =>
   window.alt.request<T>(method, path, body);
 const bytes = (value: number | undefined | null) =>
   value == null ? "Indisponível" : `${(value / 1024 ** 3).toFixed(1)} GB`;
-type View = "chat" | "models" | "history" | "monitor" | "security";
+type View =
+  "chat" | "models" | "history" | "monitor" | "security" | "memory" | "tools";
 type SystemData = {
   cpu: { name: string; percent: number; logical_cores: number };
   ram: { used: number; total: number; available: number; percent: number };
@@ -112,6 +135,13 @@ export default function App() {
     current = useRef(""),
     textarea = useRef<HTMLTextAreaElement>(null);
   const timerDeadline = useRef(0);
+  const [memoryIds, setMemoryIds] = useState<string[]>([]),
+    [cloudPreview, setCloudPreview] = useState<CloudPreview | null>(null),
+    [gameMode, setGameMode] = useState(false);
+  const [updateVerified, setUpdateVerified] = useState<{
+    version: string;
+    file: string;
+  } | null>(null);
   current.current = cid;
   const report = (e: unknown) =>
     setError(e instanceof Error ? e.message : String(e));
@@ -121,7 +151,22 @@ export default function App() {
       models: Model[];
       error: string | null;
     }>("GET", "/models");
-    setModels(data.models);
+    let cloud: Model[] = [];
+    try {
+      const providers = await api<{ providers: ProviderStatus[] }>(
+        "GET",
+        "/providers",
+      );
+      cloud = providers.providers
+        .filter((p) => p.available)
+        .map((p) => ({
+          name: "cloud:" + p.id,
+          size: 0,
+          provider: p.name,
+          location: "cloud",
+        }));
+    } catch {}
+    setModels([...data.models, ...cloud]);
     setConnected(data.connected);
     setPrefs((p) =>
       !p.model && data.models.length
@@ -144,6 +189,7 @@ export default function App() {
     if (busy) return;
     const data = await api<Message[]>("GET", `/conversations/${id}/messages`);
     setCid(id);
+    setMemoryIds([]);
     setMessages(data);
     setView("chat");
     setError("");
@@ -152,6 +198,7 @@ export default function App() {
     if (busy) return;
     const data = await api<Conversation>("POST", "/conversations");
     setCid(data.id);
+    setMemoryIds([]);
     setMessages([]);
     setView("chat");
     setError("");
@@ -168,12 +215,14 @@ export default function App() {
       try {
         const [saved, health, list] = await Promise.all([
           api<Preferences>("GET", "/settings"),
-          api<{ stopped: boolean }>("GET", "/health"),
+          api<{ stopped: boolean; game_mode: boolean }>("GET", "/health"),
           api<Conversation[]>("GET", "/conversations"),
         ]);
         if (!alive) return;
         setPrefs(saved);
         setStopped(health.stopped);
+        setGameMode(health.game_mode);
+        setPinned(saved.always_on_top);
         setConversations(list);
         await refresh();
         if (list.length) {
@@ -250,6 +299,7 @@ export default function App() {
         setSettingsOpen(false);
         setConfirmModel("");
         setDeleteId("");
+        setCloudPreview(null);
       }
       if (e.ctrlKey && e.key === "n") {
         e.preventDefault();
@@ -260,11 +310,12 @@ export default function App() {
     return () => window.removeEventListener("keydown", key);
   }, [busy]);
   const selected = models.find((m) => m.name === prefs.model);
-  const modelName = selected?.name || "Selecionar inteligência";
+  const modelName =
+    selected?.provider || selected?.name || "Selecionar inteligência";
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setPrefs((old) => ({ ...old, [key]: value }));
   }
-  async function send() {
+  async function send(consentReceipt = "") {
     const text = input.trim();
     if (!text || busy) return;
     if (stopped) {
@@ -288,6 +339,18 @@ export default function App() {
         id = c.id;
         setCid(id);
       }
+      if (prefs.model.startsWith("cloud:") && !consentReceipt) {
+        setCloudPreview(
+          await api<CloudPreview>("POST", "/chat/preview", {
+            conversation_id: id,
+            model: prefs.model,
+            content: text,
+            memory_ids: memoryIds,
+          }),
+        );
+        return;
+      }
+      setCloudPreview(null);
       const user: Message = {
         id: crypto.randomUUID(),
         role: "user",
@@ -311,7 +374,13 @@ export default function App() {
       await window.alt.stream(
         crypto.randomUUID(),
         "chat",
-        { conversation_id: id, model: prefs.model, content: text },
+        {
+          conversation_id: id,
+          model: prefs.model,
+          content: text,
+          memory_ids: memoryIds,
+          consent_receipt: consentReceipt,
+        },
         (event: StreamEvent) => {
           if (event.type === "delta")
             setMessages((old) =>
@@ -365,6 +434,7 @@ export default function App() {
   async function resume() {
     await api("POST", "/actions/resume");
     setStopped(false);
+    setGameMode(false);
     setNotice("Modo de observação retomado.");
   }
   async function pull() {
@@ -410,6 +480,9 @@ export default function App() {
     "--accent": prefs.accent,
     "--surface-alpha": prefs.opacity / 100,
     "--glow": `${prefs.glow / 2}px`,
+    "--secondary": prefs.secondary,
+    "--chat-alpha": prefs.chat_opacity / 100,
+    "--radius": `${prefs.radius}px`,
     fontSize: `${prefs.font_size}px`,
   } as CSSProperties;
   const title =
@@ -419,12 +492,14 @@ export default function App() {
     { id: "chat" as View, icon: MessageSquare, label: "Chat" },
     { id: "models" as View, icon: Boxes, label: "Inteligências" },
     { id: "history" as View, icon: Database, label: "Histórico" },
+    { id: "memory" as View, icon: Brain, label: "Memória" },
+    { id: "tools" as View, icon: Wrench, label: "Ferramentas" },
     { id: "monitor" as View, icon: Activity, label: "Sistema" },
     { id: "security" as View, icon: Shield, label: "Permissões" },
   ];
   return (
     <div
-      className={`app ${prefs.compact ? "compact" : ""} ${!prefs.animations ? "no-animation" : ""}`}
+      className={`app ${prefs.compact ? "compact" : ""} ${!prefs.animations || gameMode ? "no-animation" : ""} ${prefs.appearance === "light" ? "light" : ""} ${!prefs.effects || gameMode ? "no-effects" : ""}`}
       style={style}
     >
       <header className="titlebar">
@@ -441,7 +516,12 @@ export default function App() {
             className={pinned ? "active" : ""}
             title="Sempre no topo"
             aria-label="Sempre no topo"
-            onClick={() => window.alt.window("pin").then((v) => setPinned(!!v))}
+            onClick={() =>
+              window.alt.window("pin").then((v) => {
+                setPinned(!!v);
+                update("always_on_top", !!v);
+              })
+            }
           >
             <Pin size={15} />
           </button>
@@ -517,7 +597,11 @@ export default function App() {
                       ? "SYSTEM MONITOR"
                       : view === "security"
                         ? "ACCESS CONTROL"
-                        : "LOCAL HISTORY"}
+                        : view === "memory"
+                          ? "MEMORY CORE"
+                          : view === "tools"
+                            ? "ASSISTED TOOLS"
+                            : "LOCAL HISTORY"}
               </span>
               <h1>
                 {view === "chat"
@@ -528,8 +612,16 @@ export default function App() {
                       ? "Suas conversas"
                       : view === "monitor"
                         ? "Visão do sistema"
-                        : "Você está no controle"}
-                <span className="small-tag">LOCAL</span>
+                        : view === "memory"
+                          ? "O que vale lembrar"
+                          : view === "tools"
+                            ? "Ferramentas assistidas"
+                            : "Você está no controle"}
+                <span className="small-tag">
+                  {prefs.model.startsWith("cloud:") && view === "chat"
+                    ? "NUVEM"
+                    : "LOCAL"}
+                </span>
               </h1>
             </div>
             {view === "chat" ? (
@@ -587,7 +679,8 @@ export default function App() {
                       SUA INTELIGÊNCIA. SEU ESPAÇO.
                     </span>
                     <h2>
-                      Olá. Sou a <strong>ALT-AI.</strong>
+                      Olá. Sou a{" "}
+                      <strong>{prefs.personality?.name || "ALT-AI"}.</strong>
                     </h2>
                     <p>
                       Um espaço para suas ideias, projetos e próximos passos.
@@ -626,8 +719,10 @@ export default function App() {
                       ))}
                     </div>
                     <div className="local-note">
-                      <Lock size={12} /> Conversas locais · Nenhuma API paga
-                      habilitada
+                      <Lock size={12} />
+                      {prefs.model.startsWith("cloud:")
+                        ? "Nuvem somente após revisão do contexto"
+                        : "Histórico local · memórias sob seu controle"}
                     </div>
                     {(!connected || models.length === 0) && (
                       <div className="setup-callout">
@@ -780,6 +875,18 @@ export default function App() {
                     </button>
                   </div>
                 )}
+                <div className="memory-composer">
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => setView("memory")}
+                  >
+                    <Brain size={13} />
+                    {memoryIds.length
+                      ? `${memoryIds.length} memória(s) selecionada(s)`
+                      : "Selecionar memórias para esta conversa"}
+                  </button>
+                </div>
                 <form
                   className="composer"
                   onSubmit={(e) => {
@@ -872,7 +979,9 @@ export default function App() {
                   <span>
                     <i />
                     {selected
-                      ? "Processamento local pelo Ollama"
+                      ? prefs.model.startsWith("cloud:")
+                        ? "Nuvem · revisão antes do envio"
+                        : "Processamento local pelo Ollama"
                       : "Selecione um modelo para começar"}
                   </span>
                   <span>
@@ -949,8 +1058,12 @@ export default function App() {
                     <Boxes size={23} />
                   </div>
                   <div>
-                    <h3>{model.name}</h3>
-                    <p>Ollama · Local · {bytes(model.size)} em disco</p>
+                    <h3>{model.provider || model.name}</h3>
+                    <p>
+                      {model.location === "cloud"
+                        ? "Nuvem · revisão do contexto obrigatória"
+                        : `Ollama · Local · ${bytes(model.size)} em disco`}
+                    </p>
                     <span>
                       {model.details?.parameter_size ||
                         "Parâmetros não informados"}{" "}
@@ -995,13 +1108,14 @@ export default function App() {
               <div className="unavailable">
                 <Lock size={15} />
                 <div>
-                  <strong>Codex, Claude Code e APIs de nuvem</strong>
+                  <strong>Integrações oficiais de nuvem</strong>
                   <p>
-                    Indisponíveis nesta versão. Integrações oficiais previstas
-                    na fase 5. Suas assinaturas não são usadas automaticamente.
+                    Configure provedores em Configurações → Provedores. Somente
+                    integrações disponíveis aparecem no seletor; cada envio
+                    exige revisão do contexto.
                   </p>
                 </div>
-                <span className="small-tag">EM BREVE</span>
+                <span className="small-tag">OPCIONAL</span>
               </div>
             </div>
           )}
@@ -1135,13 +1249,29 @@ export default function App() {
                     )}
                   </div>
                   <div className="unavailable">
-                    <Lock size={18} />
+                    <Gamepad2 size={18} />
                     <div>
                       <strong>GAME MODE</strong>
                       <p>
-                        Gerenciamento de descarga de modelos previsto na fase 8.
+                        Suspende tarefas, revoga permissões e tenta descarregar
+                        o modelo local selecionado. A janela será ocultada.
                       </p>
                     </div>
+                    <button
+                      className="secondary"
+                      onClick={() =>
+                        window.alt
+                          .gameMode(!gameMode)
+                          .then((result) => {
+                            setGameMode(result.enabled);
+                            setStopped(result.enabled);
+                            setNotice(result.message);
+                          })
+                          .catch(report)
+                      }
+                    >
+                      {gameMode ? "Retomar" : "Ativar"}
+                    </button>
                   </div>
                 </>
               ) : (
@@ -1149,14 +1279,25 @@ export default function App() {
               )}
             </div>
           )}
+          {view === "memory" && (
+            <MemoryPanel
+              selected={memoryIds}
+              onSelect={setMemoryIds}
+              notify={setNotice}
+              onError={report}
+            />
+          )}
+          {view === "tools" && (
+            <ToolsPanel notify={setNotice} onError={report} />
+          )}
           {view === "security" && (
             <div className="page-scroll">
               <div className="security-hero">
                 <Shield size={32} />
                 <h2>Permissão vem de você.</h2>
                 <p>
-                  O modelo pode conversar e sugerir. Ele não recebe acesso ao
-                  Windows nesta versão.
+                  Ferramentas ficam limitadas a escopos escolhidos e aprovações
+                  individuais. Gerencie as ações no painel Ferramentas.
                 </p>
               </div>
               {[
@@ -1169,7 +1310,8 @@ export default function App() {
                 {
                   n: "02",
                   title: "Assistido",
-                  text: "Aprovação individual de ferramentas. Previsto na fase 7.",
+                  text: "Sessão de 15 minutos com aprovação individual de cada ação no painel Ferramentas.",
+                  ready: true,
                 },
                 {
                   n: "03",
@@ -1209,13 +1351,13 @@ export default function App() {
               </div>
               <div className="local-note">
                 <Lock size={12} /> Backend autenticado · SQLite local · Nuvem
-                desativada
+                com consentimento
               </div>
             </div>
           )}
           <footer className="statusbar">
             <span>
-              <span className="tiny-slash" /> ALT-AI <b>0.1.0</b>
+              <span className="tiny-slash" /> ALT-AI <b>0.2.0</b>
             </span>
             <button
               className={stopped ? "halted" : ""}
@@ -1247,8 +1389,10 @@ export default function App() {
             <div className="settings-tabs">
               {[
                 { name: "Aparência", icon: Monitor },
+                { name: "Personalidade", icon: Brain },
                 { name: "Comportamento", icon: SlidersHorizontal },
                 { name: "Modelos de IA", icon: Boxes },
+                { name: "Provedores", icon: ExternalLink },
                 { name: "Atalhos", icon: Keyboard },
                 { name: "Sobre", icon: Info },
               ].map((t) => (
@@ -1270,7 +1414,19 @@ export default function App() {
                       Tema{" "}
                       <button
                         onClick={() =>
-                          setPrefs((p) => ({ ...defaults, model: p.model }))
+                          setPrefs((p) => ({
+                            ...p,
+                            accent: defaults.accent,
+                            theme: defaults.theme,
+                            opacity: defaults.opacity,
+                            glow: defaults.glow,
+                            font_size: defaults.font_size,
+                            secondary: defaults.secondary,
+                            appearance: "dark",
+                            effects: true,
+                            radius: 13,
+                            chat_opacity: 100,
+                          }))
                         }
                       >
                         Resetar
@@ -1381,7 +1537,24 @@ export default function App() {
                     </div>
                     <Check size={14} />
                   </div>
+                  <AdvancedAppearance
+                    prefs={prefs}
+                    onChange={setPrefs}
+                    notify={setNotice}
+                    onError={report}
+                  />
                 </>
+              ) : tab === "Personalidade" ? (
+                <PersonalityPanel
+                  value={prefs.personality}
+                  onChange={(value) => update("personality", value)}
+                />
+              ) : tab === "Provedores" ? (
+                <ProvidersPanel
+                  notify={setNotice}
+                  onError={report}
+                  onRefresh={() => refresh().catch(report)}
+                />
               ) : tab === "Comportamento" ? (
                 <div className="setting-group">
                   <div className="setting-heading">Desempenho</div>
@@ -1409,7 +1582,10 @@ export default function App() {
                     text="Mantenha a ALT-AI visível."
                     checked={pinned}
                     onChange={() =>
-                      window.alt.window("pin").then((v) => setPinned(!!v))
+                      window.alt.window("pin").then((v) => {
+                        setPinned(!!v);
+                        update("always_on_top", !!v);
+                      })
                     }
                   />
                   <p className="setting-note">
@@ -1438,12 +1614,15 @@ export default function App() {
                   >
                     <option value="">Selecionar modelo</option>
                     {models.map((m) => (
-                      <option key={m.name}>{m.name}</option>
+                      <option key={m.name} value={m.name}>
+                        {m.provider || m.name}
+                      </option>
                     ))}
                   </select>
                   <p className="setting-note">
-                    Troque de modelo sem reiniciar. Apenas esta conversa é
-                    enviada ao Ollama local, dentro do limite de contexto.
+                    Troque sem reiniciar. Apenas esta conversa e as memórias
+                    selecionadas entram no contexto. Na nuvem, uma prévia e sua
+                    autorização são obrigatórias.
                   </p>
                   <button
                     className="secondary full"
@@ -1456,7 +1635,7 @@ export default function App() {
                 <div className="setting-group">
                   <div className="shortcut">
                     <span>Abrir / ocultar</span>
-                    <kbd>Ctrl Shift Espaço</kbd>
+                    <kbd>{prefs.shortcut}</kbd>
                   </div>
                   <div className="shortcut">
                     <span>Nova conversa</span>
@@ -1482,12 +1661,58 @@ export default function App() {
                   </div>
                   <p>Inteligência pessoal. Sob seu controle.</p>
                   <p className="setting-note">
-                    Versão 0.1.0 · Fases 1 e 2<br />
+                    Versão 0.2.0 · Prévia em evolução
+                    <br />
                     Electron · React · FastAPI · Ollama
                   </p>
                   <p className="setting-note">
-                    Voz, automação, memória semântica, nuvem e iOS estão no
-                    roadmap. Este aplicativo não os simula.
+                    Memória editável, personalidade, ferramentas assistidas e
+                    nuvem com consentimento. Voz, autonomia ampla e iOS ainda
+                    indisponíveis.
+                  </p>
+                  <button
+                    className="secondary full"
+                    onClick={() => window.alt.openReleases()}
+                  >
+                    <ExternalLink size={14} />
+                    Versões e instaladores
+                  </button>
+                  <button
+                    className="secondary full"
+                    onClick={() =>
+                      window.alt
+                        .verifyUpdate()
+                        .then((result) => {
+                          setUpdateVerified(result);
+                          if (result)
+                            setNotice(
+                              `Assinatura e hash da versão ${result.version} conferidos.`,
+                            );
+                        })
+                        .catch(report)
+                    }
+                  >
+                    <Shield size={14} />
+                    Verificar atualização baixada
+                  </button>
+                  {updateVerified && (
+                    <div className="info-card">
+                      <strong>
+                        Versão {updateVerified.version} verificada
+                      </strong>
+                      <p>{updateVerified.file}</p>
+                      <button
+                        className="primary"
+                        onClick={() => window.alt.applyUpdate().catch(report)}
+                      >
+                        Aplicar atualização
+                      </button>
+                    </div>
+                  )}
+                  <p className="setting-note">
+                    Baixe instalador e manifesto da mesma release. A verificação
+                    recusa adulteração e versões antigas. Certificado Windows
+                    depende de configuração de assinatura.
                   </p>
                 </div>
               )}
@@ -1502,6 +1727,72 @@ export default function App() {
           </aside>
         )}
       </div>
+      {cloudPreview && (
+        <div className="modal-backdrop">
+          <div
+            className="modal cloud-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Revisar envio à nuvem"
+          >
+            <div className="modal-icon">
+              <Shield size={25} />
+            </div>
+            <h2>Este contexto sairá do computador.</h2>
+            <p>
+              {cloudPreview.provider.name}. {cloudPreview.billing_notice}
+            </p>
+            {cloudPreview.estimated_usd !== null && (
+              <p>
+                Estimativa conservadora: US${" "}
+                {cloudPreview.estimated_usd.toFixed(5)} pelos preços que você
+                configurou.
+              </p>
+            )}
+            <p className="setting-note">
+              Inclui personalidade, trecho desta conversa e memórias
+              selecionadas. Nenhum arquivo é anexado automaticamente. A
+              autorização vale para este pedido e expira em cinco minutos.
+            </p>
+            <div className="context-preview">
+              {cloudPreview.messages.map((message, index) => (
+                <details
+                  key={index}
+                  open={
+                    message.role === "user" &&
+                    index === cloudPreview.messages.length - 1
+                  }
+                >
+                  <summary>
+                    {message.role === "system"
+                      ? "Personalidade e memórias"
+                      : message.role === "user"
+                        ? "Sua mensagem"
+                        : "Resposta anterior"}{" "}
+                    · {message.content.length} caracteres
+                  </summary>
+                  <pre>{message.content}</pre>
+                </details>
+              ))}
+            </div>
+            <div className="button-row">
+              <button
+                className="secondary"
+                onClick={() => setCloudPreview(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={() => send(cloudPreview.consent_receipt)}
+              >
+                Autorizar este envio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {(confirmModel || deleteId) && (
         <div className="modal-backdrop">
           <div

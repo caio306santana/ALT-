@@ -47,7 +47,7 @@ class CodexProvider:
 
     def arguments(self,system):
         args=[self.executable(),'exec','--strict-config','--json','--ephemeral','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--cd',str(self.cwd),'--color','never']
-        overrides={'approval_policy':'never','default_permissions':'alt_chat','permissions.alt_chat.network.enabled':False,'web_search':'disabled','tools.view_image':False,'allow_browser_and_computer_use':False,'project_doc_max_bytes':0,'mcp_servers':{},'developer_instructions':system,'model_reasoning_effort':'low'}
+        overrides={'approval_policy':'never','default_permissions':'alt_chat','permissions.alt_chat.network.enabled':False,'web_search':'disabled','project_doc_max_bytes':0,'mcp_servers':{},'developer_instructions':system,'model_reasoning_effort':'low'}
         overrides.update({'features.'+feature:False for feature in DISABLED_FEATURES})
         for key,value in overrides.items():args+=['-c',key+'='+json.dumps(value,ensure_ascii=False)]
         args+=['-c','permissions.alt_chat.filesystem={":root"="deny",":minimal"="read",":workspace_roots"="read"}']

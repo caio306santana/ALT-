@@ -12,7 +12,12 @@ Personalidade aprovada: **calma na forma de falar; provocadora, irônica e desaf
 - Codex detectado nesta máquina via CLI oficial, autenticado com ChatGPT. Adaptador usa workspace vazio, desativa ferramentas, hooks/plugins/memórias e configuração pessoal; permissões restritas, sem executar com acesso total. Pendente teste real do fluxo e cancelamento.
 - Claude por assinatura indisponível: documentação oficial do Agent SDK exige aprovação Anthropic para oferecer login/limites claude.ai em produtos terceiros. Alternativa API implementada, desligada até chave, modelo, preços e orçamento configurados explicitamente. Nunca extrair tokens de sessão ou iniciar gasto por fallback automático.
 - Cofre DPAPI e API Anthropic ainda precisam de testes de contrato; nenhuma chave real recebida e nenhum pedido pago autorizado/executado.
-- 14 testes anteriores passaram após primeiras alterações. Novos testes e interface dos módulos ainda pendentes neste checkpoint.
+- 40 testes backend passaram (14 originais + novos contratos de personalidade/memória/consentimento/ferramentas/escopo/cofre/orçamento/Game Mode) e 1 teste Node de atualização criptograficamente assinada passou. Interface nova compilou em TS/Vite.
+- Interface conectada: Personalidade, aparência avançada, temas pessoais, memória editável/seleção para conversa, ferramentas assistidas, provedores/API/cofre/orçamentos, prévia exata de nuvem e GAME MODE. Revisão visual pendente.
+- Codex real validado pelo CLI oficial autenticado com ChatGPT: prompt sintético `Responda apenas: ALT-CODEX-OK.`, prévia e recibo de consentimento usados, resposta confirmada em 5,02 s (primeiro conteúdo 4,36 s). Nenhuma conversa pessoal utilizada no teste. Não repetir testes de nuvem sem necessidade.
+- Algumas opções da documentação atual não existem neste CLI alpha. Removidas somente opções redundantes `tools.view_image`/`allow_browser_and_computer_use`; mantidas features browser/computer/shell desligadas e perfil de filesystem deny por padrão + scratch/minimal read, rede de ferramentas bloqueada. Configuração estrita e ignore-user-config/rules; falhas não degradam para acesso total.
+- Atualização local verificada por Ed25519 implementada: manifesto + instalador escolhidos em diálogos nativos, chave pública embarcada, hash/tamanho/versão, confirmação e nova verificação antes de executar. Ainda não é um feed automático de atualizações nem certificado Authenticode.
+- Chave pública em `assets/update-public-key.pem`. **Chave privada em `.local/update-private-key.pem`, fora do Git**: fazer backup privado para assinar versões futuras no outro PC. Nunca publicar nem enviar essa chave ao repositório.
 
 ## Próximos passos imediatos
 

@@ -1,0 +1,1 @@
+if(!process.env.CSC_LINK&&!process.env.WIN_CSC_LINK)throw new Error('Configure CSC_LINK (certificado Authenticode) e CSC_KEY_PASSWORD antes de gerar a distribuição assinada. Nenhum certificado é comprado ou criado automaticamente.');

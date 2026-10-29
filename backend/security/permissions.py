@@ -5,6 +5,7 @@ import asyncio
 @dataclass
 class PermissionEngine:
     stopped: bool = False
+    game_mode: bool = False
     active: dict[str, asyncio.Event] = field(default_factory=dict)
 
     def begin(self, conversation_id: str) -> asyncio.Event:

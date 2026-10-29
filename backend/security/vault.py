@@ -2,6 +2,8 @@
 import ctypes
 from ctypes import wintypes
 import os
+import json
+import time
 from pathlib import Path
 
 class Blob(ctypes.Structure):
@@ -29,6 +31,14 @@ class Vault:
     def configured(self):return self.path.exists()
     def save(self,key):
         if not key.startswith('sk-ant-') or len(key)<30 or len(key)>500:raise ValueError('Chave Anthropic inválida.')
-        self.path.write_bytes(transform(key.strip().encode(),True))
-    def get(self):return transform(self.path.read_bytes(),False).decode()
+        self.path.write_bytes(transform(json.dumps({'key':key.strip(),'validated_at':0,'models':[]}).encode(),True))
+    def data(self):
+        if not self.configured():return {}
+        return json.loads(transform(self.path.read_bytes(),False).decode())
+    def get(self):return self.data()['key']
+    def validated(self):return bool(self.data().get('validated_at'))
+    def model_available(self,model):return model in self.data().get('models',[])
+    def validate(self,models):
+        data=self.data();data.update(validated_at=time.time() if models else 0,models=models)
+        self.path.write_bytes(transform(json.dumps(data).encode(),True))
     def clear(self):self.path.unlink(missing_ok=True)

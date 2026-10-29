@@ -16,6 +16,31 @@ declare global {
       window(action: string): Promise<boolean | undefined>;
       installOllama(): Promise<{ ok: boolean; message: string }>;
       ollamaWebsite(): Promise<void>;
+      chooseWorkspace(): Promise<unknown>;
+      exportMemories(): Promise<{ saved: boolean }>;
+      setAnthropicKey(
+        key: string,
+      ): Promise<{ configured: boolean; verified?: boolean; message?: string }>;
+      layout(options: {
+        width: number;
+        height: number;
+        position: string;
+      }): Promise<unknown>;
+      gameMode(
+        enabled: boolean,
+      ): Promise<{
+        enabled: boolean;
+        message: string;
+        model_unloaded?: boolean;
+      }>;
+      openReleases(): Promise<void>;
+      verifyUpdate(): Promise<{
+        version: string;
+        file: string;
+        sha256: string;
+        size: number;
+      } | null>;
+      applyUpdate(): Promise<{ started: boolean }>;
     };
   }
 }

@@ -14,4 +14,12 @@ contextBridge.exposeInMainWorld("alt", {
   window: (action) => ipcRenderer.invoke("window:action", action),
   installOllama: () => ipcRenderer.invoke("setup:ollama"),
   ollamaWebsite: () => ipcRenderer.invoke("setup:website"),
+  chooseWorkspace: () => ipcRenderer.invoke("workspace:choose"),
+  exportMemories: () => ipcRenderer.invoke("memory:export"),
+  setAnthropicKey: (key) => ipcRenderer.invoke("credentials:anthropic", key),
+  layout: (options) => ipcRenderer.invoke("window:layout", options),
+  gameMode: (enabled) => ipcRenderer.invoke("game:mode", enabled),
+  openReleases: () => ipcRenderer.invoke("help:open"),
+  verifyUpdate: () => ipcRenderer.invoke("updates:verify"),
+  applyUpdate: () => ipcRenderer.invoke("updates:apply"),
 });

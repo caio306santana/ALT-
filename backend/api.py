@@ -54,6 +54,7 @@ class Settings(BaseModel):
     effects:bool=True
     radius:int=Field(default=13,ge=0,le=24)
     shortcut:str=Field(default='Control+Shift+Space',max_length=60,pattern=r'^(Control|Alt)(\+(Control|Alt|Shift)){0,2}\+([A-Z]|Space|F[1-9]|F1[0-2])$')
+    always_on_top:bool=False
 
 class PullBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -112,7 +113,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.get('/health',dependencies=[Depends(auth)])
     async def health():
-        return {'status':'ok','stopped':engine.stopped,'permission_level':tools.status()['level'],'version':'0.2.0'}
+        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.2.0'}
 
     @app.get('/models',dependencies=[Depends(auth)])
     async def models():
@@ -165,7 +166,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.post('/actions/resume',dependencies=[Depends(auth)])
     async def resume():
-        engine.stopped=False; store.audit('resume')
+        engine.stopped=False;engine.game_mode=False;store.audit('resume')
         return {'stopped':False}
 
     def context_for(body):

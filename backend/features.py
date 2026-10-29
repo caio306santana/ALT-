@@ -79,19 +79,19 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
     @router.get('/providers')
     async def providers():
         import asyncio
-        return {'providers':[await asyncio.to_thread(codex.status),anthropic.status(),{'id':'claude-subscription','name':'Claude Code · assinatura','available':False,'location':'cloud','billing':'subscription','reason':'Integração de claude.ai em produtos terceiros exige aprovação da Anthropic; indisponível nesta versão.'}], 'anthropic':anthropic.config().model_dump(),'key_configured':vault.configured(),'usage':anthropic.totals()}
+        return {'providers':[await asyncio.to_thread(codex.status),anthropic.status(),{'id':'claude-subscription','name':'Claude Code · assinatura','available':False,'location':'cloud','billing':'subscription','reason':'Integração de claude.ai em produtos terceiros exige aprovação da Anthropic; indisponível nesta versão.'}], 'anthropic':anthropic.config().model_dump(),'key_configured':vault.configured(),'api_models':vault.data().get('models',[]),'usage':anthropic.totals()}
     @router.put('/providers/anthropic')
     async def config(body:AnthropicConfig):return anthropic.save(body)
     # Main-process native confirmation only; never part of generic renderer allowlist.
     @router.put('/credentials/anthropic')
-    async def key(body:KeyBody):vault.save(body.key);store.audit('credential_configured','anthropic');return {'configured':True}
+    async def key(body:KeyBody):vault.save(body.key);store.audit('credential_configured','anthropic');return await anthropic.verify_key()
     @router.delete('/credentials/anthropic')
     async def clear_key():vault.clear();return {'configured':False}
 
     @router.post('/game/enable')
     async def game_enable():
         import asyncio
-        engine.stop();tools.revoke();receipts.revoke_all();store.audit('game_mode_enabled')
+        engine.stop();engine.game_mode=True;tools.revoke();receipts.revoke_all();store.audit('game_mode_enabled')
         model=store.settings().get('model','')
         unloaded=False;message='Gerações interrompidas. Nenhum modelo selecionado para descarregar.'
         if model and not model.startswith('cloud:'):
@@ -106,6 +106,6 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
             except Exception:message='Ações suspensas, mas não foi possível descarregar o modelo.'
         return {'enabled':True,'model_unloaded':unloaded,'message':message}
     @router.post('/game/disable')
-    async def game_disable():engine.stopped=False;store.audit('game_mode_disabled');return {'enabled':False,'message':'Modo normal retomado em observação.'}
+    async def game_disable():engine.stopped=False;engine.game_mode=False;store.audit('game_mode_disabled');return {'enabled':False,'message':'Modo normal retomado em observação.'}
 
     app.include_router(router)

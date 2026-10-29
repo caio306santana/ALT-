@@ -26,6 +26,8 @@ const ui = dev
   ? "http://127.0.0.1:5173/"
   : pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
 const operations = new Map();
+let verifiedUpdate = null;
+let activeShortcut = "";
 const allowed = [
   ["GET", /^\/(health|models|settings|system|conversations)$/],
   ["POST", /^\/(conversations|actions\/stop|actions\/resume)$/],
@@ -33,7 +35,42 @@ const allowed = [
   ["DELETE", /^\/conversations\/[a-f0-9-]+$/],
   ["POST", /^\/chat\/cancel\/[a-f0-9-]+$/],
   ["PUT", /^\/settings$/],
+  [
+    "GET",
+    /^\/(memories|memories\/export|themes|permissions|tools\/history|audit|providers)$/,
+  ],
+  [
+    "POST",
+    /^\/(memories|themes|permissions\/revoke|tools\/propose|chat\/preview)$/,
+  ],
+  ["PUT", /^\/(permissions|providers\/anthropic)$/],
+  ["PUT", /^\/memories\/[a-f0-9-]+$/],
+  ["DELETE", /^\/(memories|scopes)\/[a-f0-9-]+$/],
+  ["POST", /^\/tools\/(approve|reject)\/[a-f0-9-]+$/],
 ];
+function bindShortcut(shortcut) {
+  if (
+    !/^(Control|Alt)(\+(Control|Alt|Shift)){0,2}\+([A-Z]|Space|F[1-9]|F1[0-2])$/.test(
+      shortcut,
+    )
+  )
+    throw new Error("Atalho inválido");
+  if (shortcut === activeShortcut) return;
+  if (
+    !globalShortcut.register(shortcut, () =>
+      win.isVisible() ? win.hide() : win.show(),
+    )
+  )
+    throw new Error("Atalho indisponível ou utilizado por outro aplicativo.");
+  if (activeShortcut) globalShortcut.unregister(activeShortcut);
+  activeShortcut = shortcut;
+}
+function applyNativePreferences(prefs) {
+  win.setAlwaysOnTop(!!prefs.always_on_top);
+  win.webContents.setZoomFactor(
+    Math.min(1.3, Math.max(0.8, Number(prefs.scale) || 1)),
+  );
+}
 function validate(event) {
   if (
     !win ||
@@ -132,7 +169,7 @@ function startBackend() {
     });
   });
 }
-function createWindow() {
+async function createWindow() {
   const boundsFile = path.join(app.getPath("userData"), "window.json");
   let saved = {};
   try {
@@ -217,16 +254,214 @@ function createWindow() {
     ]),
   );
   tray.on("double-click", () => win.show());
-  globalShortcut.register("CommandOrControl+Shift+Space", () =>
-    win.isVisible() ? win.hide() : win.show(),
-  );
+  const prefs = await (await request("GET", "/settings")).json();
+  applyNativePreferences(prefs);
+  try {
+    bindShortcut(prefs.shortcut || "Control+Shift+Space");
+  } catch {
+    dialog.showErrorBox(
+      "ALT-AI — atalho",
+      "Não foi possível registrar o atalho global. Use o ícone da bandeja.",
+    );
+  }
 }
 ipcMain.handle("api:request", async (event, method, route, body) => {
   validate(event);
   payloadSize(body);
   if (!allowed.some(([m, re]) => method === m && re.test(route)))
     throw new Error("Operação não permitida");
+  if (method === "PUT" && route === "/settings") {
+    const oldShortcut = activeShortcut;
+    if(typeof body.shortcut!=='string'||!Number.isFinite(body.scale)||body.scale<.8||body.scale>1.3)throw new Error('Preferências de janela inválidas');
+    bindShortcut(body.shortcut || "Control+Shift+Space");
+    try {
+      const result = await (await request(method, route, body)).json();
+      applyNativePreferences(result);
+      return result;
+    } catch (error) {
+      if (oldShortcut) bindShortcut(oldShortcut);
+      throw error;
+    }
+  }
   return (await request(method, route, body)).json();
+});
+ipcMain.handle("workspace:choose", async (event) => {
+  validate(event);
+  const chosen = await dialog.showOpenDialog(win, {
+    title: "Escolha uma pasta específica para ferramentas ALT-AI",
+    properties: ["openDirectory"],
+  });
+  if (chosen.canceled) return null;
+  const selected = chosen.filePaths[0];
+  const confirmation = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Autorizar esta pasta"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Permitir ferramentas de leitura e edição de texto nesta pasta?",
+    detail:
+      selected +
+      "\nCada ação ainda exigirá uma proposta e aprovação individual no modo assistido.",
+  });
+  if (confirmation.response !== 1) return null;
+  return (await request("POST", "/scopes", { path: selected })).json();
+});
+ipcMain.handle("memory:export", async (event) => {
+  validate(event);
+  const data = await (await request("GET", "/memories/export")).json();
+  const chosen = await dialog.showSaveDialog(win, {
+    title: "Exportar memórias autorizadas",
+    defaultPath: "ALT-AI-memorias.json",
+    filters: [{ name: "JSON", extensions: ["json"] }],
+  });
+  if (chosen.canceled) return { saved: false };
+  fs.writeFileSync(chosen.filePath, JSON.stringify(data, null, 2), "utf8");
+  return { saved: true };
+});
+ipcMain.handle("credentials:anthropic", async (event, key) => {
+  validate(event);
+  if (typeof key !== "string" || key.length > 500)
+    throw new Error("Chave inválida");
+  if (!key) {
+    await request("DELETE", "/credentials/anthropic");
+    return { configured: false };
+  }
+  const confirmation = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Salvar no cofre"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Salvar chave da API Anthropic no cofre deste usuário?",
+    detail:
+      "A chave será protegida pelo Windows DPAPI. A API tem cobrança separada da assinatura Claude. Nenhum pedido será enviado sem revisão do contexto e confirmação.",
+  });
+  if (confirmation.response !== 1) return { configured: false };
+  return (await request("PUT", "/credentials/anthropic", { key })).json();
+});
+ipcMain.handle("window:layout", (event, layout) => {
+  validate(event);
+  const { screen } = require("electron");
+  const area = screen.getDisplayMatching(win.getBounds()).workArea;
+  const width = Math.min(
+    area.width,
+    Math.max(750, Number(layout.width) || 1130),
+  );
+  const height = Math.min(
+    area.height,
+    Math.max(560, Number(layout.height) || 800),
+  );
+  const position = ["left", "center", "right"].includes(layout.position)
+    ? layout.position
+    : "center";
+  win.setBounds({
+    width: Math.round(width),
+    height: Math.round(height),
+    x: Math.round(
+      area.x +
+        (position === "left"
+          ? 0
+          : position === "right"
+            ? area.width - width
+            : (area.width - width) / 2),
+    ),
+    y: Math.round(area.y + (area.height - height) / 2),
+  });
+  return win.getBounds();
+});
+ipcMain.handle("game:mode", async (event, enabled) => {
+  validate(event);
+  if (typeof enabled !== "boolean") throw new Error("Modo inválido");
+  if (enabled) {
+    const consent = await dialog.showMessageBox(win, {
+      type: "question",
+      buttons: ["Cancelar", "Ativar GAME MODE"],
+      defaultId: 0,
+      cancelId: 0,
+      message: "Suspender tarefas e descarregar o modelo selecionado?",
+      detail:
+        "Isso pode afetar outros aplicativos que estejam usando o mesmo modelo Ollama. A janela será ocultada; use seu atalho ou a bandeja para restaurar.",
+    });
+    if (consent.response !== 1) return { enabled: false, message: "Cancelado" };
+  }
+  const result = await (
+    await request("POST", enabled ? "/game/enable" : "/game/disable")
+  ).json();
+  if (enabled) win.hide();
+  return result;
+});
+ipcMain.handle("help:open", (event) => {
+  validate(event);
+  return shell.openExternal("https://github.com/caio306santana/ALT-/releases");
+});
+ipcMain.handle("updates:verify", async (event) => {
+  validate(event);
+  verifiedUpdate = null;
+  const manifestChoice = await dialog.showOpenDialog(win, {
+    title: "Escolha o manifesto de atualização ALT-AI",
+    filters: [{ name: "Manifesto assinado", extensions: ["json"] }],
+    properties: ["openFile"],
+  });
+  if (manifestChoice.canceled) return null;
+  const manifestPath = manifestChoice.filePaths[0];
+  if (fs.statSync(manifestPath).size > 32000)
+    throw new Error("Manifesto muito grande");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const installerChoice = await dialog.showOpenDialog(win, {
+    title: "Escolha o instalador correspondente ao manifesto",
+    defaultPath: path.dirname(manifestPath),
+    filters: [{ name: "Instalador Windows", extensions: ["exe"] }],
+    properties: ["openFile"],
+  });
+  if (installerChoice.canceled) return null;
+  const publicKey = fs.readFileSync(
+    path.join(root, "assets", "update-public-key.pem"),
+    "utf8",
+  );
+  const args = {
+    installerPath: installerChoice.filePaths[0],
+    manifest,
+    publicKey,
+    currentVersion: app.getVersion(),
+  };
+  const { verifyUpdate } = require("./update-security.cjs");
+  const result = await verifyUpdate(args);
+  verifiedUpdate = { args, expires: Date.now() + 300000 };
+  return result;
+});
+ipcMain.handle("updates:apply", async (event) => {
+  validate(event);
+  if (!verifiedUpdate || Date.now() > verifiedUpdate.expires)
+    throw new Error("Verifique novamente o manifesto e o instalador.");
+  const pending = verifiedUpdate;
+  verifiedUpdate = null;
+  const { verifyUpdate } = require("./update-security.cjs");
+  const checked = await verifyUpdate(pending.args);
+  const consent = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Instalar atualização"],
+    defaultId: 0,
+    cancelId: 0,
+    message: `Instalar ALT-AI ${checked.version}?`,
+    detail:
+      "A assinatura Ed25519 do projeto e o hash do arquivo foram conferidos. Isso não substitui um certificado Windows Authenticode. O aplicativo será encerrado para executar o instalador.",
+  });
+  if (consent.response !== 1) return { started: false };
+  await verifyUpdate(pending.args);
+  await new Promise((resolve, reject) => {
+    const child = spawn(pending.args.installerPath, ["/S"], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
+  quitting = true;
+  app.quit();
+  return { started: true };
 });
 ipcMain.handle("api:stream", async (event, id, kind, body) => {
   validate(event);
@@ -344,7 +579,7 @@ else {
   app.whenReady().then(async () => {
     try {
       await startBackend();
-      createWindow();
+      await createWindow();
     } catch (error) {
       dialog.showErrorBox("ALT-AI — erro de inicialização", error.message);
       app.quit();

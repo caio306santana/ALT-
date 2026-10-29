@@ -31,7 +31,8 @@ class ToolProposal(BaseModel):
     url:str=Field(default='',max_length=2000)
 
 def calculate(expression):
-    tree=ast.parse(expression,mode='eval')
+    try:tree=ast.parse(expression,mode='eval')
+    except SyntaxError as exc:raise ValueError('Expressão inválida.') from exc
     def walk(node,depth=0):
         if depth>15:raise ValueError('Expressão muito complexa.')
         if isinstance(node,ast.Constant) and type(node.value) in (int,float):value=node.value
@@ -103,7 +104,8 @@ class ToolService:
         if Path(relative).is_absolute() or windows.is_absolute() or windows.drive or ':' in relative or '\x00' in relative:
             raise ValueError('Informe um caminho relativo ao escopo.')
         parts=relative.replace('\\','/').split('/')
-        if any(part=='..' or part.rstrip(' .')!=part or part.lower() in SENSITIVE or part.lower().endswith(('.pem','.key','.pfx')) for part in parts):
+        devices={'con','prn','aux','nul',*[f'com{i}' for i in range(1,10)],*[f'lpt{i}' for i in range(1,10)]}
+        if any(part=='..' or part.rstrip(' .')!=part or part.lower() in SENSITIVE or part.lower().startswith('.env') or part.lower().endswith(('.pem','.key','.pfx')) or part.split('.')[0].lower() in devices for part in parts):
             raise ValueError('Caminho sensível ou fora de escopo.')
         candidate=root.joinpath(*[p for p in parts if p and p!='.'])
         self.reject_links(candidate)
