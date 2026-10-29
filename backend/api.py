@@ -6,13 +6,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse,JSONResponse
 from pydantic import BaseModel, Field, ConfigDict
 from backend.memory.store import Store
 from backend.providers.ollama import Ollama, ProviderError, cancellable
 from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
 from backend.monitoring.performance import performance_profile
+from backend.personality import Personality,system_prompt
+from backend.memory.library import MemoryLibrary
+from backend.tools.service import ToolService
+from backend.security.consent import ConsentReceipts
+from backend.security.vault import Vault
+from backend.providers.codex import CodexProvider
+from backend.providers.anthropic import AnthropicProvider
+from backend.features import install_features
 
 SYSTEM = ('Você é ALT-AI, uma assistente pessoal calma, natural e objetiva. Responda em português brasileiro. '
           'Modo observação: você não possui ferramentas para executar ações, pesquisar na internet ou acessar arquivos. '
@@ -24,6 +32,8 @@ class ChatBody(BaseModel):
     conversation_id: str = Field(min_length=1,max_length=64)
     model: str = Field(min_length=1,max_length=200)
     content: str = Field(min_length=1,max_length=16000)
+    memory_ids: list[str]=Field(default_factory=list,max_length=10)
+    consent_receipt: str=Field(default='',max_length=100)
 
 class Settings(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -36,17 +46,31 @@ class Settings(BaseModel):
     animations: bool = True
     model: str = Field(default='',max_length=200)
     performance: Literal['auto','notebook','desktop'] = 'auto'
+    personality:Personality=Field(default_factory=Personality)
+    secondary:str=Field(default='#00c9f5',pattern=r'^#[0-9a-fA-F]{6}$')
+    appearance:Literal['dark','light']='dark'
+    scale:float=Field(default=1,ge=.8,le=1.3)
+    chat_opacity:int=Field(default=100,ge=65,le=100)
+    effects:bool=True
+    radius:int=Field(default=13,ge=0,le=24)
+    shortcut:str=Field(default='Control+Shift+Space',max_length=60,pattern=r'^(Control|Alt)(\+(Control|Alt|Shift)){0,2}\+([A-Z]|Space|F[1-9]|F1[0-2])$')
 
 class PullBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
     model: Literal['qwen3.5:2b','qwen3.5:4b','qwen3.5:9b']
 
-def create_app(data_dir: Path, token: str, provider=None):
+def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     if len(token) < 32:
         raise ValueError('Token de sessão insuficiente')
     store = Store(data_dir/'alt-ai.sqlite3')
     engine = PermissionEngine()
     ollama = provider or Ollama()
+    library=MemoryLibrary(store)
+    tools=ToolService(store,engine,data_dir)
+    receipts=ConsentReceipts()
+    vault=Vault(data_dir)
+    codex=codex_provider or CodexProvider(data_dir)
+    anthropic=AnthropicProvider(store,vault)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -54,9 +78,10 @@ def create_app(data_dir: Path, token: str, provider=None):
         engine.stop()
         store.db.close()
 
-    app = FastAPI(title='ALT-AI local API',version='0.1.0',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
+    app = FastAPI(title='ALT-AI local API',version='0.2.0',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
     app.state.store = store
     app.state.engine = engine
+    app.state.tools=tools;app.state.codex=codex;app.state.receipts=receipts
 
     async def auth(request: Request):
         value = request.headers.get('authorization','')
@@ -69,13 +94,25 @@ def create_app(data_dir: Path, token: str, provider=None):
     async def limits(request, call_next):
         if request.headers.get('host','').split(':')[0] not in ('127.0.0.1','localhost','testserver'):
             return __import__('starlette.responses',fromlist=['JSONResponse']).JSONResponse({'detail':'Host inválido'},403)
-        if int(request.headers.get('content-length','0')) > 100000:
-            return __import__('starlette.responses',fromlist=['JSONResponse']).JSONResponse({'detail':'Corpo muito grande'},413)
+        try:length=int(request.headers.get('content-length','0'))
+        except ValueError:return JSONResponse({'detail':'Comprimento inválido'},400)
+        if length<0 or length>100000:return JSONResponse({'detail':'Corpo muito grande'},413)
         return await call_next(request)
+
+    @app.exception_handler(ValueError)
+    async def validation_error(request,exc):return JSONResponse({'detail':str(exc)},400)
+    @app.exception_handler(PermissionError)
+    async def denied(request,exc):return JSONResponse({'detail':str(exc)},403)
+    @app.exception_handler(OSError)
+    async def io_error(request,exc):return JSONResponse({'detail':'Falha de acesso local. Confira o escopo e se o recurso está disponível.'},400)
+
+    install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,ollama,receipts)
+
+    def preferences():return Settings(**{key:value for key,value in store.settings().items() if key in Settings.model_fields}).model_dump()
 
     @app.get('/health',dependencies=[Depends(auth)])
     async def health():
-        return {'status':'ok','stopped':engine.stopped,'permission_level':1,'version':'0.1.0'}
+        return {'status':'ok','stopped':engine.stopped,'permission_level':tools.status()['level'],'version':'0.2.0'}
 
     @app.get('/models',dependencies=[Depends(auth)])
     async def models():
@@ -107,7 +144,7 @@ def create_app(data_dir: Path, token: str, provider=None):
         return {'ok':True}
 
     @app.get('/settings',dependencies=[Depends(auth)])
-    async def settings(): return Settings(**store.settings()).model_dump()
+    async def settings(): return preferences()
 
     @app.put('/settings',dependencies=[Depends(auth)])
     async def save_settings(body: Settings):
@@ -123,13 +160,38 @@ def create_app(data_dir: Path, token: str, provider=None):
 
     @app.post('/actions/stop',dependencies=[Depends(auth)])
     async def stop():
-        engine.stop(); store.audit('stop_all')
+        engine.stop();tools.revoke();receipts.revoke_all();store.audit('stop_all')
         return {'stopped':True}
 
     @app.post('/actions/resume',dependencies=[Depends(auth)])
     async def resume():
         engine.stopped=False; store.audit('resume')
         return {'stopped':False}
+
+    def context_for(body):
+        previous=[m for m in store.messages(body.conversation_id) if m['status']=='complete']
+        prefs=preferences();profile=performance_profile(prefs['performance'])
+        memory=library.selected(body.memory_ids)
+        prompt=system_prompt(prefs,memory,tools=tools.status()['level']==2)
+        context_limit=6000 if profile['effective']=='notebook' else 12000
+        context=[];chars=len(body.content)+len(prompt)
+        for message in reversed(previous):
+            if chars+len(message['content'])>context_limit:break
+            context.insert(0,{'role':message['role'],'content':message['content']});chars+=len(message['content'])
+        messages=[{'role':'system','content':prompt}]+context+[{'role':'user','content':body.content}]
+        payload={'conversation_id':body.conversation_id,'model':body.model,'messages':messages}
+        if body.model=='cloud:anthropic':payload['configuration']=anthropic.config().model_dump()
+        return payload,profile,len(previous),len(context)
+
+    @app.post('/chat/preview',dependencies=[Depends(auth)])
+    async def preview(body:ChatBody):
+        if not store.conversation(body.conversation_id):raise HTTPException(404,'Conversa não encontrada')
+        if body.model not in ('cloud:codex','cloud:anthropic'):raise HTTPException(400,'Prévia de nuvem apenas para provedor reconhecido')
+        if engine.stopped:raise PermissionError('Ações suspensas.')
+        status=await asyncio.to_thread(codex.status) if body.model=='cloud:codex' else anthropic.status()
+        if not status['available']:raise HTTPException(409,status['reason'])
+        payload,_,total,count=context_for(body)
+        return {'provider':status,'messages':payload['messages'],'consent_receipt':receipts.issue(payload),'expires_in':300,'context_truncated':count<total,'estimated_usd':anthropic.estimate(payload['messages']) if body.model=='cloud:anthropic' else None,'billing_notice':'Cobrança de API; estimativa pelos preços configurados.' if body.model=='cloud:anthropic' else 'Uso da assinatura ChatGPT pelo Codex CLI. Limites do plano se aplicam; saldo não é inventado.'}
 
     @app.post('/chat/cancel/{cid}',dependencies=[Depends(auth)])
     async def cancel(cid: str):
@@ -160,24 +222,22 @@ def create_app(data_dir: Path, token: str, provider=None):
     async def chat(body: ChatBody, request: Request):
         if not body.content.strip(): raise HTTPException(422,'Mensagem vazia')
         if not store.conversation(body.conversation_id): raise HTTPException(404,'Conversa não encontrada')
+        payload,profile,previous_count,context_count=context_for(body)
         try:
-            available = await models()
-            if body.model not in [m['name'] for m in available['models']]:
-                raise HTTPException(409,'Modelo local não disponível. Atualize o seletor.')
+            if body.model in ('cloud:codex','cloud:anthropic'):
+                status=await asyncio.to_thread(codex.status) if body.model=='cloud:codex' else anthropic.status()
+                if not status['available']:raise HTTPException(409,status['reason'])
+                receipts.consume(body.consent_receipt,payload)
+            else:
+                available = await models()
+                if body.model not in [m['name'] for m in available['models']]:
+                    raise HTTPException(409,'Modelo local não disponível. Atualize o seletor.')
             event = engine.begin(body.conversation_id)
         except PermissionError as exc: raise HTTPException(403,str(exc))
         except ValueError as exc: raise HTTPException(409,str(exc))
         cid = body.conversation_id
-        previous = [m for m in store.messages(cid) if m['status']=='complete']
-        # Bounded history, newest messages first for selection. Full history stays on disk.
-        profile=performance_profile(store.settings().get('performance','auto'))
-        context_limit=6000 if profile['effective']=='notebook' else 12000
-        context, chars = [], len(body.content)
-        for m in reversed(previous):
-            if chars+len(m['content']) > context_limit: break
-            context.insert(0,{'role':m['role'],'content':m['content']}); chars+=len(m['content'])
         store.add(cid,'user',body.content)
-        if not previous:
+        if not previous_count:
             store.write('UPDATE conversations SET title=? WHERE id=?',(body.content.strip()[:65],cid))
         mid = store.add(cid,'assistant','',body.model,'streaming')
 
@@ -186,8 +246,9 @@ def create_app(data_dir: Path, token: str, provider=None):
             start = time.monotonic(); checkpoint = start; first = None
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
-                yield line({'type':'start','message_id':mid,'context_messages':len(context),'context_truncated':len(context)<len(previous)})
-                async for chunk in cancellable(ollama.stream(body.model,[{'role':'system','content':SYSTEM}]+context+[{'role':'user','content':body.content}],event,profile),event):
+                yield line({'type':'start','message_id':mid,'context_messages':context_count,'context_truncated':context_count<previous_count})
+                source=codex.stream(payload['messages'],event) if body.model=='cloud:codex' else anthropic.stream(payload['messages'],event) if body.model=='cloud:anthropic' else ollama.stream(body.model,payload['messages'],event,profile)
+                async for chunk in cancellable(source,event):
                     if event.is_set() or await request.is_disconnected(): break
                     delta = chunk.get('message',{}).get('content','')
                     if delta:
@@ -197,8 +258,8 @@ def create_app(data_dir: Path, token: str, provider=None):
                     if time.monotonic()-checkpoint > 0.5:
                         store.checkpoint(mid,text,'streaming'); checkpoint=time.monotonic()
                     if chunk.get('done'):
-                        duration = chunk.get('eval_duration',0)/1e9
-                        metrics = {'tokens':chunk.get('eval_count'),'tokens_per_second':round(chunk.get('eval_count',0)/duration,2) if duration else None,'first_token_seconds':round(first,2) if first is not None else None,'total_seconds':round(time.monotonic()-start,2),'prompt_tokens':chunk.get('prompt_eval_count')}
+                        duration = (chunk.get('eval_duration') or 0)/1e9
+                        metrics = {'tokens':chunk.get('eval_count'),'tokens_per_second':round((chunk.get('eval_count') or 0)/duration,2) if duration else None,'first_token_seconds':round(first,2) if first is not None else None,'total_seconds':round(time.monotonic()-start,2),'prompt_tokens':chunk.get('prompt_eval_count')}
                         status='complete'; break
                 if status != 'complete' and not event.is_set() and not await request.is_disconnected():
                     yield line({'type':'error','code':'incomplete','message':'A geração terminou sem confirmação do Ollama. Resposta parcial preservada.'})
