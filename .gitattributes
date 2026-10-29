@@ -6,3 +6,5 @@
 *.mjs text eol=lf
 *.md text eol=lf
 *.ps1 text eol=crlf
+# Tokenizer hashes must survive a Windows clone with core.autocrlf enabled.
+assets/tokenizers/*.json text eol=lf

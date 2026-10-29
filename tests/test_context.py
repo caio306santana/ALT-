@@ -70,3 +70,76 @@ def test_notebook_includes_tool_schema_in_conservative_budget(tmp_path):
 def test_excerpt_refuses_to_split_long_source_url():
     raw = json.dumps({'results': [{'url': 'https://example.com/' + 'a' * 3000, 'title': 'Fonte', 'snippet': 'Texto'}]})
     with pytest.raises(ValueError, match='links'): tool_excerpt(raw, 400)
+
+
+class QwenFixture:
+    """Real context assembly and tokenizer; deterministic inference test double."""
+    def __init__(self): self.messages=[]; self.profile=None
+    async def models(self): return [{'name':'qwen3.5:4b'},{'name':'huihui_ai/qwen3.5-abliterated:4b'}]
+    async def stream(self, model, messages, cancel, profile):
+        self.messages=messages; self.profile=profile
+        yield {'message':{'content':'Resposta sintética.'}}
+        yield {'done':True,'eval_count':4,'prompt_eval_count':10}
+
+
+@pytest.mark.parametrize('model', ['qwen3.5:4b','huihui_ai/qwen3.5-abliterated:4b'])
+def test_ordinary_portuguese_message_uses_model_tokens_and_preserves_manual_context(tmp_path,model):
+    from backend.api import create_app
+    from fastapi.testclient import TestClient
+    from test_backend import TOKEN,HEADERS
+    provider=QwenFixture()
+    with TestClient(create_app(tmp_path,TOKEN,provider),headers=HEADERS) as client:
+        prefs=client.get('/settings').json();prefs['performance']='notebook'
+        prefs['personality']['instructions']='Preserve minhas prioridades pessoais.'
+        client.put('/settings',json=prefs)
+        memory=client.post('/memories',json={'title':'Prioridade','content':'Projeto Aurora tem prazo em novembro.'}).json()
+        text='Estou organizando meus projetos e quero discutir ideias com calma. '*70
+        assert len(text.encode('utf-8'))>3200
+        body={'model':model,'content':text,'memory_ids':[memory['id']]}
+        # Estimating a new conversation neither creates messages nor invokes inference.
+        estimate=client.post('/chat/estimate',json=body)
+        assert estimate.status_code==200,estimate.text
+        assert estimate.json()['fits'] and estimate.json()['tokenizer']=='Qwen 3.5'
+        assert client.get('/conversations').json()==[] and provider.messages==[]
+        cid=conversation(client);body['conversation_id']=cid
+        response=client.post('/chat',json=body)
+        assert response.status_code==200,response.text
+        assert events(response)[-1]['status']=='complete'
+        assert provider.messages[-1]['content']==text
+        assert 'Projeto Aurora' in provider.messages[0]['content']
+        assert 'Preserve minhas prioridades pessoais.' in provider.messages[0]['content']
+        assert sum(message_cost(m['content'],model) for m in provider.messages)+768+128<=4096
+
+
+def test_true_overflow_is_reported_before_send_and_does_not_change_history(tmp_path):
+    from backend.api import create_app
+    from fastapi.testclient import TestClient
+    from test_backend import TOKEN,HEADERS
+    provider=QwenFixture()
+    with TestClient(create_app(tmp_path,TOKEN,provider),headers=HEADERS) as client:
+        prefs=client.get('/settings').json();prefs['performance']='notebook'
+        client.put('/settings',json=prefs)
+        cid=conversation(client)
+        body={'conversation_id':cid,'model':'qwen3.5:4b','content':'🧠臨界⚙️'*1500}
+        estimate=client.post('/chat/estimate',json=body).json()
+        assert not estimate['fits'] and estimate['required_tokens']>estimate['input_limit']
+        response=client.post('/chat',json=body)
+        assert response.status_code==400 and 'contexto' in response.json()['detail']
+        assert provider.messages==[] and client.get(f'/conversations/{cid}/messages').json()==[]
+
+
+def test_history_is_windowed_without_deleting_saved_messages(tmp_path):
+    from backend.api import create_app
+    from fastapi.testclient import TestClient
+    from test_backend import TOKEN,HEADERS
+    app=create_app(tmp_path,TOKEN,QwenFixture())
+    with TestClient(app,headers=HEADERS) as client:
+        prefs=client.get('/settings').json();prefs['performance']='notebook'
+        client.put('/settings',json=prefs)
+        cid=conversation(client)
+        for i in range(20):app.state.store.add(cid,'user' if i%2==0 else 'assistant',('Registro sintético antigo. '*50)+str(i))
+        body={'conversation_id':cid,'model':'qwen3.5:4b','content':'Vamos continuar a conversa.'}
+        estimate=client.post('/chat/estimate',json=body).json()
+        assert estimate['fits'] and estimate['history_included']<estimate['history_total']==20
+        assert client.post('/chat',json=body).status_code==200
+        assert len(client.get(f'/conversations/{cid}/messages').json())==22

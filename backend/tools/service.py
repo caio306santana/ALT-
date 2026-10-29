@@ -71,11 +71,20 @@ class ToolService:
           CREATE TABLE IF NOT EXISTS scopes(id TEXT PRIMARY KEY,path TEXT NOT NULL UNIQUE,created TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS actions(id TEXT PRIMARY KEY,tool TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,result TEXT,created TEXT NOT NULL,updated TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS action_context(id TEXT PRIMARY KEY,conversation_id TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS action_reviews(id TEXT PRIMARY KEY,preview TEXT NOT NULL,fingerprint TEXT);
           CREATE TABLE IF NOT EXISTS tool_authorization(id INTEGER PRIMARY KEY CHECK(id=1),level INTEGER NOT NULL,scopes TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS programs(id TEXT PRIMARY KEY,name TEXT NOT NULL,path TEXT NOT NULL UNIQUE,sha256 TEXT NOT NULL);
         ''')
         store.db.commit()
-        store.write("UPDATE actions SET status='interrupted' WHERE status IN ('proposed','running')")
+        store.write("UPDATE actions SET status='interrupted' WHERE status='running' OR (status='proposed' AND id NOT IN (SELECT id FROM action_reviews))")
+        recover=store.rows("SELECT a.id,a.payload,r.preview,r.fingerprint FROM actions a JOIN action_reviews r ON r.id=a.id WHERE a.status='proposed' ORDER BY a.created")
+        for row in recover:
+            payload=json.loads(row['payload'])
+            # UI snapshots and launched process handles belong to the old session.
+            if payload['tool'].startswith(('browser_','windows_')) or payload['tool']=='close_app':
+                store.write("UPDATE actions SET status='interrupted' WHERE id=?",(row['id'],));continue
+            self.pending[row['id']]=(None,payload,row['fingerprint'])
+            self.previews[row['id']]=json.loads(row['preview'])
         self.add_scope(self.workspace,internal=True)
         saved=store.rows('SELECT level,scopes FROM tool_authorization WHERE id=1')
         if saved and saved[0]['level'] in (1,2,3,4):
@@ -144,7 +153,8 @@ class ToolService:
 
     def describe(self,aid):
         entry=self.pending.get(aid)
-        if not entry or entry[0]<time.monotonic():raise ValueError('Proposta expirada.')
+        if not entry:raise ValueError('Esta proposta foi encerrada ou pertence a uma sessão anterior. Prepare uma nova proposta para revisar.')
+        if entry[0] is not None and entry[0]<time.monotonic():raise ValueError('Proposta expirada.')
         return self.previews[aid]
 
     def add_scope(self,path,internal=False):
@@ -197,6 +207,7 @@ class ToolService:
 
     def proposal(self,body,conversation_id=''):
         if self.engine.stopped:raise PermissionError('Ações suspensas.')
+        if len(self.pending)>=100:raise ValueError('Há 100 propostas pendentes. Recuse ou execute algumas antes de criar outras.')
         self.policy.check(body.tool)
         payload=body.model_dump();preview={'tool':body.tool};fingerprint=None
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
@@ -252,12 +263,24 @@ class ToolService:
             preview['url']=body.url;preview['external_notice']='A página será consultada sem cookies ou sessões pessoais.'
         preview['critical']=body.tool=='write_text' and body.scope_id=='windows-profile'
         aid=str(uuid4())
-        self.pending[aid]=(time.monotonic()+300,payload,fingerprint)
+        self.pending[aid]=(None,payload,fingerprint)
         self.previews[aid]=preview
-        if len(self.pending)>100:self.pending.pop(next(iter(self.pending)))
         self.store.write('INSERT INTO actions VALUES(?,?,?,?,?,?,?)',(aid,body.tool,json.dumps(payload), 'proposed',None,now(),now()))
         self.store.write('INSERT INTO action_context VALUES(?,?)',(aid,conversation_id))
-        return {'id':aid,'preview':preview,'expires_in':300,'requires_approval':True}
+        self.store.write('INSERT INTO action_reviews VALUES(?,?,?)',(aid,json.dumps(preview,ensure_ascii=False),fingerprint))
+        return {'id':aid,'preview':preview,'expires_in':None,'requires_approval':True}
+
+    def renew(self,aid):
+        rows=self.store.rows('SELECT payload,status FROM actions WHERE id=?',(aid,))
+        if not rows:raise ValueError('Proposta não encontrada.')
+        if rows[0]['status'] not in ('proposed','interrupted','error'):raise ValueError('Esta ação já foi concluída, recusada ou cancelada.')
+        if aid in self.pending:return {'id':aid,'preview':self.describe(aid),'expires_in':None,'requires_approval':True}
+        contexts=self.store.rows('SELECT conversation_id FROM action_context WHERE id=?',(aid,))
+        # Recreate only the proposal and show its fresh preview; never execute here.
+        result=self.proposal(ToolProposal(**json.loads(rows[0]['payload'])),contexts[0]['conversation_id'] if contexts else '')
+        self.store.write("UPDATE actions SET status='superseded' WHERE id=?",(aid,))
+        return result
+
 
     async def approve(self,aid):
         if self.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
@@ -265,7 +288,7 @@ class ToolService:
         self.policy.check(self.pending[aid][1]['tool'])
         if preview.get('critical') and aid not in self.critical_confirmed:raise PermissionError('Gravação ampla exige confirmação adicional na janela nativa.')
         entry=self.pending.pop(aid,None)
-        if not entry or entry[0]<time.monotonic():raise ValueError('Proposta expirada ou já utilizada.')
+        if not entry or entry[0] is not None and entry[0]<time.monotonic():raise ValueError('Proposta expirada ou já utilizada.')
         event=self.engine.begin('tool:'+aid)
         self.store.write("UPDATE actions SET status='running',updated=? WHERE id=?",(now(),aid))
         try:
@@ -402,6 +425,8 @@ class ToolService:
         result=[]
         for row in rows:
             payload=json.loads(row['payload'])
+            if row['status']=='superseded':continue
             preview=self.previews.get(row['id']) or {key:value for key,value in payload.items() if key in ('tool','path','query','url','app','expression') and value}
-            result.append({'id':row['id'],'preview':preview,'state':'proposed' if row['status']=='proposed' else 'complete' if row['status']=='complete' else 'rejected' if row['status']=='rejected' else 'error','result':json.loads(row['result']) if row['result'] else None})
+            state='proposed' if row['status']=='proposed' and row['id'] in self.pending else 'complete' if row['status']=='complete' else 'rejected' if row['status']=='rejected' else 'cancelled' if row['status']=='cancelled' else 'interrupted' if row['status'] in ('proposed','interrupted') else 'error'
+            result.append({'id':row['id'],'preview':preview,'state':state,'result':json.loads(row['result']) if row['result'] else None})
         return result

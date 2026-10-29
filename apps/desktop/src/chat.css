@@ -1,0 +1,50 @@
+/* A quieter reading surface inside ALT's neon shell. */
+.chat-scroll { scroll-behavior: auto; }
+.messages { max-width: 820px; padding: 24px 30px 16px; }
+.message { margin-bottom: 32px; }
+.message.assistant { border-left: 0; padding-left: 0; }
+.message.user { width: fit-content; max-width: 88%; margin-left: auto; background: #ffffff08; border: 1px solid #ffffff0c; border-radius: 20px; padding: 14px 20px; }
+.message.user .message-label { display: none; }
+.message-content { font-size: 1em; line-height: 1.75; }
+.message-content p { line-height: 1.75; margin-bottom: 15px; }
+.message-label { letter-spacing: .15px; }
+.message-label small, .message-label time { opacity: .7; }
+.message-meta { font-size: 9px; }
+.composer-area { width: 100%; max-width: 820px; margin: 0 auto; padding: 8px 24px 14px; }
+.composer { border: 1px solid #ffffff20; border-radius: 22px; background: #14151de8; box-shadow: 0 8px 32px #0002; padding: 14px 16px 10px; }
+.composer:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, #ffffff20); }
+.composer textarea { resize: none; font-size: 1em; max-height: 180px; min-height: 48px; }
+.composer .send { border-radius: 50%; width: 34px; height: 34px; box-shadow: none; flex-shrink: 0; }
+.composer-controls > div { min-width: 0; }
+.composer-controls > div > button:disabled { display: none; }
+.memory-composer { margin: 0 8px 7px; }
+.composer-caption { font-size: 9px; gap: 10px; }
+.context-indicator { font-size: 10px; line-height: 1.6; color: #a8a4b7; padding: 7px 8px 0; overflow-wrap: anywhere; }
+.context-indicator.over-limit { color: #ff9eae; }
+.approval-control { position: relative; min-width: 0; }
+.composer-controls button.approval-trigger { display: flex; align-items: center; gap: 6px; width: auto; height: 30px; padding: 4px 8px; font-size: 11px; border-radius: 7px; color: #b5b0c3; }
+.approval-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.approval-trigger:hover { background: #ffffff09; }
+.approval-popover { position: absolute; z-index: 60; bottom: calc(100% + 10px); left: 0; width: min(350px, calc(100vw - 135px)); max-height: min(630px, 73vh); overflow-y: auto; padding: 14px; background: #181923; border: 1px solid #ffffff25; box-shadow: 0 16px 48px #0008; border-radius: 14px; color: #e2dfea; }
+.approval-popover > strong { font-size: 12px; }
+.approval-popover > p { margin: 7px 0 10px; color: #aba6b9; font-size: 10px; }
+.composer-controls .approval-popover button { width: 100%; height: auto; padding: 11px 9px; text-align: left; display: flex; gap: 8px; justify-content: space-between; align-items: center; border-radius: 8px; color: #d7d3e2; }
+.approval-popover button:hover, .approval-popover button.chosen { background: #ffffff08; }
+.approval-popover button.chosen b { color: var(--accent); }
+.approval-popover button b { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; }
+.approval-popover button small { display: block; font-size: 10px; line-height: 1.5; color: #a9a5b7; }
+.approval-popover label { display: block; font-size: 10px; margin: 12px 8px 4px; }
+.approval-popover select { display: block; width: 100%; margin-top: 7px; padding: 8px; color: inherit; background: #101119; border: 1px solid #ffffff20; border-radius: 6px; font-size: 10px; }
+.approval-note { display: block; margin: 8px; font-size: 9px; color: #a29bac; line-height: 1.6; }
+.light .composer { background: #ffffffed; border-color: #28203630; }
+.light .message.user { background: #3a23490a; border-color: #3a23490c; }
+.light .approval-popover { background: #f8f5fc; color: #292332; border-color: #29233230; }
+.light .approval-popover select { background: white; }
+.light .approval-popover button, .light .approval-trigger { color: #433a52; }
+.light .context-indicator, .light .approval-popover small, .light .approval-popover p { color: #62596e; }
+@media (max-width: 800px) {
+  .messages { padding: 18px 18px 10px; }
+  .composer-area { padding: 8px 14px 12px; }
+  .message.user { max-width: 94%; }
+  .approval-trigger span { max-width: 95px; }
+}

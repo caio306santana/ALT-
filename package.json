@@ -1,6 +1,6 @@
 {
   "name": "alt-ai",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "ALT-AI — assistente pessoal local",
   "author": "ALT-AI",
@@ -52,12 +52,17 @@
       "apps/desktop/dist/**/*",
       "apps/desktop/electron/**/*",
       "assets/**/*",
+      "!assets/tokenizers/**/*",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "dist/alt-backend",
         "to": "backend"
+      },
+      {
+        "from": "assets/tokenizers",
+        "to": "backend/tokenizers"
       }
     ],
     "win": {

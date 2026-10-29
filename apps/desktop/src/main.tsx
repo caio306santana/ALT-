@@ -4,6 +4,7 @@ import App from "./App";
 import "./style.css";
 import "./features.css";
 import "./cyberpunk.css";
+import "./chat.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

@@ -53,6 +53,7 @@ import type {
 } from "../../../packages/shared-types";
 import { themes } from "../../../packages/design-tokens/themes";
 import { ProfilePanel } from "./components/ProfilePanel";
+import { ApprovalMenu } from "./components/ApprovalMenu";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import {
   OwnerControlPanel,
@@ -123,9 +124,19 @@ type SystemData = {
   };
 };
 
+type ContextEstimate = {
+  fits: boolean;
+  input_tokens: number;
+  input_limit: number;
+  history_included: number;
+  history_total: number;
+  tokenizer: string;
+  reason?: string;
+};
+
 export default function App() {
   const [view, setView] = useState<View>("chat"),
-    [settingsOpen, setSettingsOpen] = useState(true),
+    [settingsOpen, setSettingsOpen] = useState(false),
     [tab, setTab] = useState("Aparência");
   const [prefs, setPrefs] = useState(defaults),
     [loaded, setLoaded] = useState(false),
@@ -153,6 +164,9 @@ export default function App() {
     current = useRef(""),
     textarea = useRef<HTMLTextAreaElement>(null);
   const timerDeadline = useRef(0);
+  const followEnd = useRef(true);
+  const [contextEstimate, setContextEstimate] = useState<ContextEstimate | null>(null);
+  const [contextProblem, setContextProblem] = useState("");
   const [chatActions, setChatActions] = useState<ChatAction[]>([]),
     [pendingAnalysis, setPendingAnalysis] = useState<{
       id: string;
@@ -303,10 +317,25 @@ export default function App() {
     };
   }, [loaded]);
   useEffect(() => {
-    end.current?.scrollIntoView({
-      behavior: prefs.animations ? "smooth" : "instant",
-    });
+    if (followEnd.current) end.current?.scrollIntoView({ behavior: "instant" });
   }, [messages, prefs.animations]);
+  useEffect(() => {
+    if (!textarea.current) return;
+    textarea.current.style.height = "auto";
+    textarea.current.style.height = `${Math.min(180, textarea.current.scrollHeight)}px`;
+  }, [input, view]);
+  useEffect(() => {
+    setContextEstimate(null);
+    setContextProblem("");
+    if (!loaded || !prefs.model || !input.trim() || busy) return;
+    let active = true;
+    const timeout = setTimeout(() => {
+      api<ContextEstimate>("POST", "/chat/estimate", { conversation_id: cid, model: prefs.model, content: input.trim(), memory_ids: memoryIds })
+        .then(value => { if (active) setContextEstimate(value); })
+        .catch(() => { if (active) setContextProblem("Não foi possível conferir o contexto. O envio fará uma nova conferência."); });
+    }, 350);
+    return () => { active = false; clearTimeout(timeout); };
+  }, [input, cid, memoryIds, prefs, loaded, busy]);
   useEffect(() => {
     if (!timerRunning || remaining <= 0) return;
     if (!timerDeadline.current)
@@ -375,12 +404,20 @@ export default function App() {
     setNotice("");
     setBusy(true);
     let id = cid;
+    let accepted = false;
+    let attempted = false;
     try {
       if (!id) {
         const c = await api<Conversation>("POST", "/conversations");
         id = c.id;
         setCid(id);
       }
+      const estimate = await api<ContextEstimate>("POST", "/chat/estimate", {
+        conversation_id: id, model: prefs.model, content: text,
+        memory_ids: memoryIds, tool_result_id: analysis?.id || "",
+      });
+      setContextEstimate(estimate);
+      if (!estimate.fits) throw new Error(estimate.reason || "Este envio excede o contexto disponível.");
       if (prefs.model.startsWith("cloud:") && !consentReceipt) {
         setPendingAnalysis(analysis || null);
         if (analysis) setInput(text);
@@ -415,7 +452,9 @@ export default function App() {
         metrics: null,
       };
       setMessages((old) => [...old, user, assistant]);
-      setInput("");
+      followEnd.current = true;
+      attempted = true;
+      setInput(old => old.trim() === text ? "" : old);
       await window.alt.stream(
         crypto.randomUUID(),
         "chat",
@@ -428,6 +467,7 @@ export default function App() {
           tool_result_id: analysis?.id || "",
         },
         (event: StreamEvent) => {
+          if (event.type === "start") accepted = true;
           if (event.type === "tool_proposal" && event.proposal)
             setChatActions((old) => [
               ...old,
@@ -482,6 +522,7 @@ export default function App() {
         },
       );
     } catch (e) {
+      if (attempted && !accepted) setInput(old => old || text);
       report(e);
     } finally {
       setBusy(false);
@@ -755,7 +796,7 @@ export default function App() {
           )}
           {view === "chat" && (
             <>
-              <div className="chat-scroll">
+              <div className="chat-scroll" onScroll={e => { const el = e.currentTarget; followEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
                 {messages.length === 0 ? (
                   <div className="welcome">
                     <div className="welcome-mark">
@@ -911,9 +952,9 @@ export default function App() {
                       <ChatActionCard
                         key={action.id}
                         action={action}
-                        onUpdate={(updated) =>
+                        onUpdate={(updated, previousId) =>
                           setChatActions((old) =>
-                            old.map((a) => (a.id === updated.id ? updated : a)),
+                            old.map((a) => (a.id === (previousId || updated.id) ? updated : a)),
                           )
                         }
                         onAnalyze={() =>
@@ -1052,9 +1093,7 @@ export default function App() {
                       >
                         <Timer size={18} />
                       </button>
-                      <span className="composer-scope">
-                        <Shield size={11} /> Observação
-                      </span>
+                      <ApprovalMenu disabled={stopped || busy} onError={report} />
                     </div>
                     {busy ? (
                       <button
@@ -1072,7 +1111,7 @@ export default function App() {
                         className="send"
                         aria-label="Enviar mensagem"
                         disabled={
-                          !input.trim() || !selected || stopped || !loaded
+                          !input.trim() || !selected || stopped || !loaded || contextEstimate?.fits === false
                         }
                       >
                         <ArrowUp size={20} />
@@ -1080,6 +1119,13 @@ export default function App() {
                     )}
                   </div>
                 </form>
+                {(contextEstimate || contextProblem) && <div className={`context-indicator ${contextEstimate?.fits === false ? "over-limit" : ""}`} role="status">
+                  {contextEstimate ? <span title={`Contagem ${contextEstimate.tokenizer}; inclui personalidade, memórias e histórico enviado.`}>
+                    Contexto: {contextEstimate.input_tokens.toLocaleString("pt-BR")} / {contextEstimate.input_limit.toLocaleString("pt-BR")} tokens
+                    {contextEstimate.fits && contextEstimate.history_included < contextEstimate.history_total ? " · histórico recente; conversa completa salva" : ""}
+                    {!contextEstimate.fits ? ` · ${contextEstimate.reason}` : ""}
+                  </span> : contextProblem}
+                </div>}
                 <div className="composer-caption">
                   <span>
                     <i />
