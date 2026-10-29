@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ContinuityPanel } from "./WorkspacePanels";
 import {
   Plus,
   Save,
@@ -324,7 +325,14 @@ export function MemoryPanel({
   onSelect,
   notify,
   onError,
-}: { selected: string[]; onSelect: (ids: string[]) => void } & Feedback) {
+  conversationId,
+  model,
+}: {
+  selected: string[];
+  onSelect: (ids: string[]) => void;
+  conversationId: string | null;
+  model: string;
+} & Feedback) {
   const [items, setItems] = useState<Memory[]>([]),
     [search, setSearch] = useState(""),
     [editing, setEditing] = useState<string | null>(null),
@@ -339,6 +347,20 @@ export function MemoryPanel({
   useEffect(() => {
     refresh().catch(onError);
   }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      (search
+        ? api<Memory[]>(
+            "GET",
+            "/memories/search?q=" + encodeURIComponent(search),
+          )
+        : api<Memory[]>("GET", "/memories")
+      )
+        .then(setItems)
+        .catch(onError);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
   async function save() {
     try {
       await api(
@@ -361,6 +383,13 @@ export function MemoryPanel({
   }
   return (
     <div className="page-scroll">
+      <ContinuityPanel
+        conversationId={conversationId}
+        model={model}
+        notify={notify}
+        onError={onError}
+        onSaved={() => refresh().catch(onError)}
+      />
       <p className="page-intro">
         Continuidade sem inventar lembranças.
         <br />
@@ -383,6 +412,24 @@ export function MemoryPanel({
         >
           <Download size={14} />
           Exportar JSON
+        </button>
+        <button
+          className="secondary"
+          onClick={() =>
+            window.alt
+              .importMemories()
+              .then(async (result) => {
+                if (result) {
+                  await refresh();
+                  notify(
+                    `${result.imported} memórias importadas; ${result.skipped} duplicatas ignoradas.`,
+                  );
+                }
+              })
+              .catch(onError)
+          }
+        >
+          Importar JSON
         </button>
         <button className="text-button" onClick={() => onSelect([])}>
           Limpar seleção ({selected.length})
@@ -464,81 +511,75 @@ export function MemoryPanel({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-      {items
-        .filter((m) =>
-          (m.title + " " + m.content)
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-        )
-        .map((m) => (
-          <article className="memory-card" key={m.id}>
-            <div className="memory-heading">
-              <label className="inline-check">
-                <input
-                  type="checkbox"
-                  disabled={
-                    !m.enabled ||
-                    (!selected.includes(m.id) && selected.length >= 10)
-                  }
-                  checked={selected.includes(m.id)}
-                  onChange={(e) =>
-                    onSelect(
-                      e.target.checked
-                        ? [...selected, m.id]
-                        : selected.filter((id) => id !== m.id),
-                    )
-                  }
-                />
-                <strong>{m.title}</strong>
-              </label>
-              <span className="small-tag">{m.category}</span>
-            </div>
-            <p>{m.content}</p>
-            <div className="button-row">
+      {items.map((m) => (
+        <article className="memory-card" key={m.id}>
+          <div className="memory-heading">
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                disabled={
+                  !m.enabled ||
+                  (!selected.includes(m.id) && selected.length >= 10)
+                }
+                checked={selected.includes(m.id)}
+                onChange={(e) =>
+                  onSelect(
+                    e.target.checked
+                      ? [...selected, m.id]
+                      : selected.filter((id) => id !== m.id),
+                  )
+                }
+              />
+              <strong>{m.title}</strong>
+            </label>
+            <span className="small-tag">{m.category}</span>
+          </div>
+          <p>{m.content}</p>
+          <div className="button-row">
+            <button
+              className="text-button"
+              onClick={() => {
+                setEditing(m.id);
+                setForm({
+                  title: m.title,
+                  content: m.content,
+                  category: m.category,
+                  enabled: m.enabled,
+                });
+              }}
+            >
+              Editar
+            </button>
+            <button
+              className="text-button"
+              onClick={() => setConfirmDelete(m.id)}
+            >
+              <Trash2 size={12} />
+              Excluir
+            </button>
+            {!m.enabled && <span className="muted">Desativada</span>}
+          </div>
+          {confirmDelete === m.id && (
+            <div className="inline-confirm">
+              <span>Excluir esta memória local?</span>
               <button
-                className="text-button"
                 onClick={() => {
-                  setEditing(m.id);
-                  setForm({
-                    title: m.title,
-                    content: m.content,
-                    category: m.category,
-                    enabled: m.enabled,
-                  });
+                  api("DELETE", `/memories/${m.id}`)
+                    .then(async () => {
+                      onSelect(selected.filter((id) => id !== m.id));
+                      setConfirmDelete("");
+                      await refresh();
+                    })
+                    .catch(onError);
                 }}
               >
-                Editar
-              </button>
-              <button
-                className="text-button"
-                onClick={() => setConfirmDelete(m.id)}
-              >
-                <Trash2 size={12} />
                 Excluir
               </button>
-              {!m.enabled && <span className="muted">Desativada</span>}
+              <button onClick={() => setConfirmDelete("")}>Cancelar</button>
             </div>
-            {confirmDelete === m.id && (
-              <div className="inline-confirm">
-                <span>Excluir esta memória local?</span>
-                <button
-                  onClick={() => {
-                    api("DELETE", `/memories/${m.id}`)
-                      .then(async () => {
-                        onSelect(selected.filter((id) => id !== m.id));
-                        setConfirmDelete("");
-                        await refresh();
-                      })
-                      .catch(onError);
-                  }}
-                >
-                  Excluir
-                </button>
-                <button onClick={() => setConfirmDelete("")}>Cancelar</button>
-              </div>
-            )}
-          </article>
-        ))}
+          )}
+        </article>
+      ))}
       {!items.length && (
         <p className="setting-note">
           Ainda não há memórias. Nenhuma lembrança é extraída automaticamente de
@@ -586,8 +627,10 @@ export function ToolsPanel({
       { id: string; tool: string; status: string }[]
     >([]),
     [busy, setBusy] = useState(false);
+  const [programs, setPrograms] = useState<{ id: string; name: string }[]>([]);
   async function refresh() {
     const p = await api<Permissions>("GET", "/permissions");
+    setPrograms(await api("GET", "/programs"));
     setPermissions(p);
     setScope((s) =>
       p.scopes.some((r) => r.id === s) ? s : p.scopes[0]?.id || "",
@@ -803,10 +846,15 @@ export function ToolsPanel({
               {[
                 { id: "calculate", name: "Calcular expressão" },
                 { id: "list_files", name: "Listar pasta" },
+                { id: "find_files", name: "Buscar arquivos em subpastas" },
                 { id: "read_text", name: "Ler texto" },
                 { id: "write_text", name: "Criar / editar texto" },
                 { id: "open_folder", name: "Abrir pasta" },
                 { id: "open_app", name: "Abrir aplicativo autorizado" },
+                {
+                  id: "close_app",
+                  name: "Solicitar fechamento de aplicativo aberto pela ALT",
+                },
                 { id: "open_url", name: "Abrir página HTTPS" },
                 { id: "web_search", name: "Pesquisar na internet" },
                 { id: "read_webpage", name: "Ler página pública" },
@@ -817,9 +865,13 @@ export function ToolsPanel({
               ))}
             </select>
           </label>
-          {["list_files", "read_text", "write_text", "open_folder"].includes(
-            tool,
-          ) && (
+          {[
+            "list_files",
+            "find_files",
+            "read_text",
+            "write_text",
+            "open_folder",
+          ].includes(tool) && (
             <label>
               Caminho relativo
               <input
@@ -860,7 +912,7 @@ export function ToolsPanel({
               />
             </label>
           )}
-          {tool === "open_app" && (
+          {["open_app", "close_app"].includes(tool) && (
             <label>
               Aplicativo
               <select
@@ -870,8 +922,11 @@ export function ToolsPanel({
                   setProposal(null);
                 }}
               >
-                <option value="notepad">Bloco de Notas</option>
-                <option value="calculator">Calculadora</option>
+                {programs.map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -889,7 +944,7 @@ export function ToolsPanel({
               />
             </label>
           )}
-          {tool === "web_search" && (
+          {["web_search", "find_files"].includes(tool) && (
             <label>
               Assunto da pesquisa
               <input

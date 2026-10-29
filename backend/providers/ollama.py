@@ -77,7 +77,7 @@ class Ollama:
                     'model':model, 'messages':messages, 'stream':True,
                     'options':profile['options'], 'keep_alive':profile['keep_alive']
                 }
-                if model.startswith('qwen3.5:'): payload['think']=False
+                if 'qwen3.5' in model.lower(): payload['think']=False
                 if profile.get('tools'):payload['tools']=profile['tools']
                 async with client.stream('POST', self.base_url+'/api/chat', json=payload) as response:
                     if response.status_code != 200:

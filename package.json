@@ -1,6 +1,6 @@
 {
   "name": "alt-ai",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "ALT-AI — assistente pessoal local",
   "author": "ALT-AI",
@@ -9,7 +9,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "tsc --noEmit -p apps/desktop/tsconfig.json && vite build --config apps/desktop/vite.config.ts",
     "start": "node scripts/start.mjs",
-    "test": ".venv\\Scripts\\python.exe -m pytest tests -q && node --test tests/update-security.test.cjs",
+    "test": ".venv\\Scripts\\python.exe -m pytest tests -q && node --test tests/*.test.cjs",
     "backend:build": ".venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean backend.spec",
     "dist": "npm run build && npm run backend:build && node scripts/build-windows.cjs",
     "pack": "npm run build && npm run backend:build && node scripts/build-windows.cjs --dir",
@@ -38,7 +38,13 @@
     "appId": "com.altai.desktop",
     "productName": "ALT-AI",
     "asar": true,
-    "electronFuses": {"runAsNode":false,"enableNodeOptionsEnvironmentVariable":false,"enableNodeCliInspectArguments":false,"enableEmbeddedAsarIntegrityValidation":true,"onlyLoadAppFromAsar":true},
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
     "directories": {
       "output": "release"
     },

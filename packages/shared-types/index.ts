@@ -82,6 +82,7 @@ export interface CloudPreview {
   billing_notice: string;
   context_truncated: boolean;
   tool_result_truncated?: boolean;
+  recalled_memories?: {id:string;title:string}[];
 }
 export type StreamEvent = {
   type:
@@ -104,4 +105,5 @@ export type StreamEvent = {
   total?: number;
   context_truncated?: boolean;
   tool_result_truncated?: boolean;
+  recalled_memories?: {id:string;title:string}[];
 };

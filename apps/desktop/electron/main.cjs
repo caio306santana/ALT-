@@ -26,6 +26,35 @@ const ui = dev
   ? "http://127.0.0.1:5173/"
   : pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
 const operations = new Map();
+const { ResearchBrowser } = require("./browser.cjs");
+const researchBrowser = new ResearchBrowser(require("electron"));
+let desktopTimer,
+  desktopBusy = false;
+async function pollDesktop() {
+  if (desktopBusy || quitting) return;
+  desktopBusy = true;
+  try {
+    const { job } = await (await request("GET", "/desktop/jobs")).json();
+    if (!job) return;
+    const { active } = await (
+      await request("GET", "/desktop/jobs/" + job.id)
+    ).json();
+    if (!active) return;
+    let result, error;
+    try {
+      result = await researchBrowser.act(job.payload);
+    } catch (e) {
+      error = String(e.message || e).slice(0, 500);
+    }
+    await request("POST", "/desktop/jobs/" + job.id, {
+      result: result || null,
+      error: error || null,
+    });
+  } catch {
+  } finally {
+    desktopBusy = false;
+  }
+}
 let verifiedUpdate = null;
 let activeShortcut = "";
 const allowed = [
@@ -48,6 +77,12 @@ const allowed = [
   ["PUT", /^\/memories\/[a-f0-9-]+$/],
   ["DELETE", /^\/(memories|scopes)\/[a-f0-9-]+$/],
   ["POST", /^\/tools\/(approve|reject)\/[a-f0-9-]+$/],
+  ["GET", /^\/(policy|programs|evaluations)$/],
+  ["GET", /^\/memories\/search\?q=[^#]{0,1600}$/],
+  ["POST", /^\/(evaluations|evaluations\/cancel|continuity\/draft)$/],
+  ["POST", /^\/continuity\/approve\/[a-f0-9-]+$/],
+  ["PUT", /^\/evaluations\/[a-f0-9-]+\/rating$/],
+  ["DELETE", /^\/programs\/[a-f0-9-]+$/],
 ];
 function bindShortcut(shortcut) {
   if (
@@ -312,7 +347,88 @@ ipcMain.handle("api:request", async (event, method, route, body) => {
       throw error;
     }
   }
-  return (await request(method, route, body)).json();
+  const response = await request(method, route, body);
+  if (
+    method === "POST" &&
+    ["/actions/stop", "/permissions/revoke"].includes(route)
+  )
+    researchBrowser.stop();
+  return response.json();
+});
+ipcMain.handle("policy:save", async (event, body) => {
+  validate(event);
+  payloadSize(body);
+  const consent = await dialog.showMessageBox(win, {
+    type: "warning",
+    buttons: ["Cancelar", "Salvar minhas regras"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Aplicar estas regras persistentes da ALT?",
+    detail:
+      JSON.stringify(body, null, 2) +
+      "\n\nPermitir automaticamente vale nos modos 3/4 e nos escopos autorizados. Observação não executa. As regras ficam salvas até você alterar; nuvem continua com prévia por envio.",
+  });
+  if (consent.response !== 1) return null;
+  const result = await (await request("PUT", "/policy", body)).json();
+  researchBrowser.stop();
+  return result;
+});
+ipcMain.handle("program:choose", async (event) => {
+  validate(event);
+  const chosen = await dialog.showOpenDialog(win, {
+    title: "Registrar aplicativo local autorizado",
+    properties: ["openFile"],
+    filters: [{ name: "Aplicativos Windows", extensions: ["exe"] }],
+  });
+  if (chosen.canceled) return null;
+  const selected = chosen.filePaths[0];
+  const consent = await dialog.showMessageBox(win, {
+    type: "warning",
+    buttons: ["Cancelar", "Registrar aplicativo"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Permitir que a ALT proponha abrir este aplicativo?",
+    detail:
+      selected +
+      "\nNão instala nem executa agora. A abertura seguirá suas regras de autorização. Sem argumentos de linha de comando; fechamento normal somente de processos rastreados pela ALT.",
+  });
+  if (consent.response !== 1) return null;
+  return (await request("POST", "/programs", { path: selected })).json();
+});
+ipcMain.handle("memory:import", async (event) => {
+  validate(event);
+  const chosen = await dialog.showOpenDialog(win, {
+    title: "Importar memórias ALT",
+    properties: ["openFile"],
+    filters: [{ name: "Memórias JSON", extensions: ["json"] }],
+  });
+  if (chosen.canceled) return null;
+  const file = chosen.filePaths[0];
+  if (fs.statSync(file).size > 1900000) throw Error("Arquivo excede 1,9 MB.");
+  const data = JSON.parse(fs.readFileSync(file, "utf8").replace(/^\uFEFF/, ""));
+  if (
+    data.format !== "alt-ai-memory" ||
+    data.version !== 1 ||
+    !Array.isArray(data.memories)
+  )
+    throw Error("Use um arquivo exportado pela ALT.");
+  const items = data.memories.map(({ title, content, category, enabled }) => ({
+    title,
+    content,
+    category,
+    enabled,
+  }));
+  const consent = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Importar"],
+    defaultId: 0,
+    cancelId: 0,
+    message: `Importar ${items.length} memórias?`,
+    detail:
+      "As memórias atuais serão preservadas. Duplicatas são ignoradas. Nenhum conteúdo será enviado à nuvem.",
+  });
+  if (consent.response !== 1) return null;
+  return (await request("POST", "/memories/import", { items })).json();
 });
 ipcMain.handle("workspace:choose", async (event) => {
   validate(event);
@@ -340,8 +456,10 @@ ipcMain.handle("windows:grant", async (event, level, scopeId) => {
   if (![3, 4].includes(level)) throw new Error("Modo inválido");
   const current = await (await request("GET", "/permissions")).json();
   const scope = current.scopes.find((s) => s.id === scopeId);
-  if (level === 3 && (!scope||scope.id==='windows-profile'))
-    throw new Error("Escolha uma pasta específica nos controles manuais primeiro.");
+  if (level === 3 && (!scope || scope.id === "windows-profile"))
+    throw new Error(
+      "Escolha uma pasta específica nos controles manuais primeiro.",
+    );
   const detail =
     level === 4
       ? "Sem prazo; permanece autorizado até você alterar ou revogar, inclusive ao reabrir a ALT: leitura automática de arquivos texto no seu perfil pessoal e pastas escolhidas. Abrir aplicativos, navegação e gravações continuam supervisionados. Gravações no perfil exigem confirmação adicional. Credenciais, AppData, sistema, shell arbitrário e privilégios administrativos ficam excluídos. STOP e Revogar encerram a sessão."
@@ -364,7 +482,7 @@ ipcMain.handle("windows:grant", async (event, level, scopeId) => {
   return (
     await request("POST", "/permissions/grant", {
       level,
-      scope_ids: scope&&scope.id!=='windows-profile' ? [scope.id] : [],
+      scope_ids: scope && scope.id !== "windows-profile" ? [scope.id] : [],
     })
   ).json();
 });
@@ -448,7 +566,10 @@ ipcMain.handle("game:mode", async (event, enabled) => {
   const result = await (
     await request("POST", enabled ? "/game/enable" : "/game/disable")
   ).json();
-  if (enabled) win.hide();
+  if (enabled) {
+    researchBrowser.stop();
+    win.hide();
+  }
   return result;
 });
 ipcMain.handle("help:open", (event) => {
@@ -642,6 +763,8 @@ else {
     try {
       await startBackend();
       await createWindow();
+      desktopTimer = setInterval(pollDesktop, 500);
+      desktopTimer.unref();
     } catch (error) {
       dialog.showErrorBox("ALT-AI — erro de inicialização", error.message);
       app.quit();
@@ -649,6 +772,8 @@ else {
   });
   app.on("before-quit", () => {
     quitting = true;
+    clearInterval(desktopTimer);
+    researchBrowser.close();
     for (const controller of operations.values()) controller.abort();
     globalShortcut.unregisterAll();
     if (backend) backend.kill();

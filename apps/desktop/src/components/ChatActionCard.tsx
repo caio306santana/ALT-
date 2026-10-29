@@ -68,6 +68,18 @@ export function ChatActionCard({
             "Ação proposta pela ALT",
         )}
       </p>
+      {!!preview.element && (
+        <p className="setting-note">
+          Elemento:{" "}
+          {String((preview.element as Record<string, unknown>).label || "")} ·{" "}
+          {String(
+            (preview.element as Record<string, unknown>).href ||
+              preview.target ||
+              "",
+          )}
+        </p>
+      )}
+      {preview.text !== undefined && <pre>{String(preview.text)}</pre>}
       {!!preview.external_notice && (
         <p className="setting-note">{String(preview.external_notice)}</p>
       )}

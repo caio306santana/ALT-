@@ -19,6 +19,9 @@ declare global {
       chooseWorkspace(): Promise<unknown>;
       grantWindows(level: 3 | 4, scopeId: string): Promise<unknown>;
       exportMemories(): Promise<{ saved: boolean }>;
+      importMemories():Promise<{imported:number;skipped:number}|null>;
+      savePolicy(body:import('./components/WorkspacePanels').OwnerPolicy):Promise<unknown>;
+      chooseProgram():Promise<unknown>;
       setAnthropicKey(
         key: string,
       ): Promise<{ configured: boolean; verified?: boolean; message?: string }>;

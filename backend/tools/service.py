@@ -18,18 +18,23 @@ from typing import Literal
 from backend.memory.store import now
 from backend.tools.research import read_page,search_web
 from backend.memory.library import reject_secrets
+from backend.security.policy import Policy
+import fnmatch
+import threading
 
 TEXT_EXTENSIONS={'.txt','.md','.json','.csv','.ts','.tsx','.js','.jsx','.py','.css','.html','.yaml','.yml','.sql','.toml'}
 SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials','credentials.json','id_rsa','id_ed25519','appdata','ntuser.dat','ntuser.ini','secrets.txt','passwords.txt','senhas.txt'}
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','read_text','write_text','open_folder','open_app','open_url','web_search','read_webpage']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
     expression:str=Field(default='',max_length=200)
-    app:Literal['notepad','calculator']='notepad'
+    app:str=Field(default='notepad',pattern=r'^[a-zA-Z0-9-]{1,64}$')
+    target:str=Field(default='',max_length=160)
+    snapshot_id:str=Field(default='',max_length=64)
     url:str=Field(default='',max_length=2000)
     query:str=Field(default='',max_length=300)
 
@@ -57,8 +62,9 @@ def calculate(expression):
     except (SyntaxError,ZeroDivisionError,OverflowError) as exc:raise ValueError('Expressão inválida.') from exc
 
 class ToolService:
-    def __init__(self,store,engine,data_dir):
+    def __init__(self,store,engine,data_dir,desktop=None):
         self.store,self.engine=store,engine
+        self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         store.db.executescript('''
@@ -66,6 +72,7 @@ class ToolService:
           CREATE TABLE IF NOT EXISTS actions(id TEXT PRIMARY KEY,tool TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,result TEXT,created TEXT NOT NULL,updated TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS action_context(id TEXT PRIMARY KEY,conversation_id TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS tool_authorization(id INTEGER PRIMARY KEY CHECK(id=1),level INTEGER NOT NULL,scopes TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS programs(id TEXT PRIMARY KEY,name TEXT NOT NULL,path TEXT NOT NULL UNIQUE,sha256 TEXT NOT NULL);
         ''')
         store.db.commit()
         store.write("UPDATE actions SET status='interrupted' WHERE status IN ('proposed','running')")
@@ -83,7 +90,7 @@ class ToolService:
     def status(self):
         scopes=self.store.rows('SELECT * FROM scopes ORDER BY created')
         if self.level==4:scopes.append({'id':'windows-profile','path':str(Path.home()),'label':'Perfil pessoal Windows · sessão supervisionada'})
-        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':['calculate','list_files','read_text','write_text','open_folder','open_app','open_url','web_search','read_webpage'],'windows_scope':'Perfil pessoal e pastas escolhidas; credenciais, AppData, sistema, shell e privilégios administrativos excluídos.'}
+        return {'level':self.level,'expires_in':None,'persistent':True,'scopes':scopes,'auto_scopes':list(self.auto_scopes),'tools':list(ToolProposal.model_fields['tool'].annotation.__args__),'windows_scope':'Perfil pessoal e pastas escolhidas; credenciais, AppData, sistema, shell e privilégios administrativos excluídos.'}
 
     def set_level(self,level):
         if level not in (1,2):raise ValueError('Níveis 3 e 4 ainda indisponíveis.')
@@ -106,7 +113,34 @@ class ToolService:
 
     def can_auto(self,body):
         level=self.status()['level']
-        return level in (3,4) and (body.tool=='calculate' or body.tool in ('list_files','read_text') and body.scope_id in self.auto_scopes)
+        decision=self.policy.decision(body.tool)
+        if level not in (3,4) or decision=='deny':return False
+        if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
+            if body.scope_id not in self.auto_scopes:return False
+            if body.tool=='write_text' and body.scope_id=='windows-profile':return False
+        if body.tool=='close_app':return False
+        if decision=='allow':return True
+        return body.tool=='calculate' or body.tool in ('list_files','find_files','read_text') and body.scope_id in self.auto_scopes
+
+    def programs(self):
+        return [{'id':'notepad','name':'Bloco de Notas'},{'id':'calculator','name':'Calculadora'}]+self.store.rows('SELECT id,name,path FROM programs ORDER BY name')
+
+    def add_program(self,path):
+        candidate=Path(path)
+        if not candidate.is_absolute() or str(candidate).startswith(('\\\\','//')) or candidate.suffix.lower()!='.exe':raise ValueError('Escolha um executável .exe local.')
+        self.reject_links(candidate)
+        if not candidate.is_file():raise ValueError('Executável não encontrado.')
+        if len(self.store.rows('SELECT id FROM programs'))>=20 and not self.store.rows('SELECT id FROM programs WHERE path=?',(str(candidate.resolve()),)):raise ValueError('Limite de 20 aplicativos registrados.')
+        digest=self.executable_hash(candidate)
+        self.store.write('INSERT INTO programs VALUES(?,?,?,?) ON CONFLICT(path) DO UPDATE SET sha256=excluded.sha256',(str(uuid4()),candidate.stem,str(candidate.resolve()),digest))
+        self.store.audit('program_registered',candidate.name)
+        return self.programs()
+
+    def executable_hash(self,path):
+        digest=hashlib.sha256()
+        with path.open('rb') as handle:
+            for chunk in iter(lambda:handle.read(1024*1024),b''):digest.update(chunk)
+        return digest.hexdigest()
 
     def describe(self,aid):
         entry=self.pending.get(aid)
@@ -163,8 +197,9 @@ class ToolService:
 
     def proposal(self,body,conversation_id=''):
         if self.engine.stopped:raise PermissionError('Ações suspensas.')
+        self.policy.check(body.tool)
         payload=body.model_dump();preview={'tool':body.tool};fingerprint=None
-        if body.tool in ('list_files','read_text','write_text','open_folder'):
+        if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             path=self.scoped(body.scope_id,body.path);preview['path']=str(path)
             if body.tool in ('read_text','write_text'):
                 if path.suffix.lower() not in TEXT_EXTENSIONS:raise ValueError('Extensão não permitida para ferramentas de texto.')
@@ -176,9 +211,31 @@ class ToolService:
                 before=path.read_text(encoding='utf-8') if fingerprint else ''
                 preview['diff']=''.join(difflib.unified_diff(before.splitlines(True),body.content.splitlines(True),fromfile='antes',tofile='depois'))[:40000]
                 preview['creates_file']=fingerprint is None
-            if body.tool in ('list_files','open_folder') and not path.is_dir():raise ValueError('Pasta não encontrada.')
+            if body.tool in ('list_files','find_files','open_folder') and not path.is_dir():raise ValueError('Pasta não encontrada.')
+            if body.tool=='find_files':preview['query']=body.query
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
-        elif body.tool=='open_app':preview['app']=body.app
+        elif body.tool in ('open_app','close_app'):
+            if body.app not in {p['id'] for p in self.programs()}:raise ValueError('Escolha um aplicativo registrado no painel Controle.')
+            preview['app']=body.app
+            if body.tool=='close_app':preview['notice']='Solicita fechamento normal somente de janelas abertas pela ALT; o programa pode pedir para salvar documentos.'
+        elif body.tool.startswith('browser_'):
+            if not self.desktop:raise ValueError('Navegador disponível somente no aplicativo desktop.')
+            if body.tool=='browser_open':
+                reject_secrets(body.url)
+                parsed=urllib.parse.urlsplit(body.url)
+                if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password:raise ValueError('Use uma URL HTTPS pública.')
+                preview['url']=body.url
+            if body.tool in ('browser_click','browser_type'):
+                if not body.target or not body.snapshot_id:raise ValueError('Leia a página primeiro e use o elemento e snapshot retornados.')
+                snapshot=self.desktop.snapshot
+                if not snapshot or snapshot.get('snapshot_id')!=body.snapshot_id:raise ValueError('Leia a página novamente; observação desatualizada.')
+                element=next((e for e in snapshot['elements'] if e.get('id')==body.target),None)
+                if not element:raise ValueError('Elemento não observado na página.')
+                preview['element']=element
+                reject_secrets(body.content)
+                preview.update({'target':body.target,'snapshot_id':body.snapshot_id})
+                if body.tool=='browser_type':preview['text']=body.content
+                preview['external_notice']='Interação com site externo; clicar ou digitar pode enviar dados ao site.'
         elif body.tool=='open_url':
             reject_secrets(body.url)
             url=urllib.parse.urlsplit(body.url)
@@ -205,6 +262,7 @@ class ToolService:
     async def approve(self,aid):
         if self.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
         preview=self.describe(aid)
+        self.policy.check(self.pending[aid][1]['tool'])
         if preview.get('critical') and aid not in self.critical_confirmed:raise PermissionError('Gravação ampla exige confirmação adicional na janela nativa.')
         entry=self.pending.pop(aid,None)
         if not entry or entry[0]<time.monotonic():raise ValueError('Proposta expirada ou já utilizada.')
@@ -221,11 +279,32 @@ class ToolService:
 
     def execute(self,body,fingerprint,event):
         if event.is_set() or self.engine.stopped:raise PermissionError('Ação interrompida.')
+        self.policy.check(body.tool)
+        if body.tool.startswith('browser_'):
+            if not self.desktop:raise ValueError('Abra o aplicativo desktop.')
+            return self.desktop.request(body.model_dump(),event)
         if body.tool=='calculate':return {'value':calculate(body.expression)}
         if body.tool=='web_search':return search_web(body.query)
         if body.tool=='read_webpage':return read_page(body.url)
-        if body.tool in ('list_files','read_text','write_text','open_folder'):
+        if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             path=self.scoped(body.scope_id,body.path)
+            if body.tool=='find_files':
+                entries=[];stack=[path];visited=0;deadline=time.monotonic()+5;cutoff=False
+                while stack and visited<2000 and time.monotonic()<deadline and not event.is_set():
+                    current=stack.pop();visited+=1
+                    try:children=current.iterdir()
+                    except OSError:continue
+                    for child in children:
+                        if event.is_set() or time.monotonic()>=deadline:cutoff=True;break
+                        try:
+                            root=Path.home() if body.scope_id=='windows-profile' else Path(self.store.rows('SELECT path FROM scopes WHERE id=?',(body.scope_id,))[0]['path'])
+                            relative=str(child.relative_to(root));self.scoped(body.scope_id,relative)
+                            if child.is_dir():stack.append(child)
+                            if not body.query or body.query.casefold() in child.name.casefold() or fnmatch.fnmatch(child.name.casefold(),body.query.casefold()):
+                                entries.append({'name':relative,'directory':child.is_dir()})
+                                if len(entries)>=200:stack.clear();break
+                        except (OSError,ValueError):continue
+                return {'entries':entries,'directories_scanned':visited,'truncated':cutoff or bool(stack) or len(entries)>=200,'cancelled':event.is_set()}
             if body.tool=='list_files':
                 entries=[]
                 for p in sorted(path.iterdir(),key=lambda p:p.name.lower()):
@@ -256,17 +335,60 @@ class ToolService:
             os.startfile(str(path));return {'open_requested':str(path)}
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
-            executable=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32'/('notepad.exe' if body.app=='notepad' else 'calc.exe')
+            if body.app in ('notepad','calculator'):
+                executable=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32'/('notepad.exe' if body.app=='notepad' else 'calc.exe')
+            else:
+                rows=self.store.rows('SELECT path,sha256 FROM programs WHERE id=?',(body.app,))
+                if not rows:raise ValueError('Aplicativo não registrado.')
+                executable=Path(rows[0]['path']);self.reject_links(executable)
+                if self.executable_hash(executable)!=rows[0]['sha256']:raise ValueError('Executável alterado. Registre novamente pelo seletor nativo.')
             process=subprocess.Popen([str(executable)],creationflags=subprocess.CREATE_NO_WINDOW)
+            import psutil
+            try:
+                with self.launch_lock:self.launched[body.app]=(process.pid,psutil.Process(process.pid).create_time())
+            except psutil.NoSuchProcess:pass
             return {'launch_requested':body.app,'pid':process.pid}
+        if body.tool=='close_app':
+            return self.close_launched(body.app)
         if body.tool=='open_url':
             opened=webbrowser.open(body.url)
             if not opened:raise ValueError('O sistema não confirmou a abertura do navegador.')
             return {'opened':body.url}
         raise ValueError('Ferramenta indisponível.')
 
+    def close_launched(self,app_id):
+        if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
+        import ctypes
+        from ctypes import wintypes
+        import psutil
+        with self.launch_lock:record=self.launched.get(app_id)
+        if not record:raise ValueError('A ALT não possui uma janela rastreada deste aplicativo.')
+        pid,created=record
+        try:
+            if psutil.Process(pid).create_time()!=created:raise ValueError('O processo original já foi encerrado.')
+        except psutil.NoSuchProcess:raise ValueError('O processo original já foi encerrado.')
+        user32=ctypes.WinDLL('user32',use_last_error=True);sent=[]
+        callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+        user32.EnumWindows.argtypes=[callback_type,wintypes.LPARAM]
+        user32.IsWindowVisible.argtypes=[wintypes.HWND]
+        user32.IsWindowVisible.restype=wintypes.BOOL
+        user32.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
+        user32.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+        @callback_type
+        def visit(hwnd,_):
+            owner=wintypes.DWORD();user32.GetWindowThreadProcessId(hwnd,ctypes.byref(owner))
+            if owner.value==pid and user32.IsWindowVisible(hwnd):
+                if user32.PostMessageW(hwnd,0x0010,0,0):sent.append(int(hwnd))
+            return True
+        user32.EnumWindows(visit,0)
+        return {'close_requested':bool(sent),'windows':len(sent),'notice':'Fechamento normal solicitado; o programa pode aguardar confirmação para salvar. Nenhum processo foi forçado.'}
+
     def revoke(self):
-        self.level=1;self.pending.clear();self.previews.clear();self.critical_confirmed.clear();self.auto_scopes.clear();self.save_authorization()
+        self.level=1;self.auto_scopes.clear();self.save_authorization();self.cancel_pending()
+
+    def cancel_pending(self):
+        self.pending.clear();self.previews.clear();self.critical_confirmed.clear()
+        if self.desktop:self.desktop.snapshot=None
         self.store.write("UPDATE actions SET status='cancelled' WHERE status='proposed'")
         for key,event in self.engine.active.items():
             if key.startswith('tool:'):event.set()

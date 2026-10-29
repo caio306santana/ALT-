@@ -37,6 +37,7 @@ import {
   Brain,
   Wrench,
   Gamepad2,
+  Globe,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -52,6 +53,11 @@ import type {
 import { themes } from "../../../packages/design-tokens/themes";
 import { ProfilePanel } from "./components/ProfilePanel";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
+import {
+  OwnerControlPanel,
+  EvaluationPanel,
+  BrowserPanel,
+} from "./components/WorkspacePanels";
 import {
   AdvancedAppearance,
   PersonalityPanel,
@@ -94,7 +100,8 @@ type View =
   | "security"
   | "memory"
   | "tools"
-  | "profile";
+  | "profile"
+  | "browser";
 type SystemData = {
   cpu: { name: string; percent: number; logical_cores: number };
   ram: { used: number; total: number; available: number; percent: number };
@@ -159,7 +166,12 @@ export default function App() {
   } | null>(null);
   current.current = cid;
   const report = (e: unknown) =>
-    setError((e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, ""));
+    setError(
+      (e instanceof Error ? e.message : String(e)).replace(
+        /^Error invoking remote method '[^']+': (?:Error: )?/,
+        "",
+      ),
+    );
   async function refresh() {
     const data = await api<{
       connected: boolean;
@@ -439,10 +451,21 @@ export default function App() {
           if (event.type === "error")
             setError(event.message || "Erro ao gerar resposta");
           if (event.type === "start")
-            setNotice([
-              event.context_truncated ? "A conversa completa está salva. Apenas o trecho recente que cabe no contexto foi enviado ao modelo." : "",
-              event.tool_result_truncated ? "A ALT recebeu um trecho do resultado ajustado ao contexto. O conteúdo completo continua no cartão da ferramenta." : "",
-            ].filter(Boolean).join(" "));
+            setNotice(
+              [
+                event.context_truncated
+                  ? "A conversa completa está salva. Apenas o trecho recente que cabe no contexto foi enviado ao modelo."
+                  : "",
+                event.tool_result_truncated
+                  ? "A ALT recebeu um trecho do resultado ajustado ao contexto. O conteúdo completo continua no cartão da ferramenta."
+                  : "",
+                event.recalled_memories?.length
+                  ? `Memórias recuperadas: ${event.recalled_memories.map((m) => m.title).join(", ")}.`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" "),
+            );
           if (event.type === "done")
             setMessages((old) =>
               old.map((m) =>
@@ -541,8 +564,9 @@ export default function App() {
     { id: "history" as View, icon: Database, label: "Histórico" },
     { id: "memory" as View, icon: Brain, label: "Memória" },
     { id: "tools" as View, icon: Wrench, label: "Ferramentas" },
+    { id: "browser" as View, icon: Globe, label: "Navegador ALT" },
     { id: "monitor" as View, icon: Activity, label: "Sistema" },
-    { id: "security" as View, icon: Shield, label: "Permissões" },
+    { id: "security" as View, icon: Shield, label: "Controle e regras" },
   ];
   return (
     <div
@@ -656,7 +680,9 @@ export default function App() {
                             ? "ASSISTED TOOLS"
                             : view === "profile"
                               ? "IDENTITY CORE"
-                              : "LOCAL HISTORY"}
+                              : view === "browser"
+                                ? "WEB WORKSPACE"
+                                : "LOCAL HISTORY"}
               </span>
               <h1>
                 {view === "chat"
@@ -673,7 +699,9 @@ export default function App() {
                             ? "Ferramentas assistidas"
                             : view === "profile"
                               ? "Seu perfil"
-                              : "Você está no controle"}
+                              : view === "browser"
+                                ? "Navegador ALT"
+                                : "Você está no controle"}
                 <span className="small-tag">
                   {prefs.model.startsWith("cloud:") && view === "chat"
                     ? "NUVEM"
@@ -1153,13 +1181,20 @@ export default function App() {
               ))}
               <div className="download-section">
                 <span className="eyebrow">MODELOS QWEN LOCAIS</span>
-                {["qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b"]
+                {[
+                  "qwen3.5:2b",
+                  "qwen3.5:4b",
+                  "qwen3.5:9b",
+                  "huihui_ai/qwen3.5-abliterated:4b",
+                ]
                   .filter((name) => !models.some((m) => m.name === name))
                   .map((name) => (
                     <div className="download-row" key={name}>
                       <div>
                         <strong>
-                          Qwen 3.5 {name.split(":")[1].toUpperCase()}
+                          {name.startsWith("huihui")
+                            ? "Huihui Qwen 3.5 · comunitário · 4B"
+                            : `Qwen 3.5 ${name.split(":")[1].toUpperCase()}`}
                         </strong>
                         <p>
                           {name.endsWith("2b")
@@ -1179,6 +1214,11 @@ export default function App() {
                     </div>
                   ))}
               </div>
+              <EvaluationPanel
+                models={models}
+                notify={setNotice}
+                onError={report}
+              />
               <div className="unavailable">
                 <Lock size={15} />
                 <div>
@@ -1359,6 +1399,8 @@ export default function App() {
               onSelect={setMemoryIds}
               notify={setNotice}
               onError={report}
+              conversationId={cid}
+              model={prefs.model}
             />
           )}
           {view === "tools" && (
@@ -1385,73 +1427,24 @@ export default function App() {
             />
           )}
           {view === "security" && (
-            <div className="page-scroll">
-              <div className="security-hero">
-                <Shield size={32} />
-                <h2>Permissão vem de você.</h2>
-                <p>
-                  Ferramentas ficam limitadas a escopos escolhidos e aprovações
-                  individuais. Gerencie as ações no painel Ferramentas.
-                </p>
-              </div>
-              {[
-                {
-                  n: "01",
-                  title: "Observação",
-                  text: "Chat local, histórico e métricas disponibilizadas pelo aplicativo.",
-                  ready: true,
-                },
-                {
-                  n: "02",
-                  title: "Assistido",
-                  text: "Autorização sem prazo, até você alterar ou revogar, com aprovação individual de cada ação no painel Ferramentas.",
-                  ready: true,
-                },
-                {
-                  n: "03",
-                  title: "Autônomo limitado",
-                  text: "Escopo, prazo e ferramentas previamente autorizados. Previsto na fase 7.",
-                },
-                {
-                  n: "04",
-                  title: "Controle supervisionado",
-                  text: "Confirmação destacada, duração, auditoria e revogação. Previsto na fase 7.",
-                },
-              ].map((level) => (
-                <div
-                  key={level.n}
-                  className={`permission-row ${level.ready ? "enabled" : ""}`}
-                >
-                  <span>{level.n}</span>
-                  <div>
-                    <strong>{level.title}</strong>
-                    <p>{level.text}</p>
-                  </div>
-                  {level.ready ? <Check size={16} /> : <Lock size={15} />}
-                </div>
-              ))}
-              <div className="info-card">
-                <h3>Interrupção imediata</h3>
-                <p>
-                  STOP ALL ACTIONS cancela gerações e downloads em andamento e
-                  bloqueia novos pedidos até você retomar.
-                </p>
-                <button
-                  className="stop-button"
-                  onClick={() => stopAll().catch(report)}
-                >
-                  <StopCircle size={16} /> STOP ALL ACTIONS
-                </button>
-              </div>
-              <div className="local-note">
-                <Lock size={12} /> Backend autenticado · SQLite local · Nuvem
-                com consentimento
-              </div>
-            </div>
+            <OwnerControlPanel notify={setNotice} onError={report} />
+          )}
+          {view === "browser" && (
+            <BrowserPanel
+              notify={setNotice}
+              onError={report}
+              onAnalyze={(id) => {
+                setView("chat");
+                send("", {
+                  id,
+                  content: "Analise a pagina observada e cite a fonte.",
+                });
+              }}
+            />
           )}
           <footer className="statusbar">
             <span>
-              <span className="tiny-slash" /> ALT-AI <b>0.2.0</b>
+              <span className="tiny-slash" /> ALT-AI <b>0.3.0</b>
             </span>
             <button
               className={stopped ? "halted" : ""}

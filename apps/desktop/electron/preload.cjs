@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld("alt", {
   grantWindows: (level, scopeId) =>
     ipcRenderer.invoke("windows:grant", level, scopeId),
   exportMemories: () => ipcRenderer.invoke("memory:export"),
+  importMemories: () => ipcRenderer.invoke('memory:import'),
+  savePolicy: (body) => ipcRenderer.invoke('policy:save',body),
+  chooseProgram: () => ipcRenderer.invoke('program:choose'),
   setAnthropicKey: (key) => ipcRenderer.invoke("credentials:anthropic", key),
   layout: (options) => ipcRenderer.invoke("window:layout", options),
   gameMode: (enabled) => ipcRenderer.invoke("game:mode", enabled),

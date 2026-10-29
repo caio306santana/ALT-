@@ -1,0 +1,60 @@
+"""Owner-controlled application policy, enforced independently of model text."""
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field
+from backend.memory.library import reject_secrets
+
+Decision = Literal['deny', 'ask', 'allow']
+
+class Capabilities(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    calculate: Decision = 'ask'
+    files_read: Decision = 'ask'
+    files_write: Decision = 'ask'
+    apps: Decision = 'ask'
+    internet: Decision = 'ask'
+    browser_navigation: Decision = 'ask'
+    browser_interaction: Decision = 'ask'
+
+class OwnerPolicy(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    rules: str = Field(default='', max_length=1500)
+    memory_recall: Literal['manual', 'automatic'] = 'manual'
+    capabilities: Capabilities = Field(default_factory=Capabilities)
+
+CAPABILITY = {
+    'calculate':'calculate', 'list_files':'files_read', 'find_files':'files_read',
+    'read_text':'files_read', 'write_text':'files_write', 'open_folder':'apps',
+    'open_app':'apps', 'close_app':'apps', 'web_search':'internet', 'read_webpage':'internet',
+    'open_url':'internet', 'browser_open':'browser_navigation', 'browser_read':'browser_navigation',
+    'browser_click':'browser_interaction', 'browser_type':'browser_interaction',
+    'browser_back':'browser_navigation',
+}
+
+class Policy:
+    def __init__(self, store): self.store = store
+
+    def current(self):
+        return OwnerPolicy(**self.store.settings().get('owner_policy', {}))
+
+    def save(self, body):
+        reject_secrets(body.rules)
+        self.store.set_settings({'owner_policy': body.model_dump()})
+        self.store.audit('owner_policy_changed')
+        return self.describe()
+
+    def decision(self, tool): return getattr(self.current().capabilities, CAPABILITY[tool])
+
+    def check(self, tool):
+        if self.decision(tool) == 'deny':
+            raise PermissionError('Esta capacidade está bloqueada nas suas regras. Altere em Controle e regras para usá-la.')
+
+    def describe(self):
+        return {'policy': self.current().model_dump(), 'capability_tools': CAPABILITY,
+            'boundaries': [
+                {'source':'Aplicativo', 'text':'Nenhum filtro adicional por assunto. Suas regras de conversa entram no prompt; instruções de operação e a personalidade efetiva ficam visíveis aqui.'},
+                {'source':'Modelo', 'text':'O modelo instalado tem comportamentos aprendidos. Regras do aplicativo não reescrevem seus pesos nem garantem respostas sem recusas.'},
+                {'source':'Autorização', 'text':'Observação não executa. Permitir automaticamente atua nos modos 3/4 e nos escopos autorizados. Aprovação não amplia os direitos do usuário Windows.'},
+                {'source':'Implementação atual', 'text':'Sem shell genérico ou privilégios administrativos. Credenciais/AppData/sistema ficam fora das ferramentas de arquivos; gravação no perfil exige confirmação nativa adicional. Heurística de credenciais evita salvar/expor segredos conhecidos.'},
+                {'source':'Navegador', 'text':'Janela isolada, HTTPS público, sem permissões de câmera/microfone, downloads ou acesso à sessão do seu navegador pessoal. Conteúdo pode estar incorreto; cliques e digitação seguem suas regras.'},
+                {'source':'Serviços externos', 'text':'Codex/Claude e sites mantêm regras próprias. Envio à nuvem continua exigindo prévia e consentimento; API paga não é ativada automaticamente.'},
+            ]}
