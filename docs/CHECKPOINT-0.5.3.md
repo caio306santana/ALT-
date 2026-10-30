@@ -71,6 +71,21 @@ Arquivos sintéticos com um fato na primeira página ("AURORA-17") e outro na ú
   - `test_continuity_summaries.py`: rótulo, segredo, desligar e cancelamento;
   - cobertura de anexo em `test_attachments.py`.
 
+## Pacote 0.5.3 — gerado, NÃO publicado
+
+O instalador foi gerado a partir do commit limpo `785b810` (`release/ALT-AI-Setup-0.5.3-x64.exe`, local, fora do Git).
+
+**Bloqueio:** o `scripts/smoke_packaged.py` falhou duas vezes com **WinError 4551**. O Controle Inteligente de Aplicativos do Windows bloqueou o `alt-backend.exe` novo, que não tem assinatura. O backend da 0.5.2 passou nessa mesma checagem horas antes.
+
+**Decisão:** nenhuma proteção do Windows foi alterada nem contornada. A release **não foi publicada**, porque um backend bloqueado deixaria quem atualizasse sem a ALT funcionando. Nenhum manifesto foi assinado para este pacote.
+
+**Caminhos para o dono decidir:**
+- assinatura Authenticode, que é a solução definitiva;
+- configuração do Controle Inteligente de Aplicativos neste PC, decisão exclusiva do dono;
+- testar o pacote no PC principal, se lá a proteção estiver desligada.
+
+Depois de uma dessas opções, repetir: smoke empacotado, manifesto, release e feed.
+
 ## Não concluído / não alegar
 - Revisão manual da janela instalada; teste real de abertura do Bloco de Notas/Calculadora (adiado porque o Bloco de Notas do dono estava aberto com texto não salvo).
 - Perda de cache de prompt com o resumo ainda não medida. Também falta a opção de dividir o pedido quando nem a mensagem cabe.
