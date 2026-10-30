@@ -80,3 +80,13 @@ def test_four_large_tool_results_never_exceed_the_notebook_context(tmp_path, mon
         assert 'resultado completo está no cartão' in tools[0]['content']
         metrics = data[-1]['metrics']
         assert metrics['context_rounds']['shrunk'] + metrics['context_rounds']['dropped'] > 0
+
+
+def test_continuity_summary_outlives_the_raw_history():
+    messages = [{'role': 'system', 'content': 's'}, {'role': 'user', 'content': 'resumo ' * 5, 'alt_keep': True},
+                {'role': 'user', 'content': 'a' * 60}, {'role': 'assistant', 'content': 'b' * 60}, {'role': 'user', 'content': 'pedido'}]
+    total = sum(size(m['content']) for m in messages)
+    fitted, used, changes = fit_round(messages, total - 100, size, 4, shrink)
+    assert changes['dropped'] == 2 and fitted[1].get('alt_keep') and fitted[-1]['content'] == 'pedido'
+    fitted, used, changes = fit_round(messages, size('s') + size('pedido'), size, 4, shrink)
+    assert [m['content'] for m in fitted] == ['s', 'pedido']

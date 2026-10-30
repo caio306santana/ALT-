@@ -44,7 +44,7 @@ from backend.maintenance import Maintenance
 from fastapi.responses import Response
 from backend.verification import verify_reply,conversation_urls
 from backend.voice.transcriber import install_voice,SAMPLE_RATE,MAX_SECONDS
-from backend.attachments import install_attachments,document_block,IMAGE_TOKENS,MAX_BYTES as ATTACHMENT_BYTES
+from backend.attachments import install_attachments,document_excerpt,IMAGE_TOKENS,MAX_BYTES as ATTACHMENT_BYTES
 
 SYSTEM = ('Você é ALT-AI, uma assistente pessoal calma, natural e objetiva. Responda em português brasileiro. '
           'Modo observação: você não possui ferramentas para executar ações, pesquisar na internet ou acessar arquivos. '
@@ -196,7 +196,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         await asyncio.to_thread(app.state.speaker.shutdown)
         store.close()
 
-    app = FastAPI(title='ALT-AI local API',version='0.5.2',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
+    app = FastAPI(title='ALT-AI local API',version='0.5.3',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
     app.state.store = store
     app.state.engine = engine
     app.state.tools=tools;app.state.codex=codex;app.state.receipts=receipts;app.state.gpu=gpu;app.state.speed=speed
@@ -270,7 +270,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.get('/health',dependencies=[Depends(auth)])
     async def health():
-        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.5.2'}
+        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.5.3'}
 
     @app.get('/models',dependencies=[Depends(auth)])
     async def models(refresh:bool=False):
@@ -564,9 +564,11 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             chars=cost(user_content)+cost(prompt)+schema_cost+image_cost
             components['tool_result']=chars-before
         if chars>context_limit:raise ContextLimitError(chars,context_limit,profile['options']['num_ctx'],min(profile['options']['num_predict'],768),components)
+        coverage=[]
         for row in documents:
             cap=1500 if profile['effective']=='notebook' and not body.model.startswith('cloud:') else 6000
-            block=document_block(row,min(cap,context_limit-chars-256),cost)
+            block,sent,total=document_excerpt(row,min(cap,context_limit-chars-256),cost)
+            coverage.append({'name':row['name'],'sent':sent,'total':total})
             if not block:raise ValueError('Sem espaço para ler o anexo neste contexto. Abra uma conversa nova ou reduza o texto da mensagem; o arquivo não foi enviado ao modelo.')
             user_content+=block;chars+=cost(block);components['documents']+=cost(block)
         context=[]
@@ -595,7 +597,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             while context and chars+need>context_limit:
                 dropped=cost(context.pop(0)['content']);chars-=dropped;components['history']-=dropped
             if chars+need<=context_limit:
-                context.insert(0,{'role':'user','content':block});chars+=need;components['summary']=need
+                context.insert(0,{'role':'user','content':block,'alt_keep':True});chars+=need;components['summary']=need
                 summary_used={'covered':summary['covered'],'created':summary['created']}
         if not body.model.startswith('cloud:'):profile['options']['num_predict']=min(profile['options']['num_predict'],profile['options']['num_ctx']-chars-128)
         messages=[{'role':'system','content':prompt}]+examples+context+[{'role':'user','content':user_content,**({'images':[attachments.image_data(row) for row in images]} if images else {})}]
@@ -607,7 +609,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             'tokenizer':tokenizer_label(body.model),
             'tool_result_truncated':result_truncated,'profile':profile['effective'],'recall_mode':recall_mode,
             'components':components,'app_context_omitted':omitted,'model_info':info,
-            'attachments':{'images':len(images),'documents':[row['name'] for row in documents]}}
+            'attachments':{'images':len(images),'documents':[row['name'] for row in documents],'coverage':coverage}}
         return payload,profile,len(previous),len(context),result_truncated,recalled,estimate
 
     @app.post('/chat/estimate',dependencies=[Depends(auth)])
@@ -712,7 +714,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             speech=SpeechText() if body.speak and store.settings().get('voice_replies',True) else None
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
-                yield line({'type':'start','message_id':mid,'model':reply_model,'execution':'direct' if action_direct else 'model','context_messages':context_count,'context_truncated':False if action_direct else context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled,'continuity_summary':None if action_direct else estimate.get('continuity_summary')})
+                yield line({'type':'start','message_id':mid,'model':reply_model,'execution':'direct' if action_direct else 'model','context_messages':context_count,'context_truncated':False if action_direct else context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled,'continuity_summary':None if action_direct else estimate.get('continuity_summary'),'documents':[] if action_direct else [d for d in estimate.get('attachments',{}).get('coverage',[]) if d['sent']<d['total']]})
                 if busy['busy']:yield line({'type':'notice','message':light_notice(busy)})
                 cost=lambda value:message_cost(value,body.model)
                 fixed=len(payload['messages'])-1;reserve=profile.get('options',{}).get('num_predict',0)

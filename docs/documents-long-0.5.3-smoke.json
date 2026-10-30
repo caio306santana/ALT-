@@ -1,0 +1,123 @@
+{
+  "model": "qwen3.5:4b",
+  "profile": "notebook",
+  "environment": "temporary database; synthetic files; real Ollama on this notebook",
+  "cases": {
+    "plano-longo.pdf": {
+      "file": "plano-longo.pdf",
+      "bytes": 26756,
+      "extracted_chars": 15581,
+      "notice": "Arquivo lido: plano-longo.pdf (15,581 caracteres).",
+      "end_fact": {
+        "http": 200,
+        "seconds": 54.8,
+        "status": "complete",
+        "reply": "O anexo \"plano-longo.pdf\" apresentado não contém qualquer menção a orçamentos, nem valores financeiros aprovados. A leitura foi restrita ao trecho inicial fornecido pelo aplicativo, que se repete de forma cíclica e descreve exclusivamente rotinas de estudo, revisões semanais e organização de tarefas do projeto AURORA-17. Para obter informações completas sobre este documento, seria necessário importá-lo em um Projeto dedicado para acessar todo o conteúdo.",
+        "documents_notice": [
+          {
+            "name": "plano-longo.pdf",
+            "sent": 5141,
+            "total": 15581
+          }
+        ],
+        "recalled": [],
+        "errors": [],
+        "invented_value": false,
+        "answered_correctly": false,
+        "says_only_beginning": true
+      },
+      "start_fact": {
+        "http": 200,
+        "seconds": 84.0,
+        "status": "complete",
+        "reply": "AURORA-17.",
+        "documents_notice": [
+          {
+            "name": "plano-longo.pdf",
+            "sent": 5141,
+            "total": 15581
+          }
+        ],
+        "recalled": [],
+        "errors": [],
+        "correct": true
+      }
+    },
+    "plano-longo.docx": {
+      "file": "plano-longo.docx",
+      "bytes": 37021,
+      "extracted_chars": 8819,
+      "notice": "Arquivo lido: plano-longo.docx (8,819 caracteres).",
+      "end_fact": {
+        "http": 200,
+        "seconds": 35.6,
+        "status": "complete",
+        "reply": "O documento enviado contém apenas uma lista genérica repetitiva após as poucas linhas iniciais; não há menção ao orçamento final aprovado nem a nenhum dado financeiro detalhado nesta seção que foi carregada no contexto.",
+        "documents_notice": [
+          {
+            "name": "plano-longo.docx",
+            "sent": 4797,
+            "total": 8819
+          }
+        ],
+        "recalled": [],
+        "errors": [],
+        "invented_value": false,
+        "answered_correctly": false,
+        "says_only_beginning": false
+      },
+      "start_fact": {
+        "http": 200,
+        "seconds": 80.2,
+        "status": "complete",
+        "reply": "AURORA-17.",
+        "documents_notice": [
+          {
+            "name": "plano-longo.docx",
+            "sent": 4797,
+            "total": 8819
+          }
+        ],
+        "recalled": [],
+        "errors": [],
+        "correct": true
+      }
+    }
+  },
+  "project": {
+    "chunks": 20,
+    "index": {
+      "status": "complete",
+      "completed": 20,
+      "total": 20,
+      "indexed": 20,
+      "items": 20
+    },
+    "top_hit_has_end_fact": true,
+    "chat": {
+      "http": 200,
+      "seconds": 10.4,
+      "status": "complete",
+      "reply": "Conforme o documento \"plano-longo.pdf\" (página 20), o orçamento final aprovado do Projeto Aurora foi de 48 mil reais.",
+      "documents_notice": [],
+      "recalled": [
+        {
+          "id": "c7ab210f-3329-4432-b702-c4a5e2e0f812",
+          "title": "plano-longo.pdf · página 1",
+          "kind": "chunk",
+          "score": 0.4315,
+          "mode": "semântica (EmbeddingGemma)"
+        },
+        {
+          "id": "55210cbe-a6ea-4161-9a72-085fc2a901fd",
+          "title": "plano-longo.pdf · página 20",
+          "kind": "chunk",
+          "score": 0.4087,
+          "mode": "semântica (EmbeddingGemma)"
+        }
+      ],
+      "errors": [],
+      "answered_correctly": true
+    }
+  }
+}

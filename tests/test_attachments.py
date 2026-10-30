@@ -134,6 +134,16 @@ def test_document_excerpt_includes_its_notice_inside_the_budget():
     assert len(block)<=1000 and 'Trecho inicial' in block
 
 
+def test_owner_is_told_how_much_of_a_long_attachment_the_model_saw():
+    from backend.attachments import document_excerpt
+    row={'name':'long.txt','text':'Texto de teste. '*1000}
+    block,sent,total=document_excerpt(row,1000,len)
+    assert total==len(row['text']) and 200<=sent<total and f'Trecho inicial: {sent} de {total}' in block
+    short={'name':'curto.txt','text':'Pouco texto.'}
+    assert document_excerpt(short,1000,len)[1:]==(12,12)
+    assert document_excerpt(row,50,len)==('',0,total)
+
+
 def test_capabilities_come_from_the_selected_provider(tmp_path):
     _,local,_,client=fixture_client(tmp_path)
     async def capabilities(model):return ['completion','vision','tools']

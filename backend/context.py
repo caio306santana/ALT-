@@ -175,7 +175,8 @@ def fit_round(messages, limit, cost, fixed, shrink, image_tokens=0):
     and everything after it (this reply's tool rounds) are never dropped. In order:
     older tool results of this reply are reduced (`shrink(message)` returns a smaller
     copy or None), then older history/examples are dropped oldest first, then the newest
-    tool result is reduced too. Returns (messages, used, changes) or raises RoundLimitError.
+    tool result is reduced too. Messages marked `alt_keep` are dropped last.
+    Returns (messages, used, changes) or raises RoundLimitError.
     """
     def size(message):
         total = cost(message.get('content') or '')
@@ -203,12 +204,20 @@ def fit_round(messages, limit, cost, fixed, shrink, image_tokens=0):
         reduce(index)
         if used <= limit:
             return messages, used, changes
-    while used > limit and fixed > 1:
-        used -= size(messages.pop(1))
+    # Oldest history first; a message marked alt_keep (the continuity summary) outlives the raw messages.
+    while used > limit:
+        index = next((i for i in range(1, fixed) if not messages[i].get('alt_keep')), None)
+        if index is None:
+            break
+        used -= size(messages.pop(index))
         fixed -= 1
         changes['dropped'] += 1
     if used > limit and results:
         reduce(results[-1] - changes['dropped'])
+    while used > limit and fixed > 1:
+        used -= size(messages.pop(1))
+        fixed -= 1
+        changes['dropped'] += 1
     if used > limit:
         raise RoundLimitError(
             'Os resultados das ferramentas desta resposta não cabem mais no contexto deste perfil. '

@@ -673,6 +673,10 @@ export default function App() {
                 event.continuity_summary
                   ? `Conversa longa: a ALT usou um resumo das ${event.continuity_summary.covered} mensagens mais antigas. As originais continuam acima e salvas; o resumo não é memória.`
                   : "",
+                ...(event.documents || []).map(
+                  (d) =>
+                    `Anexo ${d.name}: a ALT leu só o início (${d.sent.toLocaleString("pt-BR")} de ${d.total.toLocaleString("pt-BR")} caracteres). Para perguntas sobre o resto, importe-o em um Projeto (Memória).`,
+                ),
               ]
                 .filter(Boolean)
                 .join(" "),

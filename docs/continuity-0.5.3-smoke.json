@@ -1,0 +1,60 @@
+{
+  "model": "qwen3.5:4b",
+  "profile": "notebook",
+  "environment": "temporary database; real Ollama on this notebook; public web search",
+  "before_summary": {
+    "history_included": 4,
+    "history_total": 24,
+    "input_tokens": 3081,
+    "input_limit": 3200
+  },
+  "summary": {
+    "seconds": 167.3,
+    "covered": 16,
+    "content": "**Objetivo:** Planejar o Projeto Aurora (app de estudos).  \n**Decisões:**  \n- Backend: Python com FastAPI (usuário).  \n- Interface: React (usuário).  \n- Prazo de lançamento: 15 de dezembro (usuário).  \n- Rodadas 0 a 7: Discussão sobre organização de tarefas, telas e fluxo de estudo; nenhuma nova decisão registrada.  \n\n**Fatos:**  \n- Nenhuma fonte URL citada no diálogo atual.  \n- Detalhes técnicos limitados à definição de tecnologias e data de entrega.  \n\n**Tarefas em aberto:**  \n- Executar detalhamento técnico baseado nas decisões aprovadas (usuário).  \n\n**Preferências:**  \n- O usuário preferiu especificar stack tecnológica e prazos sem expandir a discussão técnica na sessão atual.",
+    "mentions_python": true,
+    "mentions_deadline": true
+  },
+  "reply": {
+    "seconds": 293.5,
+    "status": "complete",
+    "text": "WebGPU é uma API de alto desempenho para computação na GPU via navegador, ideal se o Projeto Aurora for usar WebGL/WebGLSSL para renderização gráfica 3D ou acelerar processamentos complexos no front-end (https://webgpu.org/, https://skillstecnologicas.com/webgpu/). Para FastAPI e React, vale principalmente se houver necessidade de cálculos visuais pesados na interface, mas não substitui APIs como GPUCompute direto do backend.",
+    "continuity_summary": {
+      "covered": 16,
+      "created": "2026-10-30T14:07:36.326206+00:00"
+    },
+    "tools": [
+      "web_search"
+    ],
+    "tool_results": 1,
+    "errors": [],
+    "context_rounds": {
+      "shrunk": 0,
+      "dropped": 2
+    },
+    "prompt_tokens_last": 2769,
+    "mentions_python": false
+  },
+  "calls": [
+    {
+      "messages": 6,
+      "input_tokens_estimated": 2193,
+      "schema": 940,
+      "num_predict": 768,
+      "num_ctx": 4096,
+      "fits": true,
+      "summary_prompt": false
+    },
+    {
+      "messages": 6,
+      "input_tokens_estimated": 2057,
+      "schema": 940,
+      "num_predict": 768,
+      "num_ctx": 4096,
+      "fits": true,
+      "summary_prompt": false
+    }
+  ],
+  "every_call_fits": true,
+  "originals_preserved": true
+}

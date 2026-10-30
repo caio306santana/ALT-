@@ -2,7 +2,7 @@
 
 Preparado em **30/10/2026**. Base: ALT **0.5.1**, código funcional da tag `750e2a0` e documentação em `main` conferida em `d2d3521`. **Este documento é um plano; não implementa as etapas futuras.**
 
-**Execução posterior:** etapa 1 implementada/testada no código **0.5.2 em desenvolvimento**, ainda sem validar instalador/instalação. As demais etapas permanecem pendentes. O dono decidiu manter local por enquanto e adiar servidor/iPhone independente; a sequência atualizada está em [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md) e as evidências em [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md).
+**Execução posterior:** etapa 1 publicada na **0.5.2** ([RELEASE-0.5.2.md](RELEASE-0.5.2.md)); etapas 2 e 3 implementadas e testadas em `main` para a 0.5.3 ([CHECKPOINT-0.5.3.md](CHECKPOINT-0.5.3.md)). As etapas 4 a 7 permanecem pendentes. O dono decidiu manter local por enquanto e adiar servidor/iPhone independente; a sequência atualizada está em [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md) e as evidências em [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md).
 
 Objetivo: tornar a ALT mais útil para conversar, pesquisar e executar tarefas, com respostas e resultados claros, menor espera e continuidade entre pedidos. A identidade, personalidade e regras editáveis continuam sendo da ALT; Qwen, Huihui e Hermes são motores de terceiros.
 
@@ -80,7 +80,7 @@ Código provável: `backend/providers/ollama.py`, `/models` e `/chat/estimate` e
 
 ### 2. Resultados legíveis e arquivos úteis no chat
 
-**Estado: planejada; cartões e estados de resultado já existem.**
+**Estado: implementada e testada (30/10, a caminho da 0.5.3).** Selo pelo estado observado, "Sem resultados", fontes legíveis, leitura de página, saída de comando, arquivo com Mostrar na pasta/Exportar cópia por IPC do processo principal; testes de API e renderer sintético, incluindo janela de 460 px. Falta revisão manual na janela instalada.
 
 Entregas:
 
@@ -97,7 +97,7 @@ Código provável: `apps/desktop/src/components/ChatActionCard.tsx`, `backend/to
 
 ### 3. Conversas longas e contexto entre ferramentas
 
-**Estado: planejada; a correção inicial da 0.5.1 não encerra este trabalho.**
+**Estado: implementada e testada (30/10, a caminho da 0.5.3).** Orçamento antes de cada chamada (`fit_round`), resultados antigos reduzidos antes do histórico, resumo de continuidade derivado e rotulado, cobertura de anexos informada ao dono. Smoke real com Qwen 4B registrado em [continuity-0.5.3-smoke.json](continuity-0.5.3-smoke.json). Pendências: medir perda de cache de prompt com o resumo; oferecer divisão do pedido quando nem a mensagem cabe.
 
 Entregas:
 

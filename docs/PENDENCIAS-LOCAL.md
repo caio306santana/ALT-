@@ -29,10 +29,10 @@ Evidências desta rodada: [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md) e [metadado
 
 ## Prioridade 2 — clareza e continuidade do chat
 
-- [ ] **Etapa 2 Drael:** melhorar cartões de pesquisa/ações/arquivos, abrir/exportar artefatos pelo fluxo autorizado e distinguir sucesso, falha, resultado não confirmado e ausência de fontes. Revisar o selo “CONFIRMADO” em cartões não compactos.
-- [ ] **Etapa 3 Drael:** recalcular contexto após cada retorno de ferramenta/captura, não apenas no envio inicial; preservar resultados completos fora do prompt.
-- [ ] Implementar compactação/resumo de continuidade com origem e acesso ao original, preservando regras, mensagem e memórias escolhidas. Não transformar um resumo em nova autorização ou lembrança factual inventada.
-- [ ] Validar PDFs longos/digitalizados, DOCX e recuperação de documentos reais, com indicação do que foi usado e do que ficou fora do contexto.
+- [x] **Etapa 2 Drael** (30/10, [CHECKPOINT-0.5.3.md](CHECKPOINT-0.5.3.md); falta revisão na janela instalada): melhorar cartões de pesquisa/ações/arquivos, abrir/exportar artefatos pelo fluxo autorizado e distinguir sucesso, falha, resultado não confirmado e ausência de fontes. Revisar o selo “CONFIRMADO” em cartões não compactos.
+- [x] **Etapa 3 Drael** (30/10, `fit_round` em todas as chamadas): recalcular contexto após cada retorno de ferramenta/captura, não apenas no envio inicial; preservar resultados completos fora do prompt.
+- [x] Implementar compactação/resumo de continuidade (30/10: `summaries.py`; falta medir perda de cache) com origem e acesso ao original, preservando regras, mensagem e memórias escolhidas. Não transformar um resumo em nova autorização ou lembrança factual inventada.
+- [ ] Validar PDFs longos/digitalizados, DOCX (30/10: PDF nativo e DOCX sintéticos validados com cobertura informada; PDF digitalizado/OCR longo e arquivos reais ainda pendentes) e recuperação de documentos reais, com indicação do que foi usado e do que ficou fora do contexto.
 
 **Concluída quando:** testes de UI e de sequência de ferramentas passarem, os originais estiverem preservados e os casos reais de pesquisa/documento não produzirem confirmações falsas nem falhas de contexto sem orientação útil.
 
