@@ -1,0 +1,38 @@
+{
+  "version": "0.5.2",
+  "built_source": "2b7d3dd0c0d386b3961df1e5e29c4be35df301e2",
+  "build_note": "Built from a clean tree at the tag commit; later stage 2/3 edits were stashed during PyInstaller and absent from the package (new /tools/artifact route answered 404 in the packaged backend).",
+  "installer": {
+    "version": "0.5.2",
+    "file": "ALT-AI-Setup-0.5.2-x64.exe",
+    "sha256": "8dbb261109a10819c9e5c66c580d708426e4ce1966e4093bc7ec15454eca0ca6",
+    "size": 219533280
+  },
+  "public_release": "https://github.com/caio306santana/ALT-/releases/tag/v0.5.2",
+  "prerelease": true,
+  "draft": false,
+  "github_digest": "matches local installer",
+  "published_manifest_signature": "downloaded manifest verified against the local installer with the original public key",
+  "updater_from_0_5_1": "offers 0.5.2, downloadable",
+  "updater_from_0_5_2": "no newer release",
+  "asar_scan": "4712 files; no .local, private key, database, .env or .venv; only assets/update-public-key.pem",
+  "packaged_backend": "scripts/smoke_packaged.py passed in a temporary database, notebook profile",
+  "packaged_model_info_real_ollama": {
+    "qwen3.5:4b": {"text": true, "vision": true, "tools": true, "thinking": true, "active_context": 4096},
+    "huihui_ai/qwen3.5-abliterated:4b": {"text": true, "vision": true, "tools": true, "thinking": true, "active_context": 4096},
+    "hermes3:3b": {"text": true, "vision": false, "tools": true, "thinking": false, "active_context": 4096, "tokenizer": "Hermes 3"},
+    "inference": "none; metadata and estimates only"
+  },
+  "tests": {
+    "python_passed": 242,
+    "python_skipped": 1,
+    "node_passed": 5,
+    "build": "TypeScript/Vite passed"
+  },
+  "not_validated": [
+    "Real Notepad/Calculator launch: skipped because the owner's Notepad was open with unsaved text and Calculator was already running; the test would bring the owner's window to the front",
+    "Installation/upgrade of the owner's running app",
+    "Main PC hardware measurements, microphone/voice weights, iPhone pairing"
+  ],
+  "authenticode": false
+}

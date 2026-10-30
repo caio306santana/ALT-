@@ -1,6 +1,6 @@
 # Estado atual e próximos passos — ALT-AI
 
-**Checkpoint mais recente — 30/10/2026:** código **0.5.2 em desenvolvimento**, sem instalador/release dessa versão. Capacidades reais dos modelos e melhorias do gateway/PWA estão implementadas e testadas no código; ver [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md). O dono decidiu **manter local no PC por enquanto** e adiar servidor/iPhone independente. A ordem de trabalho atual está em [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md). A seção abaixo registra a última release publicada, **0.5.1**, preservada.
+**Checkpoint mais recente — 30/10/2026:** **0.5.2 publicada como prévia** (tag `v0.5.2` no commit `2b7d3dd`), com instalador, manifesto assinado e feed conferidos; ver [RELEASE-0.5.2.md](RELEASE-0.5.2.md). Em `main` seguem as etapas 2 (cartões legíveis) e 3 (contexto em todas as rodadas) do plano Drael, ainda sem release. O dono decidiu **manter local no PC por enquanto**; ordem de trabalho em [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md). A seção abaixo descreve a 0.5.1, preservada.
 
 **Entrega atual:** a 0.5.1 foi publicada como prévia, com instalador, manifesto e hashes conferidos. Resolve a falsa contagem do Automático, limita dados auxiliares, reserva ferramentas formatadas e adiciona ação direta para Bloco de Notas/Calculadora, sem carregar LLM. Inclui [Hermes 3 3B/8B](HERMES.md), sem baixar pesos por escolha do dono, e encerramento seguro dos trabalhadores/banco. Suíte: 233 testes Python/5 Node passaram, 1 ignorado; renderer, build e backend empacotado passaram. Ver [validação da release](RELEASE-0.5.1.md) e [detalhes da correção](CHAT_CONTEXT_0.5.1.md). Não foi instalada sobre o aplicativo aberto.
 
@@ -10,7 +10,7 @@ Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. A
 
 | Item | Estado confirmado |
 | --- | --- |
-| Código publicado | `main` contém a **0.5.2 em desenvolvimento**. A última tag/release instalável é **0.5.1**, commit `750e2a0`. |
+| Código publicado | Última release instalável: **[0.5.2](RELEASE-0.5.2.md)**, commit `2b7d3dd`, instalador 219.533.280 bytes, SHA256 `8dbb2611…0ca6`. A 0.5.1 (`750e2a0`) continua publicada. |
 | Trabalhos anteriores | 0.4.0/0.4.1, 0.4.2 e `work/0.5` já integrados em `main`. As branches anteriores são referências históricas. |
 | Release | [v0.5.1 publicada como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.1), não é rascunho. |
 | Instalador | `ALT-AI-Setup-0.5.1-x64.exe`, **219.521.408 bytes**, rebuild final após Hermes/ações diretas; backend empacotado validado em banco temporário. |

@@ -6,7 +6,7 @@ Atualizado em **30/10/2026**. Decisão mais recente do dono: **manter a ALT loca
 
 | Item | Estado |
 | --- | --- |
-| Release instalável publicada | **0.5.1**, preservada. Instalar/atualizar no destino ainda precisa de confirmação. |
+| Release instalável publicada | **0.5.2** (prévia, [RELEASE-0.5.2.md](RELEASE-0.5.2.md)); 0.5.1 preservada. Instalar/atualizar no destino ainda precisa de confirmação. |
 | Código desta rodada | **0.5.2 em desenvolvimento**, com capacidades reais dos modelos e melhorias do gateway/PWA. Código compilado/testado, ainda sem instalador/release 0.5.2. |
 | Etapa 1 do plano Drael | Implementada no código: metadados, contexto declarado/ativo, atualização de cache e aplicação das capacidades ao envio. Testes de API/UI e metadados reais registrados. Validação do pacote final/instalação permanece aberta. |
 | Hermes | Hermes 3B foi encontrado instalado nesta rodada; **não foi baixado por este trabalho**. Metadados reais conferidos. Isso não substitui uma avaliação de suas respostas/velocidade. |
@@ -18,9 +18,9 @@ Evidências desta rodada: [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md) e [metadado
 
 ## Prioridade 1 — entregar e validar a base local
 
-- [ ] Gerar o **instalador final 0.5.2**, testar o backend empacotado, conferir os metadados/tokenizers incluídos, assinar o manifesto original, publicar e verificar o feed. Não distribuir o instalador 0.5.1 como se contivesse as mudanças novas.
+- [x] Gerar o **instalador final 0.5.2**, testar o backend empacotado, conferir os metadados/tokenizers incluídos, assinar o manifesto original, publicar e verificar o feed. Não distribuir o instalador 0.5.1 como se contivesse as mudanças novas. **Feito em 30/10:** ver [RELEASE-0.5.2.md](RELEASE-0.5.2.md).
 - [ ] Atualizar o PC de destino, conferir versão em Sobre e verificar histórico/memórias/configurações e backup preservados. A chave privada da atualização continua fora do Git e precisa de backup privado.
-- [ ] Confirmar a abertura real de Bloco de Notas/Calculadora. Depois testar mais aplicativos/janelas e uma tarefa com alvo/texto corretos, pausa, cancelamento e resultado observado. O caminho direto anterior passou em execução simulada; essa evidência não fecha o teste real.
+- [ ] Confirmar a abertura real de Bloco de Notas/Calculadora (30/10: adiado no notebook porque o Bloco de Notas do dono estava aberto com texto não salvo; repetir com ambos fechados). Depois testar mais aplicativos/janelas e uma tarefa com alvo/texto corretos, pausa, cancelamento e resultado observado. O caminho direto anterior passou em execução simulada; essa evidência não fecha o teste real.
 - [ ] Conferir capacidades no chat/seletor e trocar modelos/perfis. Validar mensagem de imagem incompatível, metadados indisponíveis e limites menores que o perfil. Aumento do contexto só por escolha explícita; sem usar automaticamente o máximo declarado pelo modelo.
 - [ ] Medir novamente notebook e PC principal separadamente: primeiro texto/ação, carregamento, leitura do contexto, geração, total e memória disponível. No principal, conferir a GPU após o problema do driver registrado no checkpoint anterior e repetir o benchmark em condições comparáveis.
 - [ ] Avaliar Qwen/Huihui e o Hermes 3B já instalado em português, debate, personalidade, fontes e chamadas de ferramentas. Não baixar Hermes 8B nesta retomada sem nova decisão do dono.
