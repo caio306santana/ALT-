@@ -48,6 +48,7 @@ import ReactMarkdown from "react-markdown";
 import {version as appVersion} from '../../../package.json';
 import remarkGfm from "remark-gfm";
 import { isDirectLaunch } from "./direct";
+import { ModelCapabilities } from './components/ModelCapabilities';
 import type {
   Conversation,
   Message,
@@ -230,6 +231,9 @@ type ContextEstimate = {
   app_context_omitted?: number;
   components?: Record<string, number>;
   execution?: "direct";
+  total_context?: number;
+  output_reserve?: number;
+  model_info?: import('../../../packages/shared-types').ModelInfo;
 };
 const CONTEXT_PARTS: Record<string, string> = {
   message: "Sua mensagem", instructions: "Personalidade e memórias escolhidas",
@@ -300,12 +304,12 @@ export default function App() {
         "",
       ),
     );
-  async function refresh() {
+  async function refresh(force=false) {
     const data = await api<{
       connected: boolean;
       models: Model[];
       error: string | null;
-    }>("GET", "/models");
+    }>("GET", force ? "/models?refresh=true" : "/models");
     let cloud: Model[] = [];
     try {
       const providers = await api<{ providers: ProviderStatus[] }>(
@@ -414,7 +418,7 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     const timeout = setTimeout(
-      () => api("PUT", "/settings", prefs).catch(report),
+      () => api("PUT", "/settings", prefs).then(() => refresh()).catch(report),
       450,
     );
     return () => clearTimeout(timeout);
@@ -963,6 +967,10 @@ export default function App() {
               </button>
             )}
           </div>
+          {view === 'chat' && <div className="chat-model-info">
+            {prefs.model==='auto'?<span>Automático: as capacidades do motor escolhido aparecem na conferência do envio.</span>:null}
+            {(prefs.model!=='auto'||contextEstimate?.model_info)&&<ModelCapabilities compact info={contextEstimate?.execution!=='direct'&&contextEstimate?.model_info?contextEstimate.model_info:selected?.info} activeContext={contextEstimate?.execution!=='direct'?contextEstimate?.total_context:undefined}/>}
+          </div>}
           {error && (
             <div role="alert" className="banner error">
               <AlertCircle size={16} />
@@ -1346,6 +1354,7 @@ export default function App() {
                     {contextEstimate.app_context_omitted ? " · dados auxiliares reduzidos para caber" : ""}
                   </span> : contextProblem}
                   {contextEstimate?.fits === false && <p>{contextEstimate.reason}</p>}
+                  {contextEstimate?.execution!=='direct'&&contextEstimate?.output_reserve!=null&&<span>Resposta reservada: {contextEstimate.output_reserve.toLocaleString('pt-BR')} tokens</span>}
                   {contextEstimate?.components && contextEstimate.execution !== "direct" && <details className="context-parts">
                     <summary>O que ocupa o contexto</summary>
                     <dl>{Object.entries(contextEstimate.components).filter(([, value]) => value > 0).map(([key, value]) => <div key={key}><dt>{CONTEXT_PARTS[key] || key}</dt><dd>{value.toLocaleString("pt-BR")} tokens</dd></div>)}</dl>
@@ -1382,7 +1391,7 @@ export default function App() {
                 <button
                   className="text-button"
                   onClick={() =>
-                    refresh()
+                    refresh(true)
                       .then(() => setNotice("Lista atualizada."))
                       .catch(report)
                   }
@@ -1450,6 +1459,7 @@ export default function App() {
                   <span className="check-circle">
                     {prefs.model === model.name ? <Check size={14} /> : null}
                   </span>
+                  {model.location!=='auto'&&<ModelCapabilities info={model.info}/>}
                 </button>
               ))}
               <div className="download-section">
@@ -1660,6 +1670,7 @@ export default function App() {
                           .gameMode(!gameMode)
                           .then((result) => {
                             setGameMode(result.enabled);
+                            refresh().catch(report);
                             setStopped(false);
                             setNotice(result.message);
                           })

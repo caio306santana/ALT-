@@ -1,5 +1,7 @@
 # Hermes 3 na ALT-AI
 
+**Atualização em 30/10/2026:** o smoke da 0.5.2 encontrou Hermes 3B já instalado e consultou seus metadados reais; não houve download ou avaliação de respostas dele nesta rodada. A opção 8B continua no catálogo, sem download por este trabalho. Ver [checkpoint](CHECKPOINT-0.5.2.md).
+
 A partir da 0.5.1, **Inteligências** oferece dois downloads opcionais da biblioteca oficial Ollama:
 
 | Opção | Tag Ollama | Download aproximado | Uso |

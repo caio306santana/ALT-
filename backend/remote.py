@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import time
+import re
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
 from uuid import uuid4
@@ -102,12 +103,38 @@ class Tailscale:
         except (ValueError,OSError,subprocess.SubprocessError):return {'installed':True,'running':False,'host':''}
 
     def serve(self,port=PORT):
-        done=self.run('serve','--bg','--https=443',f'http://127.0.0.1:{port}')
+        config=self.serve_config()
+        if not self.owns_or_empty(config,port):raise ValueError('A porta HTTPS 443 do Tailscale já tem outra publicação. Preserve essa configuração e escolha outra porta antes de ligar a ALT.')
+        try:done=self.run('serve','--bg','--yes','--https=443',f'http://127.0.0.1:{port}')
+        except subprocess.TimeoutExpired as exc:raise ValueError('Ative o Serve/HTTPS na sua conta Tailscale e tente ligar novamente. A conexão do iPhone deve usar a mesma conta do PC.') from exc
         if done.returncode:raise ValueError('O Tailscale recusou publicar a ALT. Confira se o HTTPS está ativado no painel do Tailscale (DNS → HTTPS Certificates).')
 
     def unserve(self):
-        try:self.run('serve','--https=443','off')
+        try:
+            config=self.serve_config()
+            if config and self.owns_or_empty(config,PORT):self.run('serve','--https=443','off')
         except ValueError:pass
+
+    def serve_config(self):
+        result=self.run('serve','status','--json')
+        if result.returncode:raise ValueError('Não foi possível conferir a publicação atual do Tailscale.')
+        try:
+            config=json.loads(result.stdout or '{}')
+            if not isinstance(config,dict):raise ValueError()
+            return config
+        except ValueError as exc:raise ValueError('O Tailscale retornou uma configuração de publicação inválida.') from exc
+
+    @staticmethod
+    def owns_or_empty(config,port):
+        for host,allowed in config.get('AllowFunnel',{}).items():
+            if host.endswith(':443') and allowed:return False
+        tcp=config.get('TCP',{}).get('443',{})
+        if tcp and (tcp.get('TCPForward') or not tcp.get('HTTPS')):return False
+        for host,web in config.get('Web',{}).items():
+            if not host.endswith(':443'):continue
+            for path,handler in web.get('Handlers',{}).items():
+                if path!='/' or handler.get('Proxy')!=f'http://127.0.0.1:{port}':return False
+        return True
 
 class Push:
     """Web Push with VAPID (iOS 16.4+ for PWAs on the Home Screen). Payloads are short; details stay in the app."""
@@ -211,6 +238,9 @@ def gateway_app(main_app,token,devices,push,settings,static_dir=None,port=PORT):
     async def me(row=Depends(device)):
         s=settings();return {'device':row['name'],'user_name':s.get('user_name',''),'model':s.get('model','')}
 
+    @app.get('/api/models')
+    async def models(row=Depends(device)):return (await call('GET','/models')).json()
+
     @app.get('/api/conversations')
     async def conversations(row=Depends(device)):return (await call('GET','/conversations')).json()[:20]
 
@@ -223,16 +253,38 @@ def gateway_app(main_app,token,devices,push,settings,static_dir=None,port=PORT):
     @app.get('/api/conversations/{cid}/actions')
     async def actions(cid:str,row=Depends(device)):return (await call('GET',f'/conversations/{cid}/actions')).json()
 
+    async def chat_body(data):
+        from backend.tools.direct import direct_action
+        from backend.providers.ollama import ProviderError
+        model=settings().get('model','')
+        if direct_action(str(data.get('content','')),data.get('attachment_ids') or []):model='local:actions'
+        elif not model or model=='auto' or model.startswith('cloud:'):
+            # The cloud consent preview lives on the PC; from the phone the reply stays local.
+            try:
+                locals=await main_app.state.router.local_models()
+                if not locals:raise HTTPException(409,'Nenhum modelo local instalado no PC. Escolha e baixe um em Inteligências.')
+                choice=await main_app.state.router.choose(str(data.get('content','')))
+                model=choice['model'] if choice['model'] and not choice['model'].startswith('cloud:') else locals[-1]['name']
+            except ProviderError as exc:raise HTTPException(409,str(exc)) from exc
+        return {'conversation_id':str(data.get('conversation_id','')),'model':model,'content':str(data.get('content',''))[:16000],
+              'attachment_ids':list(data.get('attachment_ids') or [])[:4],'origin':'phone'}
+
+    @app.post('/api/chat/stream')
+    async def stream_chat(request:Request,row=Depends(device)):
+        body=await chat_body(json.loads(await request.body() or b'{}'))
+        try:return await main_app.state.phone_chat(body,request)
+        except PermissionError as exc:raise HTTPException(403,str(exc)) from exc
+        except ValueError as exc:raise HTTPException(400,str(exc)) from exc
+
+    @app.post('/api/chat/cancel')
+    async def cancel_chat(request:Request,row=Depends(device)):
+        data=json.loads(await request.body() or b'{}');cid=str(data.get('conversation_id',''))
+        if not re.fullmatch(r'[a-f0-9-]{36}',cid):raise HTTPException(400,'Conversa inválida.')
+        return (await call('POST','/chat/cancel/'+cid)).json()
+
     @app.post('/api/chat')
     async def chat(request:Request,row=Depends(device)):
-        data=json.loads(await request.body() or b'{}')
-        model=settings().get('model','')
-        if model=='auto' or model.startswith('cloud:'):
-            # The cloud consent preview lives on the PC; from the phone the reply stays local.
-            choice=await main_app.state.router.choose(str(data.get('content','')))
-            model=choice['model'] if not choice['model'].startswith('cloud:') else (await main_app.state.router.local_models())[-1]['name']
-        body={'conversation_id':str(data.get('conversation_id','')),'model':model,'content':str(data.get('content',''))[:16000],
-              'attachment_ids':list(data.get('attachment_ids') or [])[:4],'origin':'phone'}
+        body=await chat_body(json.loads(await request.body() or b'{}'))
         response=await call('POST','/chat',json=body)
         events=[json.loads(line) for line in response.text.splitlines() if line.strip()]
         return {'text':''.join(e.get('text','') for e in events if e.get('type')=='delta'),
@@ -324,7 +376,9 @@ class RemoteManager:
         if not status['installed']:raise ValueError('Instale o Tailscale no PC e no iPhone (tailscale.com/download) e entre com a mesma conta.')
         if not status['running'] or not status['host']:raise ValueError('Abra o Tailscale no PC e entre na sua conta.')
         await self.start_server()
-        await asyncio.to_thread(self.tailscale.serve)
+        try:await asyncio.to_thread(self.tailscale.serve)
+        except Exception:
+            await self.stop_server();raise
         self.store.set_settings({'remote_enabled':True,'remote_host':status['host']})
         self.store.audit('remote_enabled',status['host'])
         return self.status()

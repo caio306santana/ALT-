@@ -25,6 +25,7 @@ from backend.providers.anthropic import AnthropicProvider
 from backend.features import install_features
 from backend.tools.chat_tools import tool_spec,stable_tool_spec
 from backend.tools import direct
+from backend.model_info import describe,effective_profile,unknown_info
 from backend.monitoring.gpu import GpuWatch,SpeedReference,light_notice
 from backend.tools.outcome import chat_line,note as outcome_note,untrusted
 from backend.voice.text import SpeechText
@@ -194,7 +195,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         await asyncio.to_thread(app.state.speaker.shutdown)
         store.close()
 
-    app = FastAPI(title='ALT-AI local API',version='0.5.1',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
+    app = FastAPI(title='ALT-AI local API',version='0.5.2',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
     app.state.store = store
     app.state.engine = engine
     app.state.tools=tools;app.state.codex=codex;app.state.receipts=receipts;app.state.gpu=gpu;app.state.speed=speed
@@ -202,9 +203,12 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     def preload(model=None):
         """Load the chosen local model with the same num_ctx the chat uses, so the first message does not wait."""
         model=model or store.settings().get('model','')
-        if not model or model.startswith('cloud:') or not hasattr(ollama,'preload'):return
+        if not model or model in ('auto','local:actions') or model.startswith('cloud:') or not hasattr(ollama,'preload'):return
         profile=performance_profile(store.settings().get('performance','auto'),engine.game_mode)
-        app.state.preload_task=asyncio.get_event_loop().create_task(ollama.preload(model,profile))
+        async def load():
+            info=await describe(ollama,model,refresh=True)
+            await ollama.preload(model,effective_profile(profile,info))
+        app.state.preload_task=asyncio.get_event_loop().create_task(load())
 
     async def auth(request: Request):
         value = request.headers.get('authorization','')
@@ -260,15 +264,22 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.get('/health',dependencies=[Depends(auth)])
     async def health():
-        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.5.1'}
+        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.5.2'}
 
     @app.get('/models',dependencies=[Depends(auth)])
-    async def models():
+    async def models(refresh:bool=False):
         try:
             entries = await ollama.models()
             # Cloud aliases are never exposed as local/available.
             local = [m for m in entries if not m.get('remote_host') and not m.get('remote_model') and 'cloud' not in m.get('name','').lower() and not m.get('name','').startswith('embeddinggemma')]
-            return {'connected':True,'models':local,'error':None}
+            profile=performance_profile(store.settings().get('performance','auto'),engine.game_mode)
+            gate=asyncio.Semaphore(3)
+            async def enrich(row):
+                async with gate:info=await describe(ollama,row['name'],fingerprint=str(row.get('digest') or row.get('modified_at') or ''),refresh=refresh)
+                active=effective_profile(profile,info)
+                return {**row,'info':{**info,'active_context':active['options']['num_ctx'],'profile':active['effective'],
+                    'context_limited_by_model':active['context_limited_by_model']}}
+            return {'connected':True,'models':await asyncio.gather(*(enrich(row) for row in local)),'error':None}
         except ProviderError as exc:
             return {'connected':False,'models':[],'error':str(exc)}
 
@@ -443,12 +454,14 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         cost=lambda text:message_cost(text,body.model)
         previous=[m for m in store.messages(body.conversation_id) if m['status']=='complete']
         prefs=preferences();prefs['owner_policy']=tools.policy.current().model_dump();profile=performance_profile(prefs['performance'],engine.game_mode)
+        info=await describe(ollama,body.model) if not body.model.startswith('cloud:') else unknown_info()
+        if not body.model.startswith('cloud:'):profile=effective_profile(profile,info)
         memory=library.selected(body.memory_ids)
         status=tools.status();status['windows']=tools.gui.grants();status['browser_page']=bool(desktop.snapshot)
         # Codex runs as a CLI without our tool channel; Claude gets the same single function as local models.
         likely=[]
         allowed=lambda name:tools.policy.decision(name)!='deny'
-        if body.model=='cloud:codex' or body.tool_result_id:spec=None
+        if body.model=='cloud:codex' or body.tool_result_id or info['capabilities']['tools'] is False:spec=None
         elif prefs['tool_routing']=='stable' and status['level']>=2:spec,likely=stable_tool_spec(body.content,status,allowed)
         else:spec=tool_spec(body.content,status)
         if spec:
@@ -577,7 +590,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             'history_included':len(context),'history_total':len(previous),
             'tokenizer':tokenizer_label(body.model),
             'tool_result_truncated':result_truncated,'profile':profile['effective'],'recall_mode':recall_mode,
-            'components':components,'app_context_omitted':omitted,
+            'components':components,'app_context_omitted':omitted,'model_info':info,
             'attachments':{'images':len(images),'documents':[row['name'] for row in documents]}}
         return payload,profile,len(previous),len(context),result_truncated,recalled,estimate
 
@@ -623,6 +636,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             try:
                 async for data in cancellable(ollama.pull(body.model),event):
                     success = data.get('status')=='success'
+                    if success and hasattr(ollama,'_model_info'):ollama._model_info.pop(body.model,None)
                     yield json.dumps({'type':'progress',**data})+'\n'
             except ProviderError as exc:
                 yield json.dumps({'type':'error','message':str(exc)})+'\n'
@@ -807,4 +821,11 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     if metrics is not None:metrics['route']={'band':body.route_band,'reason':body.route_reason}
             yield line({'type':'done','status':status,'metrics':metrics})
         return StreamingResponse(generate(),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
+    async def phone_chat(data,request):
+        # Internal handler shared with the authenticated gateway, preserving the
+        # same validation/permissions while forwarding chunks without buffering.
+        try:body=ChatBody(**data)
+        except ValidationError as exc:raise HTTPException(422,'Pedido de conversa inválido.') from exc
+        return await chat(body,request)
+    app.state.phone_chat=phone_chat
     return app

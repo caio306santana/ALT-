@@ -37,12 +37,23 @@ export interface Message {
   created: string;
   metrics: Metrics | null;
 }
+export interface ModelInfo {
+  source: 'ollama' | 'unknown';
+  capabilities: {text:boolean|null;vision:boolean|null;tools:boolean|null;thinking:boolean|null};
+  max_context: number|null;
+  thinking_values: (boolean|string)[]|null;
+  thinking_default: boolean|string|null;
+  active_context?: number;
+  profile?: string;
+  context_limited_by_model?: boolean;
+}
 export interface Model {
   name: string;
   size: number;
   details?: { parameter_size?: string; quantization_level?: string };
   provider?: string;
   location?: "local" | "cloud" | "auto";
+  info?: ModelInfo;
 }
 export interface Preferences {
   accent: string;

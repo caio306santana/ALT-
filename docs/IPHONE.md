@@ -1,5 +1,7 @@
 # ALT no iPhone, sem App Store
 
+**Decisão atual — 30/10/2026:** manter a ALT local no PC por enquanto. Este documento descreve a **PWA remota existente**, que depende do PC ligado. Não é um app nativo iOS nem um modelo rodando no iPhone. Servidor próprio, app independente e sincronização foram adiados; ver [plano local](PENDENCIAS-LOCAL.md) e [checkpoint do código 0.5.2](CHECKPOINT-0.5.2.md). A publicação/pareamento ainda precisa de teste real; instalar/conectar o Tailscale não fecha essa validação.
+
 A ALT continua rodando no seu PC: o modelo, a voz e as ferramentas ficam lá. O iPhone vira um controle remoto. Ele aparece como um app na Tela de Início e conversa com o PC por uma rede privada, só entre os seus aparelhos.
 
 ## O que você precisa

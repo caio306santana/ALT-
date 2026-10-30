@@ -1,6 +1,8 @@
 import asyncio
 import json
+import time
 import httpx
+from backend.model_info import normalize_info,unknown_info
 
 class ProviderError(Exception):
     def __init__(self, message, code='provider_error'):
@@ -61,16 +63,21 @@ class Ollama:
         except (httpx.HTTPError,ValueError) as exc:
             raise ProviderError('Falha no download. Verifique se o Ollama está aberto e tente novamente.','download') from exc
 
+    async def describe(self,model,fingerprint='',refresh=False):
+        cache=self.__dict__.setdefault('_model_info',{});entry=cache.get(model)
+        if entry and not refresh and time.monotonic()-entry['time']<60 and (not fingerprint or entry['fingerprint']==fingerprint):return entry['info']
+        try:
+            async with httpx.AsyncClient(timeout=4,trust_env=False) as client:
+                response=await client.post(self.base_url+'/api/show',json={'model':model})
+                response.raise_for_status();info=normalize_info(response.json())
+        except (httpx.HTTPError,ValueError):info=unknown_info()
+        cache[model]={'fingerprint':fingerprint or (entry or {}).get('fingerprint',''),'time':time.monotonic(),'info':info}
+        return info
+
     async def capabilities(self,model):
-        """['completion','vision','tools',...] as Ollama reports them, or None if unknown."""
-        cache=self.__dict__.setdefault('_capabilities',{})
-        if model not in cache:
-            try:
-                async with httpx.AsyncClient(timeout=10,trust_env=False) as client:
-                    response=await client.post(self.base_url+'/api/show',json={'model':model})
-                    response.raise_for_status();cache[model]=response.json().get('capabilities')
-            except (httpx.HTTPError,ValueError):return None
-        return cache[model]
+        info=await self.describe(model);caps=info['capabilities']
+        if all(value is None for value in caps.values()):return None
+        return [name for key,name in (('text','completion'),('vision','vision'),('tools','tools'),('thinking','thinking')) if caps[key] is True]
 
     async def preload(self,model,profile):
         """Load the model with the chat's options (a different num_ctx would reload it on the first message)."""

@@ -2,6 +2,8 @@
 
 Preparado em **30/10/2026**. Base: ALT **0.5.1**, código funcional da tag `750e2a0` e documentação em `main` conferida em `d2d3521`. **Este documento é um plano; não implementa as etapas futuras.**
 
+**Execução posterior:** etapa 1 implementada/testada no código **0.5.2 em desenvolvimento**, ainda sem validar instalador/instalação. As demais etapas permanecem pendentes. O dono decidiu manter local por enquanto e adiar servidor/iPhone independente; a sequência atualizada está em [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md) e as evidências em [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md).
+
 Objetivo: tornar a ALT mais útil para conversar, pesquisar e executar tarefas, com respostas e resultados claros, menor espera e continuidade entre pedidos. A identidade, personalidade e regras editáveis continuam sendo da ALT; Qwen, Huihui e Hermes são motores de terceiros.
 
 ## Referências e limites do estudo
@@ -62,7 +64,7 @@ Pontos de partida: `scripts/benchmark_latency.py`, `scripts/smoke_full_access.py
 
 ### 1. Capacidades reais no seletor e no chat
 
-**Estado: planejada; parte do contador já existe.**
+**Estado: implementada e testada no código 0.5.2; pacote final e instalação ainda pendentes.** Metadados reais Qwen/Huihui/Hermes 3B foram conferidos, assim como ausência de metadados, atualização do cache e limite menor que o perfil. A distribuição/validação completa da etapa permanece aberta até concluir o pacote e conferir a versão no destino.
 
 Entregas:
 

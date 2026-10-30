@@ -1,7 +1,7 @@
 // ALT on the iPhone: talks only to the PC's gateway (same origin). Actions arrive as cards; nothing runs
 // by itself, and PowerShell commands are approved only on the PC.
 const $ = (id) => document.getElementById(id);
-const state = { cid: localStorage.getItem("alt-cid") || "", speak: localStorage.getItem("alt-speak") === "1", pending: [] };
+const state = { cid: localStorage.getItem("alt-cid") || "", speak: localStorage.getItem("alt-speak") === "1", pending: [], busy:false };
 
 async function api(method, path, body, raw) {
   const options = { method, credentials: "same-origin", headers: {} };
@@ -52,7 +52,7 @@ function card(proposal) {
     const no = document.createElement("button"); no.textContent = "Recusar";
     ok.onclick = async () => {
       ok.disabled = no.disabled = true;
-      try { const r = await (await api("POST", `/api/actions/${proposal.id}/approve`)).json(); detail.textContent = "Feito: " + JSON.stringify(r.result || r).slice(0, 160); }
+      try { const r = await (await api("POST", `/api/actions/${proposal.id}/approve`)).json(); const result=r.result||r; detail.textContent = ({done:'Concluído: ',unverified:'Pedido enviado, resultado não confirmado: ',failed:'Falhou: ',ask:'Falta uma escolha: ',started:'Em andamento: '}[result.status]||'Resultado: ')+String(result.notice||JSON.stringify(result)).slice(0,300); }
       catch (e) { detail.textContent = e.message; ok.disabled = no.disabled = false; }
     };
     no.onclick = async () => { await api("POST", `/api/actions/${proposal.id}/reject`).catch(() => {}); div.remove(); };
@@ -73,6 +73,8 @@ async function loadHistory() {
   try {
     const rows = await (await api("GET", `/api/conversations/${state.cid}/messages`)).json();
     rows.slice(-30).forEach((m) => bubble(m.role, m.content));
+    const actions=await (await api('GET',`/api/conversations/${state.cid}/actions`)).json();
+    actions.filter(a=>a.state==='proposed').forEach(card);
   } catch (e) { state.cid = ""; localStorage.removeItem("alt-cid"); notice("Conversa nova."); }
 }
 
@@ -80,26 +82,38 @@ async function play(text) {
   if (!state.speak || !text.trim()) return;
   try {
     const wav = await (await api("POST", "/api/speak", { text })).blob();
-    const audio = new Audio(URL.createObjectURL(wav)); await audio.play();
+    const url=URL.createObjectURL(wav);const audio = new Audio(url);audio.onended=audio.onerror=()=>URL.revokeObjectURL(url);await audio.play();
   } catch (e) {}
 }
 
 async function send(text) {
   text = (text || "").trim();
-  if (!text && !state.pending.length) return;
-  $("send").disabled = true;
+  if (state.busy||(!text && !state.pending.length)) return;
+  state.busy=true;$("send").disabled = true;$("new").disabled=true;$("stop").hidden=false;
   bubble("user", text || "📷");
   const waiting = bubble("assistant", "…");
+  let accepted=false,reply='',done=false;
   try {
     const cid = await ensureConversation();
-    const r = await (await api("POST", "/api/chat", { conversation_id: cid, content: text || "Veja a foto.", attachment_ids: state.pending })).json();
+    const response=await api("POST", "/api/chat/stream", { conversation_id: cid, content: text || "Veja a foto.", attachment_ids: state.pending });
+    accepted=true;
     state.pending = [];
-    waiting.textContent = r.text || (r.status === "complete" ? "Pronto." : "Não consegui responder.");
-    (r.notices || []).forEach(notice);
-    (r.proposals || []).forEach(card);
-    play(r.text || "");
-  } catch (e) { waiting.textContent = e.message; }
-  finally { $("send").disabled = false; }
+    const reader=response.body.getReader(),decoder=new TextDecoder();let pending='';
+    function event(row){
+      if(row.type==='delta'){reply+=row.text||'';waiting.textContent=reply;}
+      if(row.type==='tool_proposal')card(row.proposal);
+      if(row.type==='error'||row.type==='notice')notice(row.message||'Falha na resposta.');
+      if(row.type==='start'&&row.model)$('modelInfo').textContent=row.model==='local:actions'?'Ação local direta':`Motor: ${row.model}`;
+      if(row.type==='done'){done=true;if(!reply)waiting.textContent=row.status==='complete'?'Veja o resultado abaixo.':'Resposta interrompida.';}
+    }
+    while(true){const chunk=await reader.read();pending+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});let index;
+      while((index=pending.indexOf('\n'))>=0){const line=pending.slice(0,index);pending=pending.slice(index+1);if(line.trim())event(JSON.parse(line));}
+      if(chunk.done){if(pending.trim())event(JSON.parse(pending));break;}
+    }
+    if(!done)notice('Conexão interrompida; confira o histórico antes de repetir uma ação.');
+    play(reply);
+  } catch (e) { if(!reply)waiting.textContent=e.message;else notice(e.message);if(!accepted&&!$("input").value)$("input").value=text; }
+  finally { state.busy=false;$("send").disabled = false;$("new").disabled=false;$("stop").hidden=true; }
 }
 
 // Microphone: 16 kHz mono PCM for the PC's Whisper (needs HTTPS, which Tailscale serve provides).
@@ -169,6 +183,10 @@ async function start() {
     const me = await (await api("GET", "/api/me")).json();
     $("status").textContent = (me.user_name ? me.user_name + " · " : "") + "PC conectado";
     showChat(); await loadHistory();
+    try{const data=await (await api('GET','/api/models')).json();const selected=data.models.find(m=>m.name===me.model);const info=selected?.info;
+      const label=v=>v===true?'sim':v===false?'não':'não informado';
+      $('modelInfo').textContent=selected?`${selected.name} · imagens: ${label(info?.capabilities.vision)} · ferramentas: ${label(info?.capabilities.tools)} · contexto ativo: ${info?.active_context?.toLocaleString('pt-BR')||'não informado'}`:'O modelo local será escolhido no PC para cada pedido.';
+    }catch(e){$('modelInfo').textContent='Capacidades do modelo não disponíveis agora.';}
   } catch (e) { return; }
 }
 
@@ -176,6 +194,7 @@ $("pairButton").onclick = async () => {
   try { await api("POST", "/pair", { code: $("code").value, name: "iPhone" }); start(); } catch (e) { $("pairMessage").textContent = e.message; }
 };
 $("send").onclick = () => { const t = $("input").value; $("input").value = ""; send(t); };
+$("stop").onclick=async()=>{if(state.cid)try{await api('POST','/api/chat/cancel',{conversation_id:state.cid});}catch(e){notice(e.message);}};
 $("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("send").click(); } });
 $("mic").addEventListener("pointerdown", (e) => { e.preventDefault(); startMic().catch((err) => notice("Microfone: " + err.message)); });
 ["pointerup", "pointerleave", "pointercancel"].forEach((name) => $("mic").addEventListener(name, () => stopMic()));

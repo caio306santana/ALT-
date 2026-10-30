@@ -54,6 +54,17 @@
 .performance-details dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; max-width: 440px; }
 .performance-details dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .performance-details small { display: block; max-width: 440px; line-height: 1.5; }
+.chat-model-info {padding:10px 28px;border-bottom:1px solid #ffffff12;font-size:11px;color:var(--text-muted,inherit)}
+.model-capabilities {font-size:12px;text-align:left;line-height:1.7;min-width:0}
+.model-card .model-capabilities {grid-column:1/-1;flex-basis:100%;width:100%;margin-top:10px}
+.model-card:has(.model-capabilities) {flex-wrap:wrap}
+.capability-badges {display:flex;flex-wrap:wrap;gap:5px 12px}
+.capability-badges span {font-size:inherit!important;white-space:normal}
+.capability-badges .supported {color:#28d9ac}
+.capability-badges .unsupported,.capability-badges .unknown {color:var(--text-muted,inherit)}
+.capability-context {overflow-wrap:anywhere}
+.model-capabilities small {display:block;max-width:750px;margin-top:4px;font-size:11px;font-weight:400}
+.light .capability-badges .supported {color:#08795e}
 @media (max-width: 800px) {
   .messages { padding: 18px 18px 10px; }
   .composer-area { padding: 8px 14px 12px; }

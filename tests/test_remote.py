@@ -90,3 +90,76 @@ def test_push_subscriptions_are_validated_and_vapid_keys_stay_local(tmp_path):
     body,headers=push.payload(subscription,'ALT','Resumo da manhã pronto')
     assert headers['Content-Encoding']=='aes128gcm' and headers['Authorization'].startswith('vapid t=') and b'Resumo' not in body
     store.db.close()
+
+def test_mobile_stream_uses_the_same_validation_and_never_auto_executes(tmp_path):
+    app,local,_,client=fixture_client(tmp_path)
+    with client:
+        client.put('/permissions',json={'level':2})
+        gateway=phone(app,tmp_path);paired(app,gateway)
+        cid=gateway.post('/api/conversations').json()['id']
+        # A direct launch works without a model and remains a proposal on iPhone.
+        response=gateway.post('/api/chat/stream',json={'conversation_id':cid,'content':'abre o bloco de notas','origin':'desktop','model':'cloud:anthropic'})
+        assert response.status_code==200,response.text
+        rows=[json.loads(line) for line in response.text.splitlines() if line]
+        assert rows[0]['execution']=='direct' and rows[-1]['status']=='complete'
+        assert any(row['type']=='tool_proposal' for row in rows)
+        assert not any(row['type']=='tool_result' for row in rows)
+        assert local.contexts==[]
+        assert gateway.get('/api/models').json()['models'][0]['info']['capabilities']['vision'] is None
+        assert gateway.post('/api/chat/cancel',json={'conversation_id':cid}).status_code==200
+        assert gateway.post('/api/chat/cancel',json={'conversation_id':'../actions/resume'}).status_code==400
+        # Native/local handler still validates body and conversations.
+        assert gateway.post('/api/chat/stream',json={'conversation_id':'missing','content':'oi'}).status_code==404
+
+def test_phone_with_cloud_selected_and_no_local_model_gets_clear_error(tmp_path):
+    app,local,_,client=fixture_client(tmp_path)
+    async def empty():return []
+    local.models=empty
+    with client:
+        app.state.store.set_settings({'model':'cloud:anthropic'})
+        gateway=phone(app,tmp_path);paired(app,gateway)
+        response=gateway.post('/api/chat/stream',json={'conversation_id':'x','content':'oi'})
+        assert response.status_code==409 and 'modelo local' in response.json()['detail']
+
+def test_gateway_forwards_first_chunk_before_the_provider_finishes(tmp_path):
+    import asyncio
+    app,local,_,client=fixture_client(tmp_path)
+    with client:
+        app.state.store.set_settings({'model':'fixture:4b'})
+        gateway=phone(app,tmp_path);paired(app,gateway)
+        cid=gateway.post('/api/conversations').json()['id']
+        async def run():
+            release=asyncio.Event();seen=asyncio.Event();never_disconnect=asyncio.Event();chunks=[];sent=False
+            async def source(*args,**kwargs):
+                yield {'message':{'content':'primeiro'}}
+                await release.wait()
+                yield {'done':True,'eval_count':1}
+            local.stream=source
+            body=json.dumps({'conversation_id':cid,'content':'oi'}).encode()
+            async def receive():
+                nonlocal sent
+                if not sent:sent=True;return {'type':'http.request','body':body,'more_body':False}
+                await never_disconnect.wait();return {'type':'http.disconnect'}
+            async def send(message):
+                if message['type']=='http.response.body':
+                    chunks.append(message.get('body',b''))
+                    if b'primeiro' in b''.join(chunks):seen.set()
+            scope={'type':'http','asgi':{'version':'3.0','spec_version':'2.4'},'http_version':'1.1','method':'POST','scheme':'https','path':'/api/chat/stream','raw_path':b'/api/chat/stream','query_string':b'',
+                'headers':[(b'host',b'pc.tail1234.ts.net'),(b'origin',b'https://pc.tail1234.ts.net'),(b'content-type',b'application/json'),(b'cookie',(COOKIE+'='+gateway.cookies.get(COOKIE)).encode())],
+                'client':('127.0.0.1',10000),'server':('pc.tail1234.ts.net',443),'root_path':''}
+            task=asyncio.create_task(gateway.app(scope,receive,send))
+            try:
+                await asyncio.wait_for(seen.wait(),3)
+                assert not task.done(),'Response must reach the phone while generation is in progress'
+            finally:
+                release.set();await asyncio.wait_for(task,3)
+            assert b'"status": "complete"' in b''.join(chunks)
+        asyncio.run(run())
+
+def test_tailscale_does_not_replace_another_service_or_public_funnel():
+    from backend.remote import Tailscale
+    assert Tailscale.owns_or_empty({},47823)
+    assert Tailscale.owns_or_empty({'TCP':{'443':{'HTTPS':True}},'Web':{'pc.tail.ts.net:443':{'Handlers':{'/':{'Proxy':'http://127.0.0.1:47823'}}}}},47823)
+    assert not Tailscale.owns_or_empty({'Web':{'pc.tail.ts.net:443':{'Handlers':{'/':{'Proxy':'http://127.0.0.1:3000'}}}}},47823)
+    assert not Tailscale.owns_or_empty({'AllowFunnel':{'pc.tail.ts.net:443':True}},47823)
+    assert not Tailscale.owns_or_empty({'TCP':{'443':{'TCPForward':'localhost:2222'}}},47823)

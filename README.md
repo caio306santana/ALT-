@@ -1,5 +1,7 @@
 # ALT-AI
 
+**Decisão atual (30/10/2026): manter o processamento local no PC.** O código em `main` avançou para **0.5.2 em desenvolvimento** com capacidades reais dos modelos e melhorias do gateway/PWA; o instalador publicado continua na **0.5.1**. Servidor próprio e iPhone independente foram adiados. Começar pelo [plano atualizado de pendências locais](docs/PENDENCIAS-LOCAL.md) e pelo [checkpoint 0.5.2](docs/CHECKPOINT-0.5.2.md). Não houve instalação da versão nova no aplicativo aberto.
+
 Assistente pessoal Windows com modelos locais pelo Ollama, memória, voz, ferramentas e cliente para iPhone. ALT é o aplicativo/agente e sua identidade; Qwen e os demais motores são modelos de terceiros.
 
 **Hermes 3:** a 0.5.1 acrescenta as opções locais 3B e 8B. O download é opcional e ficou para depois por escolha do dono. Ver [uso, requisitos e validação](docs/HERMES.md). Built with Meta Llama 3.

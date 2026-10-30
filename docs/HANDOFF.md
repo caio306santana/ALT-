@@ -1,4 +1,10 @@
-# Continuidade — ALT-AI 0.5.1
+# Continuidade — ALT-AI 0.5.2 em desenvolvimento
+
+**Última decisão do dono:** manter processamento local; servidor próprio e iPhone independente ficam para depois. Pediu plano e envio de todo o trabalho ao Git. Começar por [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md) e [CHECKPOINT-0.5.2.md](CHECKPOINT-0.5.2.md). Há metadados reais/cache/contexto na etapa 1 e melhorias autenticadas de streaming/cancelamento na PWA, com testes e compilação. **Não há instalador/release 0.5.2 nem atualização instalada.** Próximo técnico: gerar/testar o pacote final e validar no destino. Não provisionar servidor nem baixar modelos por causa do plano.
+
+Ollama real foi consultado em banco temporário sem inferência: Qwen, Huihui e Hermes 3B encontrado já instalado. Não atribuir o download Hermes a esta rodada; não houve benchmark/resposta real dele. Tailscale e iPhone conectados foram observados, mas Serve/pareamento da ALT não foram concluídos. CLI de publicação em espera foi encerrada; configuração Serve final estava vazia. Não publicar dados da rede/códigos/tokens.
+
+## Registro da entrega anterior — 0.5.1
 
 **Planejamento seguinte:** [PLANO-ACAO-DRAEL.md](PLANO-ACAO-DRAEL.md) contém sequência, dependências, critérios de aceitação e evidências exigidas por etapa. Foi criado após a 0.5.1 e ainda não executa as melhorias futuras. Começar pelas validações da base e pela rodada de capacidades/cartões/continuidade; não declarar uma etapa concluída apenas pela tela/API.
 

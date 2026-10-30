@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('alt',{
   request:async(method,route,body)=>{
     if(route==='/settings')return method==='PUT'?body:preferences;
     if(route==='/health')return {stopped:false,game_mode:false};
-    if(route==='/models')return offline?{connected:false,models:[]}:{connected:true,models:[{name:'qwen3.5:4b',size:3e9},{name:'qwen3.5:9b',size:6e9}]};
+    if(route==='/models'||route==='/models?refresh=true')return offline?{connected:false,models:[]}:{connected:true,models:[{name:'qwen3.5:4b',size:3e9,info:{source:'ollama',capabilities:{text:true,vision:true,tools:true,thinking:true},active_context:4096,max_context:262144,thinking_values:[false,true],thinking_default:true}},{name:'qwen3.5:9b',size:6e9}]};
     if(route==='/providers')return {providers:[]};
     if(route==='/evaluations')return {runs:[]};
     if(route==='/conversations')return method==='POST'?conversation:[conversation];

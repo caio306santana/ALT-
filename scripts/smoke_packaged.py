@@ -59,6 +59,7 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             assert client.post('/tools/approve/'+proposal['id'],headers=headers).json()['result']['value']==30
             client.post('/permissions/revoke',headers=headers)
             detected=client.get('/models',headers=headers).json()
+            assert all('info' in row and 'capabilities' in row['info'] for row in detected.get('models',[]))
             if detected.get('connected') and detected.get('models'):
                 client.put('/permissions',headers=headers,json={'level':2})
                 auto=client.post('/chat/estimate',headers=headers,json={'model':'auto','content':'oi'})

@@ -57,6 +57,7 @@ app.whenReady().then(async()=>{
   assert.equal(await js(`window.chatFixture.routes()`),routed,'Direct launch must not route to an LLM');
   await js(`document.querySelector('.side-nav button[aria-label="Inteligências"]').click()`);
   await until(`document.body.textContent.includes('Hermes 3 · NousResearch · 3B') && document.body.textContent.includes('Hermes 3 · NousResearch · 8B')`);
+  assert.ok(await js(`document.querySelector('.model-card:has(.supported)').textContent.includes('262.144') && document.querySelector('.model-card:has(.supported)').textContent.includes('4.096')`));
   assert.ok(await js(`document.body.textContent.includes('cerca de 2 GB') && document.body.textContent.includes('cerca de 4,7 GB')`));
   await js(`Array.from(document.querySelectorAll('.download-row')).find(row=>row.textContent.includes('Hermes 3')).scrollIntoView({block:'center'})`);
   win.webContents.invalidate();await delay(300);

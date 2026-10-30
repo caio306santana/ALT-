@@ -59,6 +59,7 @@ let verifiedUpdate = null;
 let activeShortcut = "";
 const allowed = [
   ["GET", /^\/(health|models|settings|system|conversations)$/],
+  ["GET", /^\/models\?refresh=true$/],
   ["POST", /^\/(conversations|actions\/stop|actions\/resume)$/],
   ["GET", /^\/conversations\/[a-f0-9-]+\/messages$/],
   ["GET", /^\/conversations\/[a-f0-9-]+\/actions$/],

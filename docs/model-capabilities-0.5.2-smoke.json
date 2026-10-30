@@ -1,0 +1,83 @@
+{
+  "scope": "Real Ollama model metadata and context estimation; temporary database, no inference, model downloads, cloud calls or OS actions.",
+  "models": [
+    {
+      "model": "hermes3:3b",
+      "reported": {
+        "source": "ollama",
+        "capabilities": {
+          "text": true,
+          "vision": false,
+          "tools": true,
+          "thinking": false
+        },
+        "max_context": 131072,
+        "thinking_values": null,
+        "thinking_default": null,
+        "active_context": 4096,
+        "profile": "notebook",
+        "context_limited_by_model": false
+      },
+      "estimate": {
+        "input_tokens": 731,
+        "input_limit": 3200,
+        "total_context": 4096,
+        "output_reserve": 768
+      }
+    },
+    {
+      "model": "huihui_ai/qwen3.5-abliterated:4b",
+      "reported": {
+        "source": "ollama",
+        "capabilities": {
+          "text": true,
+          "vision": true,
+          "tools": true,
+          "thinking": true
+        },
+        "max_context": 262144,
+        "thinking_values": [
+          false,
+          true
+        ],
+        "thinking_default": true,
+        "active_context": 4096,
+        "profile": "notebook",
+        "context_limited_by_model": false
+      },
+      "estimate": {
+        "input_tokens": 656,
+        "input_limit": 3200,
+        "total_context": 4096,
+        "output_reserve": 768
+      }
+    },
+    {
+      "model": "qwen3.5:4b",
+      "reported": {
+        "source": "ollama",
+        "capabilities": {
+          "text": true,
+          "vision": true,
+          "tools": true,
+          "thinking": true
+        },
+        "max_context": 262144,
+        "thinking_values": [
+          false,
+          true
+        ],
+        "thinking_default": true,
+        "active_context": 4096,
+        "profile": "notebook",
+        "context_limited_by_model": false
+      },
+      "estimate": {
+        "input_tokens": 656,
+        "input_limit": 3200,
+        "total_context": 4096,
+        "output_reserve": 768
+      }
+    }
+  ]
+}
