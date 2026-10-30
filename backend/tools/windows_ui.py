@@ -57,11 +57,23 @@ class WindowsUI:
         if re.search(r'controle de conta|user account control|windows security|segurança do windows|gerenciador de credenciais',title,re.I):raise ValueError('Janela protegida; use controle manual.')
         return {'handle':int(window.handle),'pid':pid,'created':process.create_time(),'title':title,'exe':exe}
 
+    def light_identity(self,hwnd,pid,title):
+        """Same exclusions as identity(), from EnumWindows data: no UI Automation call."""
+        process=psutil.Process(pid);exe=process.exe()
+        if os.path.basename(exe).casefold() in EXCLUDED:raise ValueError('Janela excluída.')
+        parent=int(os.environ.get('ALT_PARENT_PID','0'))
+        if pid==parent or parent and any(p.pid==parent for p in process.parents()):raise ValueError('Janela da própria ALT.')
+        if re.search(r'controle de conta|user account control|windows security|segurança do windows|gerenciador de credenciais',title,re.I):raise ValueError('Janela protegida.')
+        return {'handle':hwnd,'pid':pid,'created':process.create_time(),'title':title[:180],'exe':exe}
+
     def inventory(self):
-        result=[];desktop=self.desktop();self.candidates={}
-        for window in desktop.windows(visible_only=True):
+        """Visible windows through EnumWindows. Listing them through UI Automation hung for minutes when one
+        program was not responding (seen in the 0.5 smoke), freezing the whole chat."""
+        from backend.tools.appidentity import windows
+        result=[];self.candidates={}
+        for hwnd,pid,title in windows():
             try:
-                row=self.identity(window)
+                row=self.light_identity(hwnd,pid,title)
                 if not row['title']:continue
                 key=hashlib.sha256(f"{row['handle']}:{row['pid']}:{row['created']}".encode()).hexdigest()[:32]
                 self.candidates[key]=row;result.append({'candidate_id':key,**row})

@@ -475,7 +475,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             if 'window_id' in spec[0]['function']['parameters']['properties']:
                 tool_context+='\nJanelas autorizadas: '+json.dumps([{'window_id':g['id'],'titulo':g['title'][:60]} for g in status['windows'][:5]],ensure_ascii=False,separators=(',',':'))
                 if status['level']==4:
-                    try:opened=await asyncio.to_thread(tools.gui.inventory)
+                    try:opened=await asyncio.wait_for(asyncio.to_thread(tools.gui.inventory),3)
                     except Exception:opened=[]
                     tool_context+='\nJanelas abertas (use o título como window_id): '+json.dumps([w['title'][:60] for w in opened[:12]],ensure_ascii=False,separators=(',',':'))
                 for grant in status['windows'][:5]:
@@ -672,7 +672,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                 signature=json.dumps(arguments,sort_keys=True,ensure_ascii=False)
                                 if signature in seen:raise ValueError('a mesma ação já foi feita nesta resposta; não vou repetir.')
                                 action=ToolProposal(**arguments)
-                                proposal=tools.proposal(action,cid)
+                                # Off the event loop: preparing a window or app action can touch slow Windows APIs.
+                                proposal=await asyncio.to_thread(tools.proposal,action,cid)
                                 seen.add(signature)
                             except (ValueError,PermissionError) as exc:
                                 if engine.stopped:raise PermissionError('Ações suspensas.')
