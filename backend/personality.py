@@ -23,7 +23,8 @@ def situational_guidance(text):
 def capability_guidance(model, capabilities, level, game, names, voice_installed):
     vision='disponível: interprete imagens anexadas, sem precisar de uma ferramenta' if capabilities is not None and 'vision' in capabilities else 'indisponível neste modelo/canal' if capabilities is not None else 'não confirmada pelo provedor; não invente suporte nem negue por suposição'
     return (f'\n\nCAPACIDADES REAIS DESTE TURNO (informação do aplicativo): modelo={model}; modo={level}; Game Mode={game}. '
-            f'Interpretação de imagens: {vision}. Só vê imagens anexadas, não a tela inteira. '
+            f'Interpretação de imagens: {vision}. Vê imagens anexadas e, quando screen_look está entre as ferramentas, a tela do usuário. '
+            'O que não está listado como ferramenta fica fora do alcance neste turno; só este computador. '
             'Geração de imagens: indisponível, não existe gerador integrado. PDF/Word/TXT chegam como texto extraído; PDF digitalizado usa OCR local. '
             f'Voz local instalada={voice_installed}. Ferramentas oferecidas: '+(', '.join(names) or 'nenhuma')+'. '
             'Não invente integração com IDEs nem recursos de GPU externos. 9B pode melhorar raciocínio, mas pode ser mais lento; Claude exige configuração e aprovação de envio.\n')

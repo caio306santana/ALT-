@@ -8,11 +8,16 @@ HINTS={
     'query':'Termos de pesquisa.',
     'command':'Comando completo do PowerShell.',
     'keys':'Atalho de teclado, ex.: ctrl+t, ctrl+w, alt+left, f5, pagedown*3, space.',
+    'value':'Valor: volume/brilho (50, +10, -10, mudo), mídia (playpause, next, previous) ou horário do lembrete (2026-10-30T15:00, em 10 minutos).',
 }
 
 # Shortcut-style requests: tabs, scrolling, reload, media keys.
 KEY_WORDS=('atalho','tecla','aperte','pressione','ctrl','alt+','fecha a aba','feche a aba','fechar aba','próxima aba','proxima aba','aba anterior',
-    'role ','rola ','rolar','desça','desce','suba a página','recarreg','atualize a página','f5','pause','pausa','próxima música','proxima musica','volume','tela cheia')
+    'role ','rola ','rolar','desça','desce','suba a página','recarreg','atualize a página','f5','tela cheia')
+SCREEN_WORDS=('minha tela','na tela','da tela','olha isso','olhe isso','o que tem aqui','o que aparece','print da tela','lê isso aqui','leia isso aqui','o que estou vendo')
+VOLUME_WORDS=('volume','som ','mudo','silencia','desmut','aumenta o som','abaixa o som','mais alto','mais baixo')
+MEDIA_WORDS=('pausa','pause','despausa','próxima música','proxima musica','música anterior','musica anterior','pula a música','pula essa','volta a música','toca a música','continua a música')
+REMINDER_WORDS=('lembre','lembrete','me avise','me avisa','me lembra','alarme','avisa às','avise às')
 
 # Stable set for modes 2-4, core first and capped at 14 like Mark LVI's local budget. The same list every
 # turn keeps the prompt prefix identical, so Ollama reuses its cache instead of rereading tools and history.
@@ -27,11 +32,15 @@ BRIEF={
     'read_text':'lê um arquivo de texto (scope_id, path)','write_text':'grava um arquivo de texto (scope_id, path, content)',
     'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo (url, path)',
     'find_files':'procura arquivos (scope_id, path, query)','open_folder':'abre uma pasta no Explorer (scope_id, path)',
+    'screen_look':'captura a tela do usuário para você ver (sem argumentos)','system_volume':'muda o volume (value: 0-100, +10, -10, mudo, desmutar)',
+    'system_brightness':'muda o brilho do monitor (value: 0-100, +10, -10)','media_key':'tocar/pausar ou trocar de música (value: playpause, next, previous)',
+    'reminder_create':'cria um lembrete que toca mesmo com a ALT fechada (content: texto, value: 2026-10-30T15:00 ou "em 10 minutos")',
+    'reminder_list':'lista os lembretes','reminder_cancel':'cancela um lembrete (target: id ou parte do texto)',
     'calculate':'calcula uma expressão (expression)','undo':'desfaz a última gravação ou download da ALT (target vazio = última)','browser_open':'abre site no navegador ALT (url)','browser_read':'lê a página do navegador ALT',
     'browser_back':'volta uma página no navegador ALT','browser_click':'clica no navegador ALT (target, snapshot_id)',
     'browser_type':'digita no navegador ALT (target, snapshot_id, content)',
 }
-STABLE_FIELDS=('tool','app','url','query','scope_id','path','content','command','keys','window_id','target','snapshot_id','expression')
+STABLE_FIELDS=('tool','app','url','query','scope_id','path','content','command','keys','window_id','target','snapshot_id','expression','value')
 
 def tool_spec(content,status):
     names,browser,windows=route(content,status)
@@ -75,6 +84,13 @@ def route(content,status):
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
     if any(word in text for word in ('baixe','baixar','download')):names+=['download_file']
     if level>=2 and any(word in text for word in ('desfaz','desfazer','desfaça','reverte','reverter','volta como estava')):names+=['undo']
+    if level>=2 and any(word in text for word in SCREEN_WORDS):names+=['screen_look']
+    if level>=2 and any(word in text+' ' for word in VOLUME_WORDS):names+=['system_volume']
+    if level>=2 and 'brilho' in text:names+=['system_brightness']
+    if level>=2 and any(word in text for word in MEDIA_WORDS):names+=['media_key']
+    if level>=2 and any(word in text for word in REMINDER_WORDS):
+        names+=['reminder_create','reminder_list']
+        if any(word in text for word in ('cancel','apaga','remove','tira o lembrete')):names+=['reminder_cancel']
     if level>=2 and any(word in text for word in ('comando','powershell','terminal','execute','executar','rode ','rodar','instale','instalar','winget','ipconfig')):names+=['run_command']
     keys=any(word in text for word in KEY_WORDS)
     windows=(status.get('windows') or level==4) and (keys or any(word in text for word in ('janela','aplicativo aberto','programa aberto','no app','botão','botao','campo','clique','clicar','digite','escreva')))
@@ -97,6 +113,9 @@ def build_spec(names,browser,windows):
     if 'download_file' in names:relevant.update(('url','path','scope_id'))
     if 'run_command' in names:relevant.add('command')
     if 'undo' in names:relevant.add('target')
+    if any(n in names for n in ('system_volume','system_brightness','media_key','reminder_create')):relevant.add('value')
+    if 'reminder_create' in names:relevant.add('content')
+    if 'reminder_cancel' in names:relevant.update(('target','content'))
     if windows:relevant.update(('window_id','target','snapshot_id','content'))
     if 'windows_keys' in names:relevant.add('keys')
     properties={key:{**{k:v for k,v in value.items() if k in ('type','enum')},**({'description':HINTS[key]} if key in HINTS else {})} for key,value in properties.items() if key in relevant}

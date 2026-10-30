@@ -24,6 +24,8 @@ from backend.tools.app_catalog import AppCatalog,normalize
 from backend.tools import appidentity
 from backend.tools.outcome import outcome
 from backend.security.guard import RememberedApprovals,Undo,SINKS,sensitive_reason
+from backend.tools import system
+from backend.tools.system import Reminders
 
 # Tools whose results bring outside content into the conversation (checked for taint).
 READERS={'read_text','read_webpage','web_search','windows_read','browser_read','list_files','find_files'}
@@ -35,7 +37,8 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command','undo']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command','undo',
+        'screen_look','system_volume','system_brightness','media_key','reminder_create','reminder_list','reminder_cancel']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
@@ -47,6 +50,7 @@ class ToolProposal(BaseModel):
     snapshot_id:str=Field(default='',max_length=64)
     window_id:str=Field(default='',max_length=64)
     keys:str=Field(default='',max_length=40)
+    value:str=Field(default='',max_length=40)
     url:str=Field(default='',max_length=2000)
     query:str=Field(default='',max_length=300)
 
@@ -87,6 +91,8 @@ class ToolService:
         self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
         self.gui=WindowsUI(store);self.catalog=AppCatalog()
         self.remembered=RememberedApprovals(store);self.undo=Undo(store);self.taint={}
+        self.reminders=Reminders(store,data_dir);self.captures={}
+        self.setters={'system_volume':system.set_volume_state,'system_brightness':system.set_brightness}
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         self.file_history=data_dir/'file-history'
@@ -309,6 +315,16 @@ class ToolService:
             if body.tool=='close_app':
                 tracked=body.app in self.launched
                 preview['notice']=('Solicita fechamento normal da janela aberta pela ALT' if tracked else 'Solicita fechamento normal das janelas abertas deste programa')+'; o programa pode pedir para salvar documentos.'
+        elif body.tool=='screen_look':
+            preview['external_notice']='Captura da tela inteira; a imagem vai só para o modelo escolhido nesta conversa.'
+        elif body.tool in ('system_volume','system_brightness','media_key'):
+            preview['value']=body.value or ('playpause' if body.tool=='media_key' else '')
+            if body.tool!='media_key' and not body.value:raise ValueError('Diga o valor, por exemplo 50, +10 ou mudo.')
+        elif body.tool=='reminder_create':
+            due=system.parse_when(body.value)
+            if not body.content.strip():raise ValueError('Diga o texto do lembrete.')
+            preview.update({'due':due.isoformat(),'text':body.content.strip()[:300]})
+        elif body.tool=='reminder_cancel':preview['target']=body.target or body.content
         elif body.tool=='undo':
             target=body.target or self.undo.last()
             if not target or not self.undo.available(target):raise ValueError('Não há ação recente da ALT para desfazer.')
@@ -404,6 +420,9 @@ class ToolService:
         try:
             result=await asyncio.to_thread(self.execute,ToolProposal(**entry[1]),entry[2],event)
             if isinstance(result,dict):
+                if entry[1]['tool']=='screen_look':
+                    self.captures[aid]=self.captures.pop('last',None)
+                    while len(self.captures)>3:self.captures.pop(next(iter(self.captures)))
                 if self.undo.record(aid,entry[1]['tool'],result):result['undo_available']=True
                 contexts=self.store.rows('SELECT conversation_id FROM action_context WHERE id=?',(aid,))
                 cid=contexts[0]['conversation_id'] if contexts else ''
@@ -490,6 +509,17 @@ class ToolService:
             os.startfile(str(path));return {'open_requested':str(path)}
         if body.tool=='run_command':return self.run_command(body.command,event)
         if body.tool=='undo':return self.undo.run(body.target,self.undo_setters())
+        if body.tool=='screen_look':
+            image,size=system.capture_screen()
+            # Kept in memory for the follow-up answer only; never written to the database.
+            self.captures['last']=image
+            return outcome('done',screen=list(size),notice='Tela capturada.')
+        if body.tool=='system_volume':return system.change_volume(body.value)
+        if body.tool=='system_brightness':return system.change_brightness(body.value)
+        if body.tool=='media_key':return system.media_key(body.value)
+        if body.tool=='reminder_create':return self.reminders.create(body.content,body.value)
+        if body.tool=='reminder_list':return self.reminders.list()
+        if body.tool=='reminder_cancel':return self.reminders.cancel(body.target or body.content)
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
             if body.app.startswith('catalog:'):return self.open_catalog(self.catalog_entry(body.app))

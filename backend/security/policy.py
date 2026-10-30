@@ -19,6 +19,8 @@ class Capabilities(BaseModel):
     downloads:Decision='ask'
     # Commands always show an approval card; 'deny' removes the tool entirely.
     shell:Decision='ask'
+    screen:Decision='ask'
+    reminders:Decision='ask'
 
 class OwnerPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -36,6 +38,8 @@ CAPABILITY = {
     'browser_back':'browser_navigation',
     'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control','windows_keys':'windows_control',
     'download_file':'downloads','run_command':'shell','undo':'files_write',
+    'screen_look':'screen','system_volume':'apps','system_brightness':'apps','media_key':'apps',
+    'reminder_create':'reminders','reminder_list':'reminders','reminder_cancel':'reminders',
 }
 
 class Policy:
