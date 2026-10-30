@@ -30,6 +30,7 @@ from backend.voice.text import SpeechText
 from backend.memory.suggestions import MemorySuggestions
 from backend.proactive import Proactive,PcAlerts
 from backend.routing import ModelRouter
+from backend.remote import RemoteManager
 from backend.tools import system
 from backend.tools.service import ToolProposal
 from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer
@@ -103,6 +104,8 @@ class ChatBody(ContextBody):
     # Set by the desktop when the automatic choice picked the model (shown with the reply, used to learn).
     route_band: Literal['','simples','médio','complexo'] = ''
     route_reason: str = Field(default='',max_length=200)
+    # Requests from the paired phone never run actions by themselves: every action becomes a card.
+    origin: Literal['desktop','phone'] = 'desktop'
 
 class Settings(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -175,7 +178,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     @asynccontextmanager
     async def lifespan(app):
         gpu.start();preload();app.state.voice_start();app.state.proactive.start();app.state.pc_alerts.start()
+        if store.settings().get('remote_enabled'):await app.state.remote.start_server()
         yield
+        await app.state.remote.stop_server()
         tasks.stop_all();engine.stop()
         evaluation=getattr(app.state,'evaluations',None)
         if evaluation and evaluation.task and not evaluation.task.done():
@@ -230,6 +235,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     proactive=Proactive(store,ollama,engine,tools,app.state.speaker,lambda text,title:system.toast(text,title,data_dir/'notifications'),lambda query:public_search(query))
     pc_alerts=PcAlerts(store.settings,lambda text,title:system.toast(text,title,data_dir/'notifications'),proactive.quiet)
     app.state.proactive=proactive;app.state.pc_alerts=pc_alerts;tools.routines=proactive.routines
+    remote=RemoteManager(app,token,store,data_dir);app.state.remote=remote
+    proactive.notify=lambda text,title:(system.toast(text,title,data_dir/'notifications'),remote_push(title,text))
     router=ModelRouter(store,ollama,anthropic,engine,gpu);app.state.router=router
     tools.memory_search=lambda query:search_memories(library,query)
     attachments=install_attachments(app,auth,store,data_dir)
@@ -302,6 +309,28 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     async def stop():
         engine.stop();tools.revoke();receipts.revoke_all();app.state.voice_loop.stop();store.audit('stop_all')
         return {'stopped':True}
+
+    def remote_push(title,text):
+        if store.settings().get('remote_enabled'):
+            try:asyncio.get_event_loop().create_task(remote.push.send_all(title,text))
+            except RuntimeError:pass
+
+    @app.get('/remote/status',dependencies=[Depends(auth)])
+    async def remote_status():return await asyncio.to_thread(remote.status)
+
+    @app.post('/remote/enable',dependencies=[Depends(auth)])
+    async def remote_enable():
+        if engine.stopped:raise PermissionError('Ações suspensas.')
+        return await remote.enable()
+
+    @app.post('/remote/disable',dependencies=[Depends(auth)])
+    async def remote_disable():return await remote.disable()
+
+    @app.post('/remote/pair',dependencies=[Depends(auth)])
+    async def remote_pair():return remote.pair()
+
+    @app.delete('/remote/devices/{did}',dependencies=[Depends(auth)])
+    async def remote_revoke(did:str):remote.devices.revoke(did);return {'ok':True}
 
     @app.post('/chat/route',dependencies=[Depends(auth)])
     async def chat_route(request:Request):
@@ -658,7 +687,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                 # Said at once, before the action finishes (Mark LVI's instant acknowledgment).
                                 if speech:speaker.say(acknowledgement(action))
                                 # A screenshot only goes to a cloud model through the card, never by itself.
-                                if tools.can_auto(action,cid) and not (action.tool=='screen_look' and body.model.startswith('cloud:')):
+                                if body.origin!='phone' and tools.can_auto(action,cid) and not (action.tool=='screen_look' and body.model.startswith('cloud:')):
                                     result=await tools.approve(proposal['id'])
                                     yield line({'type':'tool_result','action_id':proposal['id'],'result':result['result']})
                                     if isinstance(result['result'],dict) and result['result'].get('taint'):yield line({'type':'notice','message':result['result']['taint']})

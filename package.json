@@ -63,6 +63,16 @@
       {
         "from": "assets/tokenizers",
         "to": "backend/tokenizers"
+      },
+      {
+        "from": "apps/mobile",
+        "to": "mobile",
+        "filter": [
+          "*.html",
+          "*.js",
+          "*.webmanifest",
+          "*.png"
+        ]
       }
     ],
     "win": {

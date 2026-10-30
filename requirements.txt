@@ -13,3 +13,6 @@ faster-whisper>=1.2,<2
 pycaw>=20260927; sys_platform == "win32"
 kokoro-onnx>=0.6,<0.7
 sounddevice>=0.5,<0.6
+segno>=1.6,<2
+http-ece>=1.2,<2
+py-vapid>=1.9,<2

@@ -601,3 +601,20 @@ body.full-access .composer {
 .routine-form input {
   flex: 1 1 180px;
 }
+
+/* Celular: pairing QR code. */
+.pairing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  margin: 10px 0;
+}
+.pairing img {
+  border-radius: 10px;
+  background: #fff;
+  padding: 6px;
+}
+.pairing p {
+  flex: 1 1 220px;
+}

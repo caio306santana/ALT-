@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ALT">
+<meta name="theme-color" content="#0b0b12">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>ALT</title>
+<style>
+:root{--bg:#0b0b12;--panel:#151522;--line:#ffffff1f;--text:#ece9f3;--muted:#a19cb4;--accent:#ff2a6d;--cyan:#00c9f5;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+header b{color:var(--accent);letter-spacing:1px}
+header .grow{flex:1;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.5}
+#messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word}
+.msg.user{align-self:flex-end;background:#2a1830;border:1px solid #ff2a6d55}
+.msg.assistant{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+.card{align-self:stretch;border:1px solid #ffc35c66;border-radius:14px;padding:10px 12px;background:#ffc35c10}
+.card p{margin:4px 0 8px;color:var(--muted);font-size:14px}
+.card .row{display:flex;gap:8px}
+.notice{align-self:center;color:var(--muted);font-size:13px;text-align:center}
+footer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);align-items:flex-end}
+textarea{flex:1;resize:none;font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;max-height:120px}
+#mic.on{background:var(--accent);border-color:var(--accent)}
+#pair{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:24px;text-align:center}
+#pair input{font:inherit;font-size:22px;letter-spacing:4px;text-transform:uppercase;text-align:center;width:12ch;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <b>ALT</b><span class="grow" id="status">conectando ao seu PC…</span>
+  <button id="speak" title="Ouvir respostas">🔈</button>
+  <button id="new" title="Nova conversa">＋</button>
+</header>
+<section id="pair" hidden>
+  <h2>Parear este iPhone</h2>
+  <p>No PC: Controle e regras → Celular → Parear. Leia o QR code com a câmera ou digite o código.</p>
+  <input id="code" maxlength="8" autocomplete="one-time-code" placeholder="CÓDIGO">
+  <button class="primary" id="pairButton">Parear</button>
+  <p class="notice" id="pairMessage"></p>
+</section>
+<main id="messages" hidden></main>
+<footer id="composer" hidden>
+  <button id="photo" title="Anexar foto">📷</button>
+  <input id="file" type="file" accept="image/*" hidden>
+  <textarea id="input" rows="1" placeholder="Mensagem para a ALT"></textarea>
+  <button id="mic" title="Segure para falar">🎤</button>
+  <button class="primary" id="send">➤</button>
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>

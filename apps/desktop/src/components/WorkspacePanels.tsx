@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Model, Conversation } from "../../../../packages/shared-types";
 import { ChatActionCard, type ChatAction } from "./ChatActionCard";
+import { RemotePanel } from "./RemotePanel";
 const api = <T,>(method: string, path: string, body?: unknown) =>
   window.alt.request<T>(method, path, body);
 type Feedback = {
@@ -216,6 +217,7 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
         <pre className="prompt-preview">{state.effective_prompt}</pre>
       </details>
       <RememberedApprovals onError={onError} />
+      <RemotePanel onError={onError} />
       {fullAccess ? (
         <>
           <h3>

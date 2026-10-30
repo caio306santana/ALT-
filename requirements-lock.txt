@@ -10,6 +10,7 @@ click==8.5.0
 cloudpickle==3.1.2
 colorama==0.4.6
 comtypes==1.4.17
+cryptography==50.0.2
 ctranslate2==4.8.4
 dlinfo==2.0.0
 espeakng-loader==0.2.4
@@ -20,6 +21,7 @@ flatbuffers==25.12.19
 fsspec==2026.9.0
 h11==0.16.0
 hf-xet==1.7.1
+http_ece==1.2.1
 httpcore2==2.16.0
 httpcore==1.0.9
 httpx2==2.16.0
@@ -40,6 +42,7 @@ Pillow==12.3.0
 pluggy==1.7.0
 protobuf==7.36.2
 psutil==7.2.2
+py-vapid==1.9.6
 pycaw==20260927
 pycparser==3.12
 pydantic==2.14.1
@@ -55,6 +58,7 @@ pywin32-ctypes==0.2.3
 pywin32==312
 pywinauto==0.6.9
 PyYAML==6.0.3
+segno==1.6.6
 setuptools==84.2.1
 six==1.17.0
 sounddevice==0.5.6

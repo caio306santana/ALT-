@@ -1,3 +1,7 @@
-# Futuro cliente iPhone 13
+# ALT no iPhone (PWA)
 
-Cliente remoto a avaliar em React Native/Expo. Reusar contratos `packages/shared-types` e tokens visuais. Qwen roda no Windows. Antes de implementação: identidade forte por dispositivo, TLS, conectividade privada/VPN, consentimento de contexto e autorização remota por escopo. Não expor a porta 11434 ou a API local atual na internet. Build iOS precisa de ferramentas Apple compatíveis. Funcionalidades e critérios no roadmap principal.
+Página leve, sem build, servida pelo gateway do backend (`backend/remote.py`, `127.0.0.1:47823`). O Tailscale a publica só dentro da tailnet do dono, com HTTPS real. O passo a passo para o usuário está em `docs/IPHONE.md`.
+
+- `index.html` e `app.js`: chat, microfone (PCM de 16 kHz para o Whisper do PC), foto (JPEG de até 1344 px), cartões de aprovação, voz da Dora tocada no celular e notificações.
+- `sw.js`: guarda só a casca do app; o `/api` sempre vai ao PC. Mostra as notificações.
+- Nada roda sozinho a partir do celular. Comandos do PowerShell e gravações críticas só são aprovados no PC.
