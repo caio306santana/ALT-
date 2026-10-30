@@ -93,11 +93,27 @@ TOAST=r'''$data = Get-Content -Raw -Encoding UTF8 -LiteralPath $args[0] | Conver
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
 $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-$xml.LoadXml('<toast scenario="reminder"><visual><binding template="ToastGeneric"><text>ALT · lembrete</text><text></text></binding></visual><actions><action content="OK" arguments="ok" activationType="system"/></actions></toast>')
+$xml.LoadXml('<toast scenario="reminder"><visual><binding template="ToastGeneric"><text></text><text></text></binding></visual><actions><action content="OK" arguments="ok" activationType="system"/></actions></toast>')
+$title = if ($data.title) { $data.title } else { 'ALT · lembrete' }
+$xml.GetElementsByTagName('text').Item(0).InnerText = $title
 $xml.GetElementsByTagName('text').Item(1).InnerText = $data.text
 $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
 '''
+
+def toast(text,title='ALT',directory=None):
+    """A Windows notification now (briefings, check-ins, alerts). The text goes through a JSON file."""
+    if os.name!='nt':return False
+    import tempfile
+    folder=Path(directory) if directory else Path(tempfile.mkdtemp(prefix='alt-toast-'))
+    folder.mkdir(parents=True,exist_ok=True)
+    script=folder/'toast.ps1';script.write_text(TOAST,encoding='utf-8-sig')
+    data=folder/f'toast-{uuid4().hex[:8]}.json';data.write_text(json.dumps({'text':text[:600],'title':title[:60]},ensure_ascii=False),encoding='utf-8')
+    try:
+        done=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(script),str(data)],
+            capture_output=True,timeout=20,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        return done.returncode==0
+    finally:data.unlink(missing_ok=True)
 
 def parse_when(value,clock=datetime.now):
     """ISO local time ('2026-10-30T15:00') or 'em 10 minutos' / 'em 2 horas'."""

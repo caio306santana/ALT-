@@ -17,6 +17,7 @@ KEY_WORDS=('atalho','tecla','aperte','pressione','ctrl','alt+','fecha a aba','fe
 SCREEN_WORDS=('minha tela','na tela','da tela','olha isso','olhe isso','o que tem aqui','o que aparece','print da tela','lê isso aqui','leia isso aqui','o que estou vendo')
 VOLUME_WORDS=('volume','som ','mudo','silencia','desmut','aumenta o som','abaixa o som','mais alto','mais baixo')
 MEDIA_WORDS=('pausa','pause','despausa','próxima música','proxima musica','música anterior','musica anterior','pula a música','pula essa','volta a música','toca a música','continua a música')
+ROUTINE_WORDS=('rotina','todo dia','todos os dias','toda manhã','toda noite','toda segunda','toda terça','toda quarta','toda quinta','toda sexta','todo sábado','todo domingo','a cada ')
 MEMORY_WORDS=('lembra','lembrar','você sabe','voce sabe','vc sabe','sobre mim','o que eu te disse','o que eu falei','anotou','minhas preferências','meu aniversário')
 REMINDER_WORDS=('lembre','lembrete','me avise','me avisa','me lembra','alarme','avisa às','avise às')
 
@@ -36,7 +37,8 @@ BRIEF={
     'screen_look':'captura a tela do usuário para você ver (sem argumentos)','system_volume':'muda o volume (value: 0-100, +10, -10, mudo, desmutar)',
     'system_brightness':'muda o brilho do monitor (value: 0-100, +10, -10)','media_key':'tocar/pausar ou trocar de música (value: playpause, next, previous)',
     'reminder_create':'cria um lembrete que toca mesmo com a ALT fechada (content: texto, value: 2026-10-30T15:00 ou "em 10 minutos")',
-    'reminder_list':'lista os lembretes','memory_recall':'procura nas memórias salvas do usuário (query)','reminder_cancel':'cancela um lembrete (target: id ou parte do texto)',
+    'reminder_list':'lista os lembretes','memory_recall':'procura nas memórias salvas do usuário (query)',
+    'routine_create':'agenda uma rotina que roda sozinha (content: o que fazer, value: "diário 08:00", "seg,qua 18:00" ou "a cada 60 min", target: nome)','routine_list':'lista as rotinas','reminder_cancel':'cancela um lembrete (target: id ou parte do texto)',
     'calculate':'calcula uma expressão (expression)','undo':'desfaz a última gravação ou download da ALT (target vazio = última)','browser_open':'abre site no navegador ALT (url)','browser_read':'lê a página do navegador ALT',
     'browser_back':'volta uma página no navegador ALT','browser_click':'clica no navegador ALT (target, snapshot_id)',
     'browser_type':'digita no navegador ALT (target, snapshot_id, content)',
@@ -90,6 +92,7 @@ def route(content,status):
     if level>=2 and 'brilho' in text:names+=['system_brightness']
     if level>=2 and any(word in text for word in MEDIA_WORDS):names+=['media_key']
     if any(word in text for word in MEMORY_WORDS):names+=['memory_recall']
+    if level>=2 and any(word in text for word in ROUTINE_WORDS):names+=['routine_create','routine_list']
     if level>=2 and any(word in text for word in REMINDER_WORDS):
         names+=['reminder_create','reminder_list']
         if any(word in text for word in ('cancel','apaga','remove','tira o lembrete')):names+=['reminder_cancel']
@@ -116,7 +119,7 @@ def build_spec(names,browser,windows):
     if 'run_command' in names:relevant.add('command')
     if 'undo' in names:relevant.add('target')
     if any(n in names for n in ('system_volume','system_brightness','media_key','reminder_create')):relevant.add('value')
-    if 'reminder_create' in names:relevant.add('content')
+    if 'reminder_create' in names or 'routine_create' in names:relevant.update(('content','value','target'))
     if 'reminder_cancel' in names:relevant.update(('target','content'))
     if windows:relevant.update(('window_id','target','snapshot_id','content'))
     if 'windows_keys' in names:relevant.add('keys')

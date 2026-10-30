@@ -586,3 +586,18 @@ body.full-access .composer {
   align-items: center;
   margin: 6px 0;
 }
+
+/* Rotinas page. */
+.routines-page section {
+  margin-bottom: 22px;
+}
+.inline-fields,
+.routine-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+.routine-form input {
+  flex: 1 1 180px;
+}

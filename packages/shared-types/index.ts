@@ -73,6 +73,17 @@ export interface Preferences {
   voice_ptt?: string;
   wake_mode?: "off" | "hey_jarvis" | "ei_alt";
   voice_replies?: boolean;
+  memory_suggestions?: boolean;
+  briefing_enabled?: boolean;
+  briefing_time?: string;
+  weather_city?: string;
+  briefing_voice?: boolean;
+  proactive_enabled?: boolean;
+  proactive_daily_cap?: number;
+  quiet_start?: string;
+  quiet_end?: string;
+  topics?: string[];
+  pc_alerts?: boolean;
 }
 export interface Personality {
   name: string;

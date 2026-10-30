@@ -21,6 +21,7 @@ import {
   Pause,
   Play,
   Timer,
+  AlarmClock,
   Trash2,
   Search,
   Power,
@@ -66,6 +67,7 @@ import {
 import { ApprovalMenu } from "./components/ApprovalMenu";
 import { VoiceButton, type VoiceState } from "./components/VoiceButton";
 import { VoicePanel } from "./components/VoicePanel";
+import { RoutinesPanel } from "./components/RoutinesPanel";
 import { AttachmentChips, upload, type Attachment } from "./components/Attachments";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import { PerformanceDetails } from "./components/PerformanceDetails";
@@ -118,7 +120,8 @@ type View =
   | "tools"
   | "profile"
   | "browser"
-  | "tasks";
+  | "tasks"
+  | "routines";
 // One place for every screen's name, icon, title and one-line description.
 const VIEWS: Record<
   View,
@@ -130,6 +133,12 @@ const VIEWS: Record<
     icon: ListChecks,
     title: "Tarefas",
     hint: "Peça um objetivo; a ALT planeja, você revisa e ela executa passo a passo.",
+  },
+  routines: {
+    label: "Rotinas",
+    icon: AlarmClock,
+    title: "Rotinas",
+    hint: "Resumo da manhã, lembretes, rotinas e quando a ALT pode falar primeiro.",
   },
   memory: {
     label: "Memória",
@@ -178,6 +187,7 @@ const VIEWS: Record<
 const NAV: View[] = [
   "chat",
   "tasks",
+  "routines",
   "memory",
   "tools",
   "browser",
@@ -1645,6 +1655,9 @@ export default function App() {
           )}
           {view === "security" && (
             <OwnerControlPanel notify={setNotice} onError={report} />
+          )}
+          {view === "routines" && (
+            <RoutinesPanel prefs={prefs} update={update} notify={setNotice} onError={report} />
           )}
           {view === "tasks" && (
             <TasksPanel

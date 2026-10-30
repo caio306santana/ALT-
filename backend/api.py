@@ -28,6 +28,8 @@ from backend.monitoring.gpu import GpuWatch,SpeedReference,light_notice
 from backend.tools.outcome import chat_line,note as outcome_note,untrusted
 from backend.voice.text import SpeechText
 from backend.memory.suggestions import MemorySuggestions
+from backend.proactive import Proactive,PcAlerts
+from backend.tools import system
 from backend.tools.service import ToolProposal
 from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer
 from backend.desktop import DesktopBridge
@@ -126,6 +128,17 @@ class Settings(BaseModel):
     learned_examples:bool=False
     # Facts the ALT notices go to a review list; off by default.
     memory_suggestions:bool=False
+    # Proactive features, all off by default.
+    briefing_enabled:bool=False
+    briefing_time:str=Field(default='08:00',pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    weather_city:str=Field(default='',max_length=80)
+    briefing_voice:bool=True
+    proactive_enabled:bool=False
+    proactive_daily_cap:int=Field(default=4,ge=1,le=12)
+    quiet_start:str=Field(default='22:00',pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    quiet_end:str=Field(default='08:00',pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+    topics:list[str]=Field(default_factory=list,max_length=10)
+    pc_alerts:bool=False
     voice_engine:Literal['dora','maria']='dora'
     voice_speed:float=Field(default=1.05,ge=.8,le=1.4)
     voice_input:str=Field(default='',max_length=120)
@@ -155,7 +168,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @asynccontextmanager
     async def lifespan(app):
-        gpu.start();preload();app.state.voice_start()
+        gpu.start();preload();app.state.voice_start();app.state.proactive.start();app.state.pc_alerts.start()
         yield
         tasks.stop_all();engine.stop()
         evaluation=getattr(app.state,'evaluations',None)
@@ -207,6 +220,10 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     maintenance=Maintenance(store,data_dir,engine,tools)
     install_voice(app,auth,engine,store,data_dir,tools.catalog.cached_names)
     suggestions=MemorySuggestions(store,library,engine,ollama);app.state.suggestions=suggestions
+    from backend.tools.research import search_web as public_search
+    proactive=Proactive(store,ollama,engine,tools,app.state.speaker,lambda text,title:system.toast(text,title,data_dir/'notifications'),lambda query:public_search(query))
+    pc_alerts=PcAlerts(store.settings,lambda text,title:system.toast(text,title,data_dir/'notifications'),proactive.quiet)
+    app.state.proactive=proactive;app.state.pc_alerts=pc_alerts;tools.routines=proactive.routines
     tools.memory_search=lambda query:search_memories(library,query)
     attachments=install_attachments(app,auth,store,data_dir)
 
@@ -278,6 +295,37 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     async def stop():
         engine.stop();tools.revoke();receipts.revoke_all();app.state.voice_loop.stop();store.audit('stop_all')
         return {'stopped':True}
+
+    @app.get('/routines',dependencies=[Depends(auth)])
+    async def routines_list():return proactive.routines.list()
+
+    @app.post('/routines',dependencies=[Depends(auth)])
+    async def routines_create(request:Request):
+        data=json.loads(await request.body() or b'{}')
+        return proactive.routines.create(str(data.get('name',''))[:80],str(data.get('schedule',''))[:80],str(data.get('prompt',''))[:1000])
+
+    @app.put('/routines/{rid}',dependencies=[Depends(auth)])
+    async def routines_toggle(rid:str,request:Request):
+        proactive.routines.toggle(rid,bool(json.loads(await request.body() or b'{}').get('enabled')));return proactive.routines.get(rid)
+
+    @app.delete('/routines/{rid}',dependencies=[Depends(auth)])
+    async def routines_delete(rid:str):proactive.routines.delete(rid);return {'ok':True}
+
+    @app.post('/routines/{rid}/run',dependencies=[Depends(auth)])
+    async def routines_run(rid:str):
+        if engine.stopped:raise PermissionError('Ações suspensas.')
+        return {'text':await proactive.run_routine(proactive.routines.get(rid))}
+
+    @app.post('/briefing/run',dependencies=[Depends(auth)])
+    async def briefing_run():
+        if engine.stopped:raise PermissionError('Ações suspensas.')
+        return {'text':await proactive.briefing(force=True)}
+
+    @app.get('/reminders',dependencies=[Depends(auth)])
+    async def reminders_list():return tools.reminders.list()['reminders']
+
+    @app.delete('/reminders/{rid}',dependencies=[Depends(auth)])
+    async def reminders_cancel(rid:str):return await asyncio.to_thread(tools.reminders.cancel,rid)
 
     @app.get('/memories/suggestions',dependencies=[Depends(auth)])
     async def memory_suggestions():return suggestions.pending()
