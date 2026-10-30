@@ -145,7 +145,7 @@ def test_tool_calculator_is_not_a_python_executor(tmp_path):
         client.put('/permissions',json={'level':2})
         assert client.post('/tools/approve/'+proposal['id']).json()['result']['value']==310
 
-def test_game_mode_stops_and_unloads_only_selected_local_model(tmp_path):
+def test_game_mode_unloads_the_model_and_keeps_chat_on_the_processor(tmp_path):
     app,local,_,client=fixture_client(tmp_path)
     unloaded=[]
     async def unload(model):unloaded.append(model)
@@ -155,9 +155,12 @@ def test_game_mode_stops_and_unloads_only_selected_local_model(tmp_path):
         client.put('/permissions',json={'level':2})
         result=client.post('/game/enable').json()
         assert result['model_unloaded'] and unloaded==['fixture:4b']
-        assert client.get('/health').json()['stopped']
+        # Chat continues on the processor: not stopped, but actions are revoked.
+        assert not client.get('/health').json()['stopped']
         assert client.get('/health').json()['game_mode']
         assert client.get('/permissions').json()['level']==1
+        cid=conversation(client);send(client,cid)
+        assert client.get('/system').json()['performance']['options']['num_gpu']==0
         client.post('/game/disable')
         assert not client.get('/health').json()['stopped']
 

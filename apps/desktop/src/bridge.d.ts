@@ -70,6 +70,9 @@ declare global {
       authorizeWindow(candidateId: string, title: string): Promise<{ id: string } | null>;
       exportBackup(): Promise<{ saved: boolean; path?: string; bytes?: number }>;
       restoreBackup(): Promise<{ restored: boolean; restart_required: boolean } | null>;
+      transcribe(pcm: Uint8Array): Promise<{ text: string; seconds: number; audio_seconds: number }>;
+      chooseFiles(): Promise<{ name: string; data: Uint8Array }[]>;
+      attach(name: string, data: Uint8Array): Promise<{ id: string; name: string; kind: "image" | "document"; chars: number }>;
       importDocument(
         projectId: string,
       ): Promise<{ id: string; chunks?: number; name?: string; duplicate: boolean } | null>;

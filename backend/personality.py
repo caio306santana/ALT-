@@ -7,9 +7,14 @@ import re
 # rule, so the app adds an explicit instruction for that turn.
 DELICATE=re.compile(r'(?i)\b(perdi (meu|minha|o|a)|fui demitid|demiss[ãa]o|desempregad|luto|faleceu|morreu|falecimento|abalad|arrasad|deprimid|depress[ãa]o|ansios|crise de|desabaf|sozinh|chorand|chorei|sofrend|n[ãa]o aguento|me sinto (mal|p[ée]ssim|perdid)|t[ôo] mal|estou mal|termin(ei|ou) (o|meu|comigo))')
 
+# Questions about the app itself ("você tem game mode?"): small models invent answers without these facts.
+APP_QUESTION=re.compile(r'(?i)(game ?mode|modo jogo|acesso total|stop all|permiss|microfone|\bvoz\b|anex|clipe|projeto|recurso|configura|você tem|vc tem|voce tem|consegue)')
+APP_FACTS='\n'+'Recursos do aplicativo ALT (responda sobre eles com estes fatos): modos de permissão Somente conversar, Pedir aprovação, Usar minhas regras e Acesso total (botão ao lado da caixa de texto); STOP ALL ACTIONS corta tudo; GAME MODE tira o modelo da placa de vídeo e a conversa continua pelo processador, mais lenta, com ações desligadas; microfone para falar com voz local; clipe, colar ou arrastar para anexar imagens, PDF, Word e texto; Projetos guardam documentos para busca.'+'\n'
+
 def situational_guidance(text):
-    if not DELICATE.search(text or ''):return ''
-    return ('\nMOMENTO DELICADO DETECTADO NESTA MENSAGEM: acolha com calor e simplicidade. Sem ironia, sem humor, sem lições, '
+    extra=APP_FACTS if APP_QUESTION.search(text or '') else ''
+    if not DELICATE.search(text or ''):return extra
+    return extra+('\nMOMENTO DELICADO DETECTADO NESTA MENSAGEM: acolha com calor e simplicidade. Sem ironia, sem humor, sem lições, '
             'sem questionar premissas ou decisões da pessoa e sem perguntar "por que você achava...". Reconheça o sentimento, '
             'ofereça presença e, se fizer sentido, uma única pergunta gentil ou um pequeno passo prático. Respeite se a pessoa só quer falar.\n')
 

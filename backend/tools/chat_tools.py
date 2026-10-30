@@ -7,7 +7,12 @@ HINTS={
     'url':'Endereço do site; pode ser só o domínio, como youtube.com.',
     'query':'Termos de pesquisa.',
     'command':'Comando completo do PowerShell.',
+    'keys':'Atalho de teclado, ex.: ctrl+t, ctrl+w, alt+left, f5, pagedown*3, space.',
 }
+
+# Shortcut-style requests: tabs, scrolling, reload, media keys.
+KEY_WORDS=('atalho','tecla','aperte','pressione','ctrl','alt+','fecha a aba','feche a aba','fechar aba','próxima aba','proxima aba','aba anterior',
+    'role ','rola ','rolar','desça','desce','suba a página','recarreg','atualize a página','f5','pause','pausa','próxima música','proxima musica','volume','tela cheia')
 
 def tool_spec(content,status):
     text=content.lower()
@@ -30,14 +35,16 @@ def tool_spec(content,status):
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
     if any(word in text for word in ('baixe','baixar','download')):names+=['download_file']
     if level>=2 and any(word in text for word in ('comando','powershell','terminal','execute','executar','rode ','rodar','instale','instalar','winget','ipconfig')):names+=['run_command']
-    windows=(status.get('windows') or level==4) and any(word in text for word in ('janela','aplicativo aberto','programa aberto','no app','botão','botao','campo','clique','clicar','digite','escreva'))
+    keys=any(word in text for word in KEY_WORDS)
+    windows=(status.get('windows') or level==4) and (keys or any(word in text for word in ('janela','aplicativo aberto','programa aberto','no app','botão','botao','campo','clique','clicar','digite','escreva')))
     if windows:
         names+=['windows_read']
         if any(word in text for word in ('clique','clicar','aperte','pressione','marque','selecione')):names+=['windows_invoke']
         if any(word in text for word in ('digite','escreva','preencha')):names+=['windows_type']
+        if keys:names+=['windows_keys']
     if not names:return None
     names=list(dict.fromkeys(names))
-    schema=ToolProposal.model_json_schema();properties={key:value for key,value in schema['properties'].items() if key in {'tool','query','url','scope_id','path','content','app','expression','target','snapshot_id','window_id','command'}}
+    schema=ToolProposal.model_json_schema();properties={key:value for key,value in schema['properties'].items() if key in {'tool','query','url','scope_id','path','content','app','expression','target','snapshot_id','window_id','command','keys'}}
     relevant={'tool'}
     if any(name in names for name in ('web_search','read_webpage','open_url')):relevant.update(('query','url'))
     if any(name in names for name in ('list_files','find_files','read_text','write_text','open_folder')):relevant.update(('scope_id','path','content','query'))
@@ -48,6 +55,7 @@ def tool_spec(content,status):
     if 'download_file' in names:relevant.update(('url','path','scope_id'))
     if 'run_command' in names:relevant.add('command')
     if windows:relevant.update(('window_id','target','snapshot_id','content'))
+    if 'windows_keys' in names:relevant.add('keys')
     properties={key:{**{k:v for k,v in value.items() if k in ('type','enum')},**({'description':HINTS[key]} if key in HINTS else {})} for key,value in properties.items() if key in relevant}
     properties['tool']={'type':'string','enum':names}
     description='Executa uma ação no computador; o aplicativo aplica permissões. Só afirme execução com resultado.'
@@ -56,4 +64,5 @@ def tool_spec(content,status):
     if 'run_command' in names:description+=' run_command executa PowerShell depois da aprovação do usuário.'
     if browser:description+=' Clique/digitação no navegador ALT exigem target e snapshot_id observados em browser_read.'
     if windows:description+=' Em janelas, leia com windows_read (window_id pode ser o título ou o programa) e use window_id, target e snapshot_id observados.'
+    if 'windows_keys' in names:description+=' windows_keys envia um atalho à janela (window_id = título ou programa, ex.: chrome) sem precisar ler antes.'
     return [{'type':'function','function':{'name':'alt_propose_action','description':description,'parameters':{'type':'object','properties':properties,'required':['tool'],'additionalProperties':False}}}]

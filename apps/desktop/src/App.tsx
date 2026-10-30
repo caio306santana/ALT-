@@ -8,7 +8,6 @@ import {
   Shield,
   Plus,
   ArrowUp,
-  Mic,
   Paperclip,
   Minus,
   Square,
@@ -65,6 +64,8 @@ import {
   VerificationNote,
 } from "./components/AgentPanels";
 import { ApprovalMenu } from "./components/ApprovalMenu";
+import { VoiceButton, speak, stopSpeaking } from "./components/VoiceButton";
+import { AttachmentChips, upload, type Attachment } from "./components/Attachments";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import {
   OwnerControlPanel,
@@ -228,6 +229,8 @@ export default function App() {
     [cid, setCid] = useState(""),
     [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(""),
+    [attachments, setAttachments] = useState<Attachment[]>([]),
+    [attaching, setAttaching] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -468,8 +471,12 @@ export default function App() {
   async function send(
     consentReceipt = "",
     analysis?: { id: string; content: string },
+    spoken?: string,
   ) {
-    const text = analysis?.content || input.trim();
+    const files = analysis ? [] : attachments;
+    const text = analysis?.content || spoken || input.trim() || (files.length ? "Veja o anexo." : "");
+    // A spoken request gets a spoken answer.
+    let reply = "";
     if (!text || busy) return;
     if (stopped) {
       setError("Retome as ações antes de enviar uma mensagem.");
@@ -497,6 +504,7 @@ export default function App() {
       const estimate = await api<ContextEstimate>("POST", "/chat/estimate", {
         conversation_id: id, model: prefs.model, content: text,
         memory_ids: memoryIds, tool_result_id: analysis?.id || "",
+        attachment_ids: files.map((f) => f.id),
       });
       setContextEstimate(estimate);
       if (!estimate.fits) throw new Error(estimate.reason || "Este envio excede o contexto disponível.");
@@ -510,6 +518,7 @@ export default function App() {
             content: text,
             memory_ids: memoryIds,
             tool_result_id: analysis?.id || "",
+            attachment_ids: files.map((f) => f.id),
           }),
         );
         return;
@@ -547,9 +556,13 @@ export default function App() {
           memory_ids: memoryIds,
           consent_receipt: consentReceipt,
           tool_result_id: analysis?.id || "",
+          attachment_ids: files.map((f) => f.id),
         },
         (event: StreamEvent) => {
-          if (event.type === "start") accepted = true;
+          if (event.type === "start") {
+            accepted = true;
+            if (files.length) setAttachments((old) => old.filter((a) => !files.includes(a)));
+          }
           if (event.type === "tool_proposal" && event.proposal)
             setChatActions((old) => [
               ...old,
@@ -563,6 +576,9 @@ export default function App() {
                   : action,
               ),
             );
+          if (event.type === "delta") reply += event.text || "";
+          if (event.type === "done" && spoken && event.status === "complete")
+            speak(reply.replace(/\n?(Ferramenta concluída|Preparei uma proposta)[^\n]*/g, "").trim() || "Pronto.");
           if (event.type === "delta")
             setMessages((old) =>
               old.map((m) =>
@@ -620,7 +636,19 @@ export default function App() {
       }
     }
   }
+  async function attachFiles(files: { name: string; blob: Blob }[]) {
+    if (!files.length) return;
+    setAttaching(true);
+    try {
+      for (const file of files.slice(0, 4 - attachments.length)) {
+        const added = await upload(file.name, file.blob);
+        setAttachments((old) => (old.length < 4 ? [...old, added] : old));
+      }
+    } catch (e) { report(e); }
+    finally { setAttaching(false); }
+  }
   async function stopAll() {
+    stopSpeaking();
     await api("POST", "/actions/stop");
     setStopped(true);
     setNotice("Ações suspensas. Respostas parciais serão preservadas.");
@@ -1117,7 +1145,13 @@ export default function App() {
                     e.preventDefault();
                     send();
                   }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    attachFiles([...e.dataTransfer.files].map((f) => ({ name: f.name, blob: f })));
+                  }}
                 >
+                  <AttachmentChips items={attachments} onRemove={(id) => setAttachments((old) => old.filter((a) => a.id !== id))} />
                   <textarea
                     ref={textarea}
                     aria-label="Mensagem para a ALT-AI"
@@ -1128,6 +1162,12 @@ export default function App() {
                     }
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onPaste={(e) => {
+                      const files = [...e.clipboardData.files];
+                      if (!files.length) return;
+                      e.preventDefault();
+                      attachFiles(files.map((f, i) => ({ name: f.name || `colado-${i + 1}.png`, blob: f })));
+                    }}
                     onKeyDown={(e) => {
                       if (
                         e.key === "Enter" &&
@@ -1145,20 +1185,23 @@ export default function App() {
                     <div>
                       <button
                         type="button"
-                        disabled
-                        title="Anexos · fase futura"
-                        aria-label="Anexos indisponíveis"
+                        disabled={stopped || busy || attaching || attachments.length >= 4}
+                        title={attaching ? "Anexando…" : "Anexar imagem, PDF, Word ou texto (ou cole/arraste no chat)"}
+                        aria-label="Anexar arquivos"
+                        onClick={async () => {
+                          try {
+                            const chosen = await window.alt.chooseFiles();
+                            attachFiles(chosen.map((f) => ({ name: f.name, blob: new Blob([f.data as BlobPart]) })));
+                          } catch (e) { report(e); }
+                        }}
                       >
                         <Paperclip size={18} />
                       </button>
-                      <button
-                        type="button"
-                        disabled
-                        title="Voz local · fase futura"
-                        aria-label="Voz indisponível"
-                      >
-                        <Mic size={18} />
-                      </button>
+                      <VoiceButton
+                        disabled={stopped || busy || !loaded}
+                        onText={(text) => send("", undefined, text)}
+                        onError={report}
+                      />
                       <button
                         type="button"
                         title="Iniciar 25 minutos de foco"
@@ -1189,7 +1232,7 @@ export default function App() {
                         className="send"
                         aria-label="Enviar mensagem"
                         disabled={
-                          !input.trim() || !selected || stopped || !loaded || contextEstimate?.fits === false
+                          (!input.trim() && !attachments.length) || attaching || !selected || stopped || !loaded || contextEstimate?.fits === false
                         }
                       >
                         <ArrowUp size={20} />
@@ -1489,8 +1532,9 @@ export default function App() {
                     <div>
                       <strong>GAME MODE</strong>
                       <p>
-                        Suspende tarefas, revoga permissões e tenta descarregar
-                        o modelo local selecionado. A janela será ocultada.
+                        Tira o modelo da placa de vídeo para o jogo rodar
+                        liso. Você continua conversando pelo processador
+                        (mais lento); ações ficam desligadas.
                       </p>
                     </div>
                     <button
@@ -1500,7 +1544,7 @@ export default function App() {
                           .gameMode(!gameMode)
                           .then((result) => {
                             setGameMode(result.enabled);
-                            setStopped(result.enabled);
+                            setStopped(false);
                             setNotice(result.message);
                           })
                           .catch(report)
@@ -1989,6 +2033,13 @@ export default function App() {
                 Estimativa conservadora: US${" "}
                 {cloudPreview.estimated_usd.toFixed(5)} pelos preços que você
                 configurou.
+              </p>
+            )}
+            {!!cloudPreview.tools_offered?.length && (
+              <p>
+                Ferramentas oferecidas ao modelo:{" "}
+                {cloudPreview.tools_offered.join(", ")}. As ações seguem o
+                mesmo modo de permissão da ALT local.
               </p>
             )}
             <p className="setting-note">

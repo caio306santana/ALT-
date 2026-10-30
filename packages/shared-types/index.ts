@@ -87,6 +87,7 @@ export interface CloudPreview {
   consent_receipt: string;
   estimated_usd: number | null;
   billing_notice: string;
+  tools_offered?: string[];
   context_truncated: boolean;
   tool_result_truncated?: boolean;
   recalled_memories?: {id:string;title:string;kind?:string;score?:number|null;mode?:string}[];

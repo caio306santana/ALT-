@@ -34,7 +34,7 @@ CAPABILITY = {
     'open_url':'internet', 'browser_open':'browser_navigation', 'browser_read':'browser_navigation',
     'browser_click':'browser_interaction', 'browser_type':'browser_interaction',
     'browser_back':'browser_navigation',
-    'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control',
+    'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control','windows_keys':'windows_control',
     'download_file':'downloads','run_command':'shell',
 }
 

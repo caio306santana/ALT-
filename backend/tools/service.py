@@ -19,7 +19,7 @@ from backend.memory.store import now
 from backend.tools.research import read_page,search_web,download
 from backend.memory.library import reject_secrets
 from backend.security.policy import Policy
-from backend.tools.windows_ui import WindowsUI
+from backend.tools.windows_ui import WindowsUI,parse_keys,CLOSING
 from backend.tools.app_catalog import AppCatalog,normalize
 import fnmatch
 import threading
@@ -29,7 +29,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','download_file','run_command']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
@@ -40,6 +40,7 @@ class ToolProposal(BaseModel):
     target:str=Field(default='',max_length=160)
     snapshot_id:str=Field(default='',max_length=64)
     window_id:str=Field(default='',max_length=64)
+    keys:str=Field(default='',max_length=40)
     url:str=Field(default='',max_length=2000)
     query:str=Field(default='',max_length=300)
 
@@ -143,7 +144,9 @@ class ToolService:
         if body.tool=='run_command':return False
         # Full access: everything the owner did not block runs without review.
         # Closing a program the ALT did not open can lose unsaved work, so it is reviewed.
-        if level==4:return body.tool!='close_app' or body.app in self.launched
+        if level==4:
+            if body.tool=='windows_keys':return parse_keys(body.keys)[0].split('*')[0] not in CLOSING
+            return body.tool!='close_app' or body.app in self.launched
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             if body.scope_id not in self.auto_scopes:return False
             if body.tool=='write_text' and body.scope_id=='windows-profile':return False
@@ -307,7 +310,10 @@ class ToolService:
                 grant=next((g for g in self.gui.grants() if g['id']==body.window_id),None)
             if not grant:raise PermissionError('Autorize uma janela no seletor nativo.')
             preview.update({'window_id':body.window_id,'window_title':grant['title']})
-            if body.tool!='windows_read':
+            if body.tool=='windows_keys':
+                body.keys=parse_keys(body.keys)[0];payload=body.model_dump();preview['keys']=body.keys
+                if body.keys.split('*')[0] in CLOSING:preview['notice']='Este atalho fecha a janela ou o programa; ele pode pedir para salvar.'
+            elif body.tool!='windows_read':
                 cached,index=self.gui.describe_target(body.window_id,body.snapshot_id,body.target)
                 preview['element']=cached['public']['elements'][index]
                 if body.tool=='windows_type':reject_secrets(body.content);preview['text']=body.content
@@ -388,6 +394,7 @@ class ToolService:
         if event.is_set() or self.engine.stopped:raise PermissionError('Ação interrompida.')
         self.policy.check(body.tool)
         if body.tool.startswith('windows_'):
+            if body.tool=='windows_keys':return self.gui.press(body.window_id,body.keys)
             return self.gui.read(body.window_id) if body.tool=='windows_read' else self.gui.act(body)
         if body.tool.startswith('browser_'):
             if not self.desktop:raise ValueError('Abra o aplicativo desktop.')

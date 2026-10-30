@@ -39,15 +39,18 @@ class AnthropicProvider:
         except (httpx.HTTPError,ValueError,OSError):
             self.vault.validate([])
             return {'configured':True,'verified':False,'models':[],'message':'Chave protegida no Windows, mas autenticação/modelos não foram confirmados. A API permanece indisponível.'}
-    def estimate(self,messages):
-        config=self.config();input_bound=len(json.dumps(messages,ensure_ascii=False).encode('utf-8'))+1000
+    def estimate(self,messages,tools=None):
+        # Images are billed by size (~1600 tokens at 1344 px), not by their base64 length.
+        images=sum(len(m.get('images',[])) for m in messages)
+        text=[{k:v for k,v in m.items() if k!='images'} for m in messages]
+        config=self.config();input_bound=len(json.dumps([text,tools or []],ensure_ascii=False).encode('utf-8'))+1000+1600*images
         return round((input_bound*config.input_usd_per_million+768*config.output_usd_per_million)/1e6,6)
     def totals(self):
         today=datetime.now().astimezone().strftime('%Y-%m-%d');month=today[:7]
         def amount(where,value):return self.store.rows('SELECT COALESCE(SUM(amount),0) AS amount FROM cloud_usage WHERE '+where+'=?',(value,))[0]['amount']
         return {'session':amount('session',self.session),'daily':amount('day',today),'monthly':amount('month',month),'currency':'USD','estimated':True}
-    def reserve(self,messages):
-        config=self.config();estimate=self.estimate(messages)
+    def reserve(self,messages,tools=None):
+        config=self.config();estimate=self.estimate(messages,tools)
         if not self.status()['available']:raise ProviderError('API Anthropic não configurada.','authentication')
         with self.store.lock:
             totals=self.totals()
@@ -56,15 +59,26 @@ class AnthropicProvider:
             uid=secrets.token_hex(16);today=datetime.now().astimezone().strftime('%Y-%m-%d')
             self.store.write('INSERT INTO cloud_usage VALUES(?,?,?,?,?,?,?,?,?)',(uid,'anthropic',today,today[:7],self.session,estimate,1,None,None))
             return uid
-    async def stream(self,messages,cancel):
-        uid=self.reserve(messages);config=self.config();tokens_in=tokens_out=0;complete=False
+    async def stream(self,messages,cancel,tools=None):
+        """Text deltas, plus the same alt_propose_action call shape Ollama yields when tools are offered."""
+        uid=self.reserve(messages,tools);config=self.config();tokens_in=tokens_out=0;complete=False
         payload={'model':config.model,'max_tokens':768,'stream':True,'system':'\n'.join(m['content'] for m in messages if m['role']=='system'),'messages':[m for m in messages if m['role']!='system']}
         # Normalize consecutive same-role entries (e.g. an interrupted previous request).
         normalized=[]
         for msg in payload['messages']:
-            if normalized and normalized[-1]['role']==msg['role']:normalized[-1]['content']+='\n\n'+msg['content']
+            if normalized and normalized[-1]['role']==msg['role']:
+                normalized[-1]['content']+='\n\n'+msg['content']
+                if msg.get('images'):normalized[-1]['images']=normalized[-1].get('images',[])+msg['images']
             else:normalized.append(dict(msg))
+        for msg in normalized:
+            # Attached images (JPEG from the desktop) become Claude image blocks before the text.
+            images=msg.pop('images',None)
+            if images:msg['content']=[*({'type':'image','source':{'type':'base64','media_type':'image/jpeg','data':data}} for data in images),{'type':'text','text':msg['content']}]
         payload['messages']=normalized
+        if tools:
+            # Inputs are parsed strictly and validated by ToolProposal before anything runs.
+            payload['tools']=[{'name':t['function']['name'],'description':t['function']['description'],'input_schema':t['function']['parameters'],'eager_input_streaming':True} for t in tools]
+        calls=[];current=None;stop_reason=None
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(120,connect=10),trust_env=False) as client:
                 async with client.stream('POST','https://api.anthropic.com/v1/messages',json=payload,headers={'x-api-key':self.vault.get(),'anthropic-version':'2023-06-01'}) as response:
@@ -77,10 +91,19 @@ class AnthropicProvider:
                         if not line.startswith('data: '):continue
                         event=json.loads(line[6:]);kind=event.get('type')
                         if kind=='message_start':tokens_in=event.get('message',{}).get('usage',{}).get('input_tokens',0)
+                        elif kind=='content_block_start' and event.get('content_block',{}).get('type')=='tool_use':current={'name':event['content_block'].get('name',''),'input':''}
                         elif kind=='content_block_delta' and event.get('delta',{}).get('type')=='text_delta':yield {'message':{'content':event['delta']['text']}}
-                        elif kind=='message_delta':tokens_out=event.get('usage',{}).get('output_tokens',tokens_out)
+                        elif kind=='content_block_delta' and event.get('delta',{}).get('type')=='input_json_delta' and current is not None:current['input']+=event['delta'].get('partial_json','')
+                        elif kind=='content_block_stop' and current is not None:calls.append(current);current=None
+                        elif kind=='message_delta':tokens_out=event.get('usage',{}).get('output_tokens',tokens_out);stop_reason=event.get('delta',{}).get('stop_reason') or stop_reason
                         elif kind=='error':raise ProviderError('Falha de geração informada pela API Anthropic.','provider_error')
                         elif kind=='message_stop':complete=True;break
+            # A call cut by max_tokens can be truncated JSON: never run it.
+            if complete and calls and stop_reason=='tool_use':
+                try:arguments=json.loads(calls[0]['input'] or '{}')
+                except json.JSONDecodeError:arguments=calls[0]['input']
+                yield {'message':{'tool_calls':[{'function':{'name':calls[0]['name'],'arguments':arguments}}]}}
+            elif complete and calls:yield {'message':{'content':'\nA ação foi cortada pelo limite de resposta e não foi executada. Peça de novo.'}}
             if not complete:raise ProviderError('Resposta da API incompleta. Reserva de orçamento mantida como estimativa.','incomplete')
             amount=(tokens_in*config.input_usd_per_million+tokens_out*config.output_usd_per_million)/1e6
             self.store.write('UPDATE cloud_usage SET amount=?,tokens_in=?,tokens_out=? WHERE id=?',(amount,tokens_in,tokens_out,uid))

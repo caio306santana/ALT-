@@ -119,8 +119,10 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
                 unloaded=running is not None and not any(m.get('name')==model for m in running)
                 message='Modelo selecionado descarregado.' if unloaded else 'Descarga solicitada; ainda não confirmada pelo Ollama.'
             except Exception:message='Ações suspensas, mas não foi possível descarregar o modelo.'
-        return {'enabled':True,'model_unloaded':unloaded,'message':message}
+        # Chat keeps working on the processor; actions stay off until the owner grants them again.
+        engine.stopped=False
+        return {'enabled':True,'model_unloaded':unloaded,'message':message+' A conversa continua pelo processador, sem usar a placa de vídeo; ações ficam desligadas.'}
     @router.post('/game/disable')
-    async def game_disable():engine.stopped=False;engine.game_mode=False;store.audit('game_mode_disabled');return {'enabled':False,'message':'Modo normal retomado em observação.'}
+    async def game_disable():engine.stopped=False;engine.game_mode=False;store.audit('game_mode_disabled');return {'enabled':False,'message':'Modo normal retomado: a placa de vídeo volta a ser usada. Ações seguem em observação até você liberar.'}
 
     app.include_router(router)

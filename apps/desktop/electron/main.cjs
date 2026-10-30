@@ -97,6 +97,8 @@ const allowed = [
   ["DELETE", /^\/(projects|documents)\/[a-f0-9-]+$/],
   ["GET", /^\/(windows\/candidates|windows\/grants|maintenance\/status)$/],
   ["DELETE", /^\/windows\/grants\/[a-f0-9-]+$/],
+  ["GET", /^\/voice\/status$/],
+  ["POST", /^\/voice\/download$/],
 ];
 function bindShortcut(shortcut) {
   if (
@@ -263,10 +265,24 @@ async function createWindow() {
   win.webContents.on("will-navigate", (event, url) => {
     if (url !== ui) event.preventDefault();
   });
+  // Only the microphone, only for the ALT window itself (voice commands are transcribed locally).
+  const microphone = (contents, permission, mediaTypes) =>
+    contents === win.webContents &&
+    permission === "media" &&
+    Array.isArray(mediaTypes) &&
+    mediaTypes.length > 0 &&
+    mediaTypes.every((type) => type === "audio");
   win.webContents.session.setPermissionRequestHandler(
-    (contents, permission, callback) => callback(false),
+    (contents, permission, callback, details) =>
+      callback(
+        microphone(contents, permission, details?.mediaTypes) &&
+          details?.requestingUrl?.startsWith(ui),
+      ),
   );
-  win.webContents.session.setPermissionCheckHandler(() => false);
+  win.webContents.session.setPermissionCheckHandler(
+    (contents, permission, origin, details) =>
+      microphone(contents, permission, [details?.mediaType]),
+  );
   win.on("close", (event) => {
     if (!quitting) {
       event.preventDefault();
@@ -508,6 +524,83 @@ ipcMain.handle("backup:export", async (event) => {
   fs.writeFileSync(chosen.filePath, data);
   return { saved: true, path: chosen.filePath, bytes: data.length };
 });
+const IMAGE_FILES = ["png", "jpg", "jpeg", "webp", "gif", "bmp"];
+const DOCUMENT_FILES = ["pdf", "docx", "txt", "md", "csv", "json", "log"];
+// The native picker returns bytes; the renderer converts images to JPEG (max 1344 px) and uploads.
+ipcMain.handle("chat:choose-files", async (event) => {
+  validate(event);
+  const chosen = await dialog.showOpenDialog(win, {
+    title: "Anexar à conversa",
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      { name: "Imagens e documentos", extensions: [...IMAGE_FILES, ...DOCUMENT_FILES] },
+    ],
+  });
+  if (chosen.canceled) return [];
+  return chosen.filePaths.slice(0, 4).map((file) => {
+    if (fs.statSync(file).size > 20000000) throw new Error("Anexo maior que 20 MB: " + path.basename(file));
+    return { name: path.basename(file), data: new Uint8Array(fs.readFileSync(file)) };
+  });
+});
+ipcMain.handle("chat:attach", async (event, name, data) => {
+  validate(event);
+  const extension = path.extname(String(name)).slice(1).toLowerCase();
+  if (
+    typeof name !== "string" ||
+    name.length > 160 ||
+    !(data instanceof Uint8Array) ||
+    data.byteLength === 0 ||
+    data.byteLength > 20000000 ||
+    !["jpg", ...DOCUMENT_FILES].includes(extension)
+  )
+    throw new Error("Anexe imagens, PDF, Word ou arquivos de texto (até 20 MB).");
+  const response = await fetch(base + "/attachments", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/octet-stream",
+      "X-Alt-Name": encodeURIComponent(name),
+    },
+    body: Buffer.from(data.buffer, data.byteOffset, data.byteLength),
+  });
+  if (!response.ok) {
+    let message = "Falha ao anexar";
+    try {
+      const body = await response.json();
+      message = typeof body.detail === "string" ? body.detail : message;
+    } catch {}
+    throw new Error(message);
+  }
+  return response.json();
+});
+ipcMain.handle("voice:transcribe", async (event, pcm) => {
+  validate(event);
+  // 16 kHz mono 16-bit PCM, at most 30 s; the backend runs Whisper locally.
+  if (
+    !(pcm instanceof Uint8Array) ||
+    pcm.byteLength === 0 ||
+    pcm.byteLength % 2 ||
+    pcm.byteLength > 16000 * 2 * 30
+  )
+    throw new Error("Áudio inválido");
+  const response = await fetch(base + "/voice/transcribe", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/octet-stream",
+    },
+    body: Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength),
+  });
+  if (!response.ok) {
+    let message = "Falha ao transcrever";
+    try {
+      const data = await response.json();
+      message = typeof data.detail === "string" ? data.detail : message;
+    } catch {}
+    throw new Error(message);
+  }
+  return response.json();
+});
 ipcMain.handle("backup:restore", async (event) => {
   validate(event);
   const chosen = await dialog.showOpenDialog(win, {
@@ -679,9 +772,9 @@ ipcMain.handle("game:mode", async (event, enabled) => {
       buttons: ["Cancelar", "Ativar GAME MODE"],
       defaultId: 0,
       cancelId: 0,
-      message: "Suspender tarefas e descarregar o modelo selecionado?",
+      message: "Tirar o modelo da placa de vídeo para jogar?",
       detail:
-        "Isso pode afetar outros aplicativos que estejam usando o mesmo modelo Ollama. A janela será ocultada; use seu atalho ou a bandeja para restaurar.",
+        "Tarefas e ações são suspensas e o modelo sai da placa de vídeo. A conversa continua pelo processador, mais lenta. Isso pode afetar outros aplicativos que usem o mesmo modelo Ollama. A janela será ocultada; use seu atalho ou a bandeja para voltar.",
     });
     if (consent.response !== 1) return { enabled: false, message: "Cancelado" };
   }

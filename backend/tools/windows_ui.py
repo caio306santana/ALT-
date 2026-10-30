@@ -8,6 +8,30 @@ import psutil
 
 EXCLUDED={'cmd.exe','powershell.exe','pwsh.exe','windowsterminal.exe','conhost.exe','consent.exe','logonui.exe','winlogon.exe','sechealthui.exe','securityhealthsystray.exe','systemsettings.exe','keepass.exe','keepassxc.exe','1password.exe','bitwarden.exe','alt-ai.exe','alt-backend.exe'}
 SECRET=re.compile(r'password|senha|one.?time|credit.?card|cvv|captcha|secret|api.?key|token',re.I)
+MODIFIERS={'ctrl':'^','control':'^','shift':'+','alt':'%'}
+NAMED_KEYS={'enter':'{ENTER}','esc':'{ESC}','escape':'{ESC}','tab':'{TAB}','space':'{SPACE}','backspace':'{BACKSPACE}',
+    'delete':'{DELETE}','del':'{DELETE}','home':'{HOME}','end':'{END}','pageup':'{PGUP}','pagedown':'{PGDN}',
+    'up':'{UP}','down':'{DOWN}','left':'{LEFT}','right':'{RIGHT}','volumeup':'{VK_VOLUME_UP}','volumedown':'{VK_VOLUME_DOWN}',
+    'mute':'{VK_VOLUME_MUTE}','playpause':'{VK_MEDIA_PLAY_PAUSE}','nexttrack':'{VK_MEDIA_NEXT_TRACK}','prevtrack':'{VK_MEDIA_PREV_TRACK}',
+    **{f'f{i}':f'{{F{i}}}' for i in range(1,13)}}
+# Combinations that close windows or apps go through the approval card, like close_app.
+CLOSING={'alt+f4','ctrl+q','ctrl+shift+w','ctrl+shift+q'}
+
+def parse_keys(text):
+    """'ctrl+shift+t' or 'pagedown*3' -> (canonical form, pywinauto sequence). The Windows key is never
+    sent: Win+R and similar open a prompt that would bypass the approval card for commands."""
+    combo,_,repeat=text.strip().lower().replace(' ','').partition('*')
+    count=int(repeat) if repeat.isdigit() else 0 if repeat else 1
+    *mods,key=combo.split('+')
+    mods=['ctrl' if m=='control' else m for m in mods]
+    if not key or not 1<=count<=20 or len(mods)>3:raise ValueError('Atalho inválido. Use, por exemplo, ctrl+t, alt+left ou pagedown*3.')
+    if any(m not in MODIFIERS for m in mods) or len(set(mods))!=len(mods):raise ValueError('Use só ctrl, shift e alt como modificadores; a tecla Windows não é enviada.')
+    if key in NAMED_KEYS:sent=NAMED_KEYS[key]
+    elif re.fullmatch(r'[a-z0-9]',key):sent=key
+    else:raise ValueError(f'Tecla "{key}" não reconhecida.')
+    mods=sorted(mods,key=['ctrl','shift','alt'].index)
+    canonical='+'.join([*mods,key])
+    return canonical+(f'*{count}' if count>1 else ''),(''.join(MODIFIERS[m] for m in mods)+sent)*count
 
 class WindowsUI:
     def __init__(self,store):
@@ -111,6 +135,25 @@ class WindowsUI:
             snapshot={'snapshot_id':str(uuid4()),'window_id':gid,'title':window.window_text(),'elements':elements,'truncated':len(elements)>=160}
             self.snapshots[gid]={'public':snapshot,'nodes':nodes}
             return snapshot
+
+    def press(self,gid,keys):
+        """Bring the granted window to the front, confirm it really is in front, then send the keys."""
+        _,sequence=parse_keys(keys)
+        with self.lock:
+            window=self.window(gid)
+            import ctypes
+            from pywinauto.keyboard import send_keys
+            try:window.set_focus()
+            except Exception:pass
+            user32=ctypes.WinDLL('user32',use_last_error=True)
+            user32.GetForegroundWindow.restype=ctypes.c_void_p
+            user32.GetAncestor.argtypes=[ctypes.c_void_p,ctypes.c_uint];user32.GetAncestor.restype=ctypes.c_void_p
+            front=user32.GetForegroundWindow()
+            # GA_ROOT: a focused child control still belongs to the granted top-level window.
+            if user32.GetAncestor(front,2)!=window.handle and front!=window.handle:raise ValueError('O Windows não deixou trazer a janela para frente; clique nela e peça de novo.')
+            send_keys(sequence,pause=.03,with_spaces=True)
+            self.snapshots.pop(gid,None)
+        return {'keys_sent':keys,'observation':self.read(gid)}
 
     def describe_target(self,gid,sid,target):
         cached=self.snapshots.get(gid)

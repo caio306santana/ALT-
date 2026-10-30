@@ -43,4 +43,7 @@ contextBridge.exposeInMainWorld("alt", {
   authorizeWindow: (candidateId, title) => ipcRenderer.invoke("windows:authorize", candidateId, title),
   exportBackup: () => ipcRenderer.invoke("backup:export"),
   restoreBackup: () => ipcRenderer.invoke("backup:restore"),
+  transcribe: (pcm) => ipcRenderer.invoke("voice:transcribe", pcm),
+  chooseFiles: () => ipcRenderer.invoke("chat:choose-files"),
+  attach: (name, data) => ipcRenderer.invoke("chat:attach", name, data),
 });

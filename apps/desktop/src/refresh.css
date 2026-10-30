@@ -446,3 +446,78 @@ body.full-access .composer {
   color: var(--secondary, #00c9f5);
   font-size: 13px;
 }
+
+/* Local voice: listening pulses red; the download offer floats above the composer. */
+.voice-control {
+  position: relative;
+  display: inline-flex;
+}
+.voice-button.listening {
+  color: #ff2a4f;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.spin {
+  animation: voice-spin 0.9s linear infinite;
+}
+@keyframes voice-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.voice-offer {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: min(300px, 80vw);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: #181923;
+  color: #e2dfea;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+}
+.voice-offer p {
+  margin: 6px 0 10px;
+  opacity: 0.85;
+}
+.voice-offer div {
+  display: flex;
+  gap: 8px;
+}
+.voice-offer .voice-error {
+  color: #ff6b84;
+}
+
+/* Attachments waiting to be sent, above the message box. */
+.attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 240px;
+  padding: 3px 4px 3px 8px;
+  border: 1px solid #ffffff25;
+  border-radius: 8px;
+  background: #ffffff08;
+  font-size: 12px;
+}
+.attachment-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-chip button {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}

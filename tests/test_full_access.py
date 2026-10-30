@@ -82,3 +82,72 @@ def test_debate_and_irony_rules_follow_the_sliders():
     assert 'premissas' not in calm and 'ironia leve' not in calm and 'faça-a na hora' in calm
     sharp=system_prompt({'personality':{'irony':80,'challenge':80}})
     assert 'premissas' in sharp and 'ironia leve' in sharp
+
+def test_keyboard_shortcuts_are_parsed_and_the_windows_key_is_never_sent():
+    from backend.tools.windows_ui import parse_keys
+    assert parse_keys('Shift+Ctrl+T')==('ctrl+shift+t','^+t')
+    assert parse_keys('pagedown*3')==('pagedown*3','{PGDN}'*3)
+    for bad in ('win+r','ctrl+t*50','abc',''):
+        with pytest.raises(ValueError):parse_keys(bad)
+    assert 'windows_keys' in offered('aperta ctrl+t no chrome')
+    assert 'windows_keys' not in offered('abra uma nova aba no google')
+
+def test_closing_shortcuts_wait_for_the_card_even_in_full_access(tmp_path):
+    app,local,_,client=fixture_client(tmp_path)
+    with client:
+        full_access(tmp_path,client);tools=app.state.tools
+        assert tools.can_auto(ToolProposal(tool='windows_keys',window_id='w',keys='ctrl+t'))
+        assert not tools.can_auto(ToolProposal(tool='windows_keys',window_id='w',keys='alt+f4'))
+
+def test_a_failed_tool_call_gets_one_correction_round_then_a_plain_answer(tmp_path):
+    from test_backend import conversation,events
+    app,local,_,client=fixture_client(tmp_path)
+    calls=[]
+    async def model_stream(model,messages,cancel,profile=None):
+        calls.append(messages)
+        # Outside full access an unregistered program cannot be resolved, so every call fails.
+        yield {'message':{'tool_calls':[{'function':{'name':'alt_propose_action','arguments':{'tool':'open_app','app':'Spotifyy'}}}]}}
+        yield {'done':True,'eval_count':3}
+    local.stream=model_stream
+    with client:
+        client.put('/permissions',json={'level':2})
+        cid=conversation(client)
+        data=events(client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'abre o spotifyy'}))
+        assert len(calls)==2 and calls[1][-1]['role']=='tool' and 'ERRO DA FERRAMENTA' in calls[1][-1]['content']
+        assert not [e for e in data if e['type']=='error']
+        reply=''.join(e.get('text','') for e in data if e['type']=='delta')
+        assert reply.startswith('Não consegui executar:') and 'Acesso total' in reply
+        assert data[-1]['status']=='complete'
+
+def test_claude_tool_use_stream_becomes_the_same_action_call(tmp_path,monkeypatch):
+    import asyncio,json,httpx
+    from backend.memory.store import Store
+    from backend.providers.anthropic import AnthropicProvider,AnthropicConfig
+    class FakeVault:
+        def configured(self):return True
+        def validated(self):return True
+        def model_available(self,model):return True
+        def get(self):return 'sk-ant-test'
+    sent=[]
+    def sse(*events):return ''.join(f'event: {e["type"]}\ndata: {json.dumps(e)}\n\n' for e in events)
+    def handler(request):
+        sent.append(json.loads(request.content))
+        body=sse({'type':'message_start','message':{'usage':{'input_tokens':50}}},
+            {'type':'content_block_start','index':0,'content_block':{'type':'tool_use','id':'t1','name':'alt_propose_action','input':{}}},
+            {'type':'content_block_delta','index':0,'delta':{'type':'input_json_delta','partial_json':'{"tool":"open_url",'}},
+            {'type':'content_block_delta','index':0,'delta':{'type':'input_json_delta','partial_json':'"url":"youtube.com"}'}},
+            {'type':'content_block_stop','index':0},
+            {'type':'message_delta','delta':{'stop_reason':'tool_use'},'usage':{'output_tokens':20}},
+            {'type':'message_stop'})
+        return httpx.Response(200,text=body,headers={'content-type':'text/event-stream'})
+    real=httpx.AsyncClient
+    monkeypatch.setattr('backend.providers.anthropic.httpx.AsyncClient',lambda **kw:real(transport=httpx.MockTransport(handler)))
+    store=Store(tmp_path/'s.sqlite3');provider=AnthropicProvider(store,FakeVault())
+    provider.save(AnthropicConfig(enabled=True,model='claude-sonnet-5-5',input_usd_per_million=2,output_usd_per_million=10))
+    spec=tool_spec('abre o youtube',{'level':4})
+    async def collect():return [c async for c in provider.stream([{'role':'system','content':'s'},{'role':'user','content':'abre o youtube'}],asyncio.Event(),spec)]
+    chunks=asyncio.run(collect())
+    assert sent[0]['tools'][0]['name']=='alt_propose_action' and sent[0]['tools'][0]['input_schema']['properties']['tool']['enum']
+    assert chunks[0]['message']['tool_calls'][0]['function']['arguments']=={'tool':'open_url','url':'youtube.com'}
+    assert chunks[-1]['done']
+    store.db.close()

@@ -161,6 +161,8 @@ function summary(preview: Record<string, unknown>, result: unknown) {
       return `Fechamento solicitado: ${String(preview.app)}`;
     case "calculate":
       return `${String(preview.expression)} = ${String(value.value)}`;
+    case "windows_keys":
+      return `${String(preview.keys)} enviado para ${String(preview.window_title)}`;
     default:
       return null;
   }

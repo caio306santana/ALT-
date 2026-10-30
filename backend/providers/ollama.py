@@ -61,6 +61,17 @@ class Ollama:
         except (httpx.HTTPError,ValueError) as exc:
             raise ProviderError('Falha no download. Verifique se o Ollama está aberto e tente novamente.','download') from exc
 
+    async def capabilities(self,model):
+        """['completion','vision','tools',...] as Ollama reports them, or None if unknown."""
+        cache=self.__dict__.setdefault('_capabilities',{})
+        if model not in cache:
+            try:
+                async with httpx.AsyncClient(timeout=10,trust_env=False) as client:
+                    response=await client.post(self.base_url+'/api/show',json={'model':model})
+                    response.raise_for_status();cache[model]=response.json().get('capabilities')
+            except (httpx.HTTPError,ValueError):return None
+        return cache[model]
+
     async def unload(self,model):
         entries=await self.models()
         if not any(m.get('name')==model and not m.get('remote_host') and not m.get('remote_model') and 'cloud' not in model.lower() for m in entries):raise ProviderError('Modelo local não disponível.','connection')
