@@ -4,7 +4,7 @@ Assistente pessoal Windows com modelos locais pelo Ollama, memória, voz, ferram
 
 **Hermes 3:** a 0.5.1 acrescenta as opções locais 3B e 8B. O download é opcional e ficou para depois por escolha do dono. Ver [uso, requisitos e validação](docs/HERMES.md). Built with Meta Llama 3.
 
-**Estado atual:** código **0.5.1** em `main`, corrigindo o bloqueio falso de contexto no Automático e limitando observações auxiliares. Código/renderer testados; pacote em validação. Ver [correção 0.5.1](docs/CHAT_CONTEXT_0.5.1.md). A [release v0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0) permanece publicada com instalador e manifesto originais; ela ainda não contém esse ajuste. [STATUS.md](docs/STATUS.md) registra as evidências e pendências. Assinar o manifesto não instala a atualização nem substitui Authenticode.
+**Estado atual:** [0.5.1 publicada como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.1), com instalador e manifesto Ed25519 verificados. Inclui correção do contexto Automático, orçamento de ferramentas/observações, ações diretas para Bloco de Notas/Calculadora e catálogo Hermes 3B/8B. Código, renderer e backend empacotado testados; ver [validação da release](docs/RELEASE-0.5.1.md) e [STATUS.md](docs/STATUS.md). A 0.5.0 permanece inalterada. Publicar o pacote não instala a atualização no aplicativo aberto nem substitui Authenticode.
 
 ## O que a 0.5 inclui
 
@@ -21,10 +21,10 @@ Personalidade atual: Alt + JARVIS, direta e calma, com tom/ironia/debate ajustá
 
 ## Instalar e usar
 
-1. Baixar `ALT-AI-Setup-0.5.0-x64.exe` na [release 0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0). O manifesto `ALT-AI-0.5.0-update.json` verifica esse instalador pelo atualizador da ALT.
+1. Baixar `ALT-AI-Setup-0.5.1-x64.exe` na [release 0.5.1](https://github.com/caio306santana/ALT-/releases/tag/v0.5.1). O manifesto `ALT-AI-0.5.1-update.json` verifica esse instalador pelo atualizador da ALT.
 2. Para atualizar, sair da ALT em Sobre → **Sair da ALT-AI**, preservando os dados/backup antes de prosseguir. O × pode apenas ocultar a janela na bandeja.
 3. Instalar, reabrir e conferir a versão em Sobre. Electron, backend e runtime Python estão incluídos; Node/Python são necessários apenas para desenvolver.
-4. Configurar Ollama/modelos em Inteligências. Nenhum modelo é baixado nesta rodada de assinatura/documentação. Depois de configurado, o chat local pode funcionar offline; pesquisa, serviços de nuvem e conexão remota dependem da rede.
+4. Configurar Ollama/modelos em Inteligências. Pesos de modelos não estão no instalador; o download Hermes ficou para depois por escolha do dono. Depois de configurado, o chat local pode funcionar offline; pesquisa, serviços de nuvem e conexão remota dependem da rede.
 5. Ajustar permissões, personalidade e voz antes de usar ferramentas; manter STOP acessível.
 
 O pacote continua sem Authenticode. Políticas do Windows podem bloquear executáveis novos. Nenhuma proteção do Windows foi desativada nesta retomada. O manifesto do projeto é uma verificação diferente da confiança exigida pelo sistema.

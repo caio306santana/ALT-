@@ -1,0 +1,31 @@
+{
+  "version": "0.5.1",
+  "built_source": "750e2a08dd8d05168d4c4b48f3968757692f825f",
+  "installer": {
+    "version": "0.5.1",
+    "file": "ALT-AI-Setup-0.5.1-x64.exe",
+    "sha256": "3aaf630aacd05d722ca008fc045d2ec006488ad6248fe0c154f604d927434092",
+    "size": 219521408
+  },
+  "public_release": "https://github.com/caio306santana/ALT-/releases/tag/v0.5.1",
+  "prerelease": true,
+  "updater_from_0_5_0": "offers 0.5.1 with signed assets",
+  "updater_from_0_5_1": "no newer release",
+  "published_manifest_signature": "verified with original public key",
+  "github_digest": "matches local installer",
+  "packaged_tokenizers": "Qwen, Hermes 3B and 8B hashes verified",
+  "packaged_backend": "smoke passed in temporary database",
+  "tests": {
+    "python_passed": 233,
+    "python_skipped": 1,
+    "node_passed": 5,
+    "renderer": "passed including direct launch without an installed model and Hermes catalog"
+  },
+  "not_validated": [
+    "Hermes inference with real weights: download deferred by owner",
+    "Actual Notepad window: Computer Use native pipe unavailable",
+    "Installation/upgrade of the owner running app",
+    "Hardware validation on main PC; voice weights and iPhone end to end"
+  ],
+  "authenticode": false
+}

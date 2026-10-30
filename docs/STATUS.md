@@ -1,6 +1,6 @@
 # Estado atual e próximos passos — ALT-AI 0.5.1
 
-**Correção atual:** o código 0.5.1 resolve a falsa contagem do Automático, limita dados auxiliares de janelas, reserva ferramentas formatadas e adiciona ação direta para Bloco de Notas/Calculadora, sem carregar LLM. Inclui catálogo [Hermes 3 3B/8B](HERMES.md), sem baixar pesos por escolha do dono, e encerramento seguro dos trabalhadores/banco. Suíte: 233 testes Python/5 Node passaram, 1 ignorado; renderer e build passaram. O pacote final ainda está em validação: ver [CHAT_CONTEXT_0.5.1.md](CHAT_CONTEXT_0.5.1.md). As informações de instalador/hash na tabela abaixo são da base 0.5.0, preservada sem alterações.
+**Entrega atual:** a 0.5.1 foi publicada como prévia, com instalador, manifesto e hashes conferidos. Resolve a falsa contagem do Automático, limita dados auxiliares, reserva ferramentas formatadas e adiciona ação direta para Bloco de Notas/Calculadora, sem carregar LLM. Inclui [Hermes 3 3B/8B](HERMES.md), sem baixar pesos por escolha do dono, e encerramento seguro dos trabalhadores/banco. Suíte: 233 testes Python/5 Node passaram, 1 ignorado; renderer, build e backend empacotado passaram. Ver [validação da release](RELEASE-0.5.1.md) e [detalhes da correção](CHAT_CONTEXT_0.5.1.md). Não foi instalada sobre o aplicativo aberto.
 
 Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. As evidências funcionais do PC principal estão em [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md); não foram repetidas nesta rodada de assinatura/documentação.
 
@@ -8,19 +8,20 @@ Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. A
 
 | Item | Estado confirmado |
 | --- | --- |
-| Código base publicado | Versão **0.5.0**, tag no commit `e84df62`. A correção 0.5.1 posterior não está nesse instalador. |
+| Código publicado | Versão **0.5.1**, tag no commit `750e2a0`; fontes completos e documentação em `main`. |
 | Trabalhos anteriores | 0.4.0/0.4.1, 0.4.2 e `work/0.5` já integrados em `main`. As branches anteriores são referências históricas. |
-| Release | [v0.5.0 publicada como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0), não é rascunho. |
-| Instalador | `ALT-AI-Setup-0.5.0-x64.exe`, **216.270.399 bytes**, baixado da release existente; nenhum rebuild/substituição nesta rodada. |
-| SHA256 do instalador | `45fb094673c3e23d8d786f4de98fc410a88469993ebda08b4e74172b08ab6061`, conferido com o digest do asset no GitHub. |
-| Manifesto de atualização | `ALT-AI-0.5.0-update.json` assinado neste notebook com a chave original, verificado pelo validador da ALT e anexado à release, junto com `SHA256SUMS.txt`. A chave privada permanece fora do Git e dos assets. |
+| Release | [v0.5.1 publicada como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.1), não é rascunho. |
+| Instalador | `ALT-AI-Setup-0.5.1-x64.exe`, **219.521.408 bytes**, rebuild final após Hermes/ações diretas; backend empacotado validado em banco temporário. |
+| SHA256 do instalador | `3aaf630aacd05d722ca008fc045d2ec006488ad6248fe0c154f604d927434092`, igual ao digest do asset no GitHub. |
+| Manifesto de atualização | `ALT-AI-0.5.1-update.json` assinado com a chave original, verificado após baixar o manifesto público, junto com `SHA256SUMS.txt`. A chave privada permanece fora do Git e dos assets. |
 | Feed da 0.5 | Repositório atualmente público, por estado encontrado nesta retomada. A API de releases respondeu sem autenticação. O código da 0.5 lista releases publicadas, incluindo prévias, e verifica o manifesto/instalador antes de instalar. Nenhuma visibilidade foi alterada nesta rodada. |
 | Assinatura Windows | Authenticode continua pendente. O manifesto Ed25519 é a identidade da atualização do projeto; não substitui confiança/assinatura exigida pelo Windows. |
 | Instalação neste notebook | Não foi executada nesta rodada. A versão do código não determina qual versão do aplicativo está aberta/instalada. |
+| Base anterior | A release 0.5.0, tag `e84df62`, instalador de 216.270.399 bytes e manifesto permanecem inalterados. |
 
 ## O que foi implementado e registrado no PC principal
 
-**Alteração posterior à release, neste notebook:** estudo do [Drael como referência](DRAEL_REVIEW.md), com análise pública estática e limites registrados. A busca da ALT foi ajustada para distinguir uma consulta válida sem resultados de uma falha técnica. Esse ajuste está no código posterior à tag 0.5.0 e **não faz parte do instalador já publicado/assinado**; precisa entrar numa próxima distribuição.
+**Incluído na 0.5.1, neste notebook:** estudo do [Drael como referência](DRAEL_REVIEW.md), com análise pública estática e limites registrados. A busca distingue uma consulta válida sem resultados de uma falha técnica. As demais sugestões do estudo continuam propostas, não recursos entregues.
 
 - **Tarefas e ferramentas:** execução em várias ações, verificações de resultado, reparo de escolha de ferramenta, aplicativos/janelas, tela, volume/brilho/música, lembretes e desfazer operações suportadas.
 - **Permissões:** decisões persistentes para programas/sites/pastas; conversas protegidas e revisão de ações críticas. Cartões críticos têm prazo de 90 s; isso é específico da revisão crítica da 0.5, diferente das propostas comuns sem prazo introduzidas na 0.3.1.
@@ -40,7 +41,9 @@ O checkpoint registra testes automatizados, testes reais de ferramentas no PC pr
 | Microfone | Conectar/ativar uma entrada funcional no PC principal: microfone físico ou WO Mic com o app conectado. Testar escuta e interrupção de ponta a ponta. |
 | iPhone | Instalar/configurar Tailscale no PC principal e no iPhone, parear e testar chat, áudio, foto e cartões. Seguir [IPHONE.md](IPHONE.md). Não executado nesta rodada. |
 | Authenticode | Configurar certificado/serviço de assinatura confiável para os executáveis Windows, se necessário pela política de destino. Nenhum certificado foi comprado/configurado e nenhuma proteção foi alterada. |
-| Interface real | Abrir a 0.5 e percorrer os fluxos na janela: chat, cartões, configurações, memória/documentos, tarefas, voz, rotinas e pareamento. Testes automatizados/API não substituem essa revisão manual. |
+| Hermes real | O dono escolheu baixar depois. Instalar a variante escolhida em Inteligências, então avaliar português, personalidade, chamadas de ferramenta e latência. Nesta entrega houve validação de integração/tokenização, sem inferência Hermes real. |
+| Bloco de Notas real | O caminho direto passou por testes de autorização/contrato com execução simulada; falta confirmar uma janela real após instalar. O helper Computer Use estava indisponível nesta sessão, erro 2; nenhum documento do dono foi tocado. |
+| Interface real | Abrir a 0.5.1 e percorrer os fluxos na janela: chat, cartões, configurações, memória/documentos, tarefas, voz, rotinas e pareamento. Testes automatizados/API não substituem essa revisão manual. |
 | Janelas e tarefas | Testar com mais aplicativos reais e repetir tarefa planejada pelo Qwen em uma janela, com texto/alvo corretos, pausa/retomada e verificação de resultado. |
 | Documentos | Validar PDFs longos, PDFs digitalizados e DOCX reais. OCR foi implementado na 0.5; qualidade e limites nesses documentos ainda precisam de validação. |
 | Personalidade e exatidão | Avaliar o tom em uso real e manter verificação de fontes e contas, especialmente contas expressas em prosa. O smoke não garante ausência de erros ou recusas do modelo. |
@@ -50,6 +53,6 @@ O checkpoint registra testes automatizados, testes reais de ferramentas no PC pr
 
 Continuar em **`main`**, fazendo `git status` antes de `git pull --ff-only`, sem descartar alterações locais. Preparação do ambiente no [README](../README.md#desenvolver-no-outro-pc). Não usar pastas antigas de instaladores como fonte; os assets atuais ficam na release e downloads locais podem ficar em `release/` (ignorada pelo Git).
 
-Para versões antigas cujo aviso ainda consulta `/releases/latest`, uma prévia pode não aparecer. A 0.5 já usa a lista de releases; se a versão instalada não detectar a atualização, baixar a 0.5 pela página da release e seguir o fluxo de atualização validado. Nesta rodada o instalador foi apenas baixado para assinatura/conferência, não executado.
+Para versões antigas cujo aviso ainda consulta `/releases/latest`, uma prévia pode não aparecer. A 0.5 já usa a lista de releases; o feed público foi conferido oferecendo a 0.5.1 para a 0.5.0 e nenhuma versão nova para a própria 0.5.1. Se necessário, baixar a 0.5.1 pela página da release. O instalador não foi executado nesta rodada.
 
 Conversas, bancos, documentos pessoais, áudio, modelos, credenciais e `.local/update-private-key.pem` ficam fora do Git. A chave original precisa de backup privado para assinar futuras releases em outro PC; não trocar a identidade pública para contornar sua ausência. Não há medição confiável dos créditos do agente: registrar checkpoints sem inventar percentuais.

@@ -34,13 +34,13 @@ Os testes gerais de funcionalidades com nomes de modelo sintéticos agora usam p
 
 Resposta local real concluída, em banco temporário, Notebook/modo 2: [relatório](chat-context-0.5.1-smoke.json). Automático escolheu Huihui 4B, respondeu “pronto.” e o contador estimou acima dos tokens reais. Foram cerca de 92 s neste notebook sob carga concorrente; isso comprova funcionamento, não uma melhoria de latência. Nenhuma ação Windows, arquivo pessoal ou API paga foi usada nesse smoke. Hermes não foi testado com pesos reais.
 
-Em andamento: rebuild e smoke do pacote final 0.5.1. Atualizar com os resultados antes de publicar. O candidato inicial de instalador foi gerado antes dessas alterações e não deve ser distribuído. O controle nativo da área de trabalho estava indisponível (`Computer Use native pipe is unavailable`, erro 2); nenhuma abertura real do Bloco de Notas foi validada nesta sessão. Os testes da ação direta usam o serviço real de propostas/permissões e execução simulada, sem tocar documentos/janelas do dono.
+Rebuild final e smoke empacotado concluídos. A [0.5.1 está publicada como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.1), com manifesto Ed25519 e SHA256 conferidos; ver [evidências](RELEASE-0.5.1.md). O candidato inicial anterior às alterações foi substituído localmente e não foi publicado. O controle nativo da área de trabalho estava indisponível (`Computer Use native pipe is unavailable`, erro 2); nenhuma abertura real do Bloco de Notas foi validada nesta sessão. Os testes da ação direta usam o serviço real de propostas/permissões e execução simulada, sem tocar documentos/janelas do dono.
 
-O pacote 0.5.0 já publicado permanece inalterado. A correção está sendo preparada como **0.5.1**; atualizar o Git não troca o processo instalado/aberto. Authenticode continua dependência separada. Não declarar instalação concluída sem confirmação.
+O pacote 0.5.0 permanece inalterado. A correção foi distribuída como **0.5.1**; atualizar o Git não troca o processo instalado/aberto. Authenticode continua dependência separada. Nenhuma instalação foi feita nesta rodada.
 
 ## Melhorias seguintes, na ordem
 
-1. Validar e distribuir esta correção; medir novamente no PC principal com GPU recuperada.
+1. Instalar a 0.5.1 no destino, testar abertura real do Bloco de Notas e medir novamente no PC principal com GPU recuperada. Baixar/testar Hermes quando o dono decidir.
 2. Expor capacidades/contexto reais e um controle de orçamento adequado ao hardware, com escolha explícita do usuário.
 3. Medir modo rápido/aprofundado e tamanhos do catálogo sem regredir a escolha de ferramentas.
 4. Melhorar cartões de arquivos/resultados e compactação de conversas longas, preservando os originais e mostrando o que foi usado.
