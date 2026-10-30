@@ -28,6 +28,8 @@ class OwnerPolicy(BaseModel):
     rules: str = Field(default='', max_length=1500)
     memory_recall: Literal['manual', 'automatic','semantic'] = 'manual'
     auto_project_summaries:bool=False
+    # Summary of the oldest messages when a conversation outgrows the context (derived, never a memory).
+    conversation_summaries:bool=True
     capabilities: Capabilities = Field(default_factory=Capabilities)
 
 CAPABILITY = {

@@ -159,4 +159,5 @@ export type StreamEvent = {
   context_truncated?: boolean;
   tool_result_truncated?: boolean;
   recalled_memories?: {id:string;title:string}[];
+  continuity_summary?: { covered: number; created: string } | null;
 };

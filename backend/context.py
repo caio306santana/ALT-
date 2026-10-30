@@ -162,3 +162,56 @@ def tool_excerpt(raw, budget):
     excerpt['excerpt'] = clip(full, low)
     if fits(excerpt): return compact(excerpt), True
     raise ValueError('Resultado grande demais para o contexto atual.')
+
+
+class RoundLimitError(ValueError):
+    """A later model call of the same reply no longer fits; the reply ends with guidance."""
+
+
+def fit_round(messages, limit, cost, fixed, shrink, image_tokens=0):
+    """Keep every model call of one reply inside the context window, not only the first.
+
+    `fixed` is the index of the owner's current message. The system prompt, that message
+    and everything after it (this reply's tool rounds) are never dropped. In order:
+    older tool results of this reply are reduced (`shrink(message)` returns a smaller
+    copy or None), then older history/examples are dropped oldest first, then the newest
+    tool result is reduced too. Returns (messages, used, changes) or raises RoundLimitError.
+    """
+    def size(message):
+        total = cost(message.get('content') or '')
+        if message.get('tool_calls'):
+            total += cost(json.dumps(message['tool_calls'], ensure_ascii=False))
+        return total + image_tokens * len(message.get('images') or [])
+
+    messages = list(messages)
+    used = sum(size(m) for m in messages)
+    changes = {'shrunk': 0, 'dropped': 0}
+    if used <= limit:
+        return messages, used, changes
+
+    def reduce(index):
+        nonlocal used
+        smaller = shrink(messages[index])
+        if smaller is None:
+            return
+        used += size(smaller) - size(messages[index])
+        messages[index] = smaller
+        changes['shrunk'] += 1
+
+    results = [i for i, m in enumerate(messages) if i > fixed and m.get('role') == 'tool']
+    for index in results[:-1]:
+        reduce(index)
+        if used <= limit:
+            return messages, used, changes
+    while used > limit and fixed > 1:
+        used -= size(messages.pop(1))
+        fixed -= 1
+        changes['dropped'] += 1
+    if used > limit and results:
+        reduce(results[-1] - changes['dropped'])
+    if used > limit:
+        raise RoundLimitError(
+            'Os resultados das ferramentas desta resposta não cabem mais no contexto deste perfil. '
+            'O que já foi obtido está nos cartões acima; peça a próxima etapa numa nova mensagem '
+            'ou escolha um perfil com mais contexto.')
+    return messages, used, changes

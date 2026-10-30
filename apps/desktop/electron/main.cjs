@@ -63,6 +63,8 @@ const allowed = [
   ["POST", /^\/(conversations|actions\/stop|actions\/resume)$/],
   ["GET", /^\/conversations\/[a-f0-9-]+\/messages$/],
   ["GET", /^\/conversations\/[a-f0-9-]+\/actions$/],
+  ["GET", /^\/conversations\/[a-f0-9-]+\/summary$/],
+  ["DELETE", /^\/conversations\/[a-f0-9-]+\/summary$/],
   ["DELETE", /^\/conversations\/[a-f0-9-]+$/],
   ["POST", /^\/chat\/cancel\/[a-f0-9-]+$/],
   ["PUT", /^\/settings$/],

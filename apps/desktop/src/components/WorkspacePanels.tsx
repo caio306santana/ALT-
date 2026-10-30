@@ -13,6 +13,7 @@ export type OwnerPolicy = {
   rules: string;
   memory_recall: "manual" | "automatic" | "semantic";
   auto_project_summaries: boolean;
+  conversation_summaries?: boolean;
   capabilities: Record<string, Decision>;
 };
 type PolicyState = {
@@ -141,6 +142,17 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
           />
           Gerar rascunhos de resumo de conversas vinculadas a projetos (a cada
           12 mensagens, sempre para revisão)
+        </label>
+        <label className="inline-check">
+          <input
+            type="checkbox"
+            checked={draft.conversation_summaries !== false}
+            onChange={(e) =>
+              setDraft({ ...draft, conversation_summaries: e.target.checked })
+            }
+          />
+          Em conversas longas, resumir as mensagens antigas que não cabem mais no
+          contexto (as originais continuam salvas; o resumo não vira memória)
         </label>
         <p className="setting-note">
           A semântica busca por significado nos itens indexados em Memória e

@@ -670,6 +670,9 @@ export default function App() {
                 event.recalled_memories?.length
                   ? `Memórias recuperadas: ${event.recalled_memories.map((m) => m.title).join(", ")}.`
                   : "",
+                event.continuity_summary
+                  ? `Conversa longa: a ALT usou um resumo das ${event.continuity_summary.covered} mensagens mais antigas. As originais continuam acima e salvas; o resumo não é memória.`
+                  : "",
               ]
                 .filter(Boolean)
                 .join(" "),
