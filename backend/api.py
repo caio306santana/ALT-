@@ -189,7 +189,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 evaluation.task.cancel();await asyncio.gather(evaluation.task,return_exceptions=True)
         store.db.close()
 
-    app = FastAPI(title='ALT-AI local API',version='0.4.2',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
+    app = FastAPI(title='ALT-AI local API',version='0.5.0',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
     app.state.store = store
     app.state.engine = engine
     app.state.tools=tools;app.state.codex=codex;app.state.receipts=receipts;app.state.gpu=gpu;app.state.speed=speed
@@ -255,7 +255,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.get('/health',dependencies=[Depends(auth)])
     async def health():
-        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.4.2'}
+        return {'status':'ok','stopped':engine.stopped,'game_mode':engine.game_mode,'permission_level':tools.status()['level'],'version':'0.5.0'}
 
     @app.get('/models',dependencies=[Depends(auth)])
     async def models():

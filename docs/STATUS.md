@@ -1,6 +1,6 @@
 # Estado atual e próximos passos — ALT-AI
 
-**Nesta branch `work/0.5`, consultar primeiro [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md).** O texto abaixo registra uma rodada anterior; não descreve o estado completo do desenvolvimento atual nem indica que exista instalador 0.5.
+**Estado da 0.5: ver [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md)** (todas as etapas do [plano](PLAN-0.5.md) implementadas, com testes). As seções abaixo registram as rodadas anteriores.
 
 Atualizado em 29/10/2026. Este é o ponto de entrada para retomar o projeto em outro PC.
 
@@ -8,6 +8,7 @@ Atualizado em 29/10/2026. Este é o ponto de entrada para retomar o projeto em o
 
 | Versão | Onde está | Estado |
 | --- | --- | --- |
+| 0.5.0 | `work/0.5` | Velocidade (cache de prompt, placa ocupada, referência de velocidade), ações verificadas, sempre permitir, conversa protegida, desfazer, tela, volume, lembretes, voz JARVIS (Ctrl+Espaço, Hey Jarvis, Dora), memória revisada, rodadas de ferramenta, ALT proativa, modelo automático e iPhone pelo Tailscale. Ver CHECKPOINT-0.5. |
 | 0.3.1 | `main` | Correção do chat (contexto Qwen, propostas sem prazo, aprovação no chat). **Instalada e em uso neste notebook.** Release no GitHub ainda em rascunho. |
 | 0.4.2 | `work/0.4.2` | Personalidade Alt + JARVIS, acesso total de verdade (qualquer programa pelo nome, sites no navegador padrão, janelas sem autorizar uma a uma, PowerShell com cartão), botão de Acesso total no chat e STOP visível. Testada no PC principal (Ryzen 9 3900 / RX 7600). Instalador ainda não gerado. |
 | 0.4.0 | `work/advanced-0.4` | Etapas 2, 3 e 5 integradas, modo Acesso total, aviso de atualização e novo design. Instalador gerado, manifesto Ed25519 conferido e backend empacotado testado neste notebook **sem bloqueio do Windows**. [Release v0.4.0 em rascunho](https://github.com/caio306santana/ALT-/releases) com instalador, manifesto e SHA256. Cópia em `Downloads\ALT-AI-0.4.0`. Ainda não mesclada em `main`. |

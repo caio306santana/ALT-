@@ -1,4 +1,4 @@
-# Segurança — prévia 0.3
+# Segurança — 0.5
 
 ## Fronteiras
 
@@ -51,3 +51,33 @@ Na branch 0.5, anexos de até 20 MB são lidos localmente. PDF com texto usa ext
 Imagens JPEG são validadas pelo decoder antes de armazenamento. PDFs protegidos, documentos excessivos e páginas sem texto legível são recusados com motivo. OCR não envia documentos à internet. Envio de anexos à Anthropic continua passando pela prévia de nuvem e pelo recibo; o modo híbrido escolhido pelo usuário ainda não habilita fallback pago automático.
 
 Atualizações locais exigem manifesto Ed25519 verificado pela chave pública embarcada, arquivo/tamanho/hash corretos, versão mais nova e confirmação nativa, com nova verificação antes da execução. Chave privada fora do Git. Não é feed automático, identidade Authenticode nem garantia contra comprometimento da máquina/chave de assinatura. Pipeline Authenticode existe, mas requer certificado/credenciais que ainda não foram configurados. Não desabilitar verificações para contornar falhas.
+
+## Novidades de segurança da 0.5
+
+**Voz.** A janela do Electron não tem mais permissão de microfone: quem captura é o backend (`sounddevice`), e o áudio fica só em memória. Com a palavra de ativação ligada, o microfone fica aberto, mas, enquanto a ALT dorme, só o detector local recebe o som; nada vai ao Whisper. Enquanto ela fala, o microfone é ignorado, para não obedecer à própria voz. STOP corta a fala e a escuta. Os modelos de voz (Whisper, Dora, "Hey Jarvis") vêm de endereços fixos e só são baixados quando o usuário pede.
+
+**Resultado das ações.** Cada ação devolve um estado. Só "feito" leva ✓; "não confirmado" diz ao modelo, com uma instrução fixa, que ele não pode afirmar sucesso. Conteúdo de fora (sites, arquivos, janelas, anexos, resultados de ferramentas) vai entre marcadores `<<<DADOS …>>>`; marcadores e tokens de template de chat que já venham no texto são neutralizados.
+
+**Sempre permitir.** Vale só para abrir um programa, um site (por domínio) ou uma pasta, nos modos 2 e 3. Comandos, fechar programas, gravar arquivos e downloads nunca são lembrados. A lista pode ser revisada e apagada em Controle e regras.
+
+**Conversa protegida.** Se uma leitura trouxer credencial, CPF, número de cartão (validado pelo algoritmo de Luhn) ou tokens de chat, a conversa fica marcada. Até o STOP, sites, pesquisas, downloads, gravações e interações com janelas voltam a pedir cartão, mesmo no Acesso total. É a defesa contra "leia o segredo e mande para fora".
+
+**Desfazer.** Gravações e downloads podem ser revertidos. O desfazer se recusa se o arquivo mudou depois da ação da ALT, para não apagar uma mudança sua.
+
+**Tela, sistema e lembretes.**
+- A captura de tela fica só em memória, nunca no banco. Só vai para um modelo de nuvem pelo cartão.
+- Volume e brilho são lidos antes e depois.
+- Lembretes rodam no Agendador do Windows com o menor privilégio e na sessão do usuário. O texto vai num arquivo JSON, nunca na linha de comando.
+
+**Proativa.** Desligada por padrão. Respeita horário de silêncio e limite diário. O resumo da manhã só usa números que estão nos dados, e o clima é consultado no Open-Meteo só se uma cidade for definida. Rotinas e conversas puxadas pela ALT só geram texto; nunca executam ações.
+
+**Modelo automático.** Escolher o Claude nunca envia nada sozinho: a prévia e o recibo de consentimento continuam obrigatórios. Pedidos vindos do celular ficam no modelo local.
+
+**Celular.**
+- **Rede:** o gateway separado escuta só em `127.0.0.1:47823` e é publicado pelo `tailscale serve`, só na tailnet do dono, com HTTPS. Nunca é usado o `funnel`. Nenhuma porta é aberta e nada muda no firewall.
+- **Conexão:** o gateway confere Host e Origin, e o token do desktop não vale nele.
+- **Pareamento:** código de uso único, válido por 2 minutos, no `#fragmento`. Cada aparelho recebe um token próprio, guardado como hash, num cookie Secure/HttpOnly/SameSite=Strict de 30 dias renováveis. Cinco tentativas erradas travam o pareamento por 10 minutos. O acesso é revogável por aparelho.
+- **Ações:** pelo celular nada roda sozinho; toda ação vira cartão. PowerShell e gravações críticas só são aprovados no PC.
+- **Notificações:** Web Push com VAPID (aes128gcm). A chave privada fica na pasta de dados.
+
+**Chave de atualização.** O manifesto de atualização da 0.5 precisa da chave privada original, que não está neste PC. O script de assinatura se recusa, de propósito, a trocar a identidade sozinho.

@@ -28,6 +28,12 @@ CASES=[
     ('pesquisa no google o preço da RTX 5070','open_url|web_search','rtx'),
     ('rode ipconfig','run_command','ipconfig'),
     ('fecha o discord','close_app','discord'),
+    ('aperta ctrl+t no chrome','windows_keys','ctrl+t'),
+    ('olha minha tela e me diz o que tem','screen_look','screen_look'),
+    ('abaixa o volume pra 30','system_volume','30'),
+    ('me lembra de beber água em 10 minutos','reminder_create','água'),
+    ('pausa a música','media_key|windows_keys','pla'),
+    ('você lembra qual é a minha cor favorita?','memory_recall','cor'),
 ]
 CHAT=['oi, tudo bem?','me ajuda a organizar meu dia, tenho academia às 7h e trabalho das 9h às 18h']
 report={'started':time.strftime('%Y-%m-%dT%H:%M:%S%z'),'dry_run':True,'models':{}}

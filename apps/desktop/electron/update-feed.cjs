@@ -7,7 +7,7 @@ const { newer } = require("./update-security.cjs");
 
 const FEED =
   process.env.ALT_UPDATE_FEED ||
-  "https://api.github.com/repos/caio306santana/ALT-/releases/latest";
+  "https://api.github.com/repos/caio306santana/ALT-/releases?per_page=20";
 const HOSTS = new Set([
   "api.github.com",
   "github.com",
@@ -26,8 +26,10 @@ function trusted(url) {
   return parsed.href;
 }
 
+// Every ALT release so far is published as a prerelease (the app is a preview), and GitHub's
+// /releases/latest ignores prereleases: the feed lists releases and takes the newest that is not a draft.
 function parseRelease(release, currentVersion) {
-  if (!release || release.draft || release.prerelease) return null;
+  if (!release || release.draft) return null;
   const version = String(release.tag_name || "").replace(/^v/, "");
   if (!/^\d+\.\d+\.\d+$/.test(version) || !newer(version, currentVersion))
     return null;
@@ -55,15 +57,15 @@ function parseRelease(release, currentVersion) {
 async function checkRelease(currentVersion, fetcher = fetch) {
   const response = await fetcher(trusted(FEED), { headers: HEADERS });
   if (response.status === 404)
-    return {
-      available: false,
-      reason:
-        "Nenhuma release pública encontrada. Releases de repositório privado não são visíveis ao aplicativo sem login.",
-    };
+    return { available: false, reason: "Nenhuma release encontrada no GitHub do projeto." };
   if (!response.ok)
     return { available: false, reason: `GitHub respondeu ${response.status}. Tente mais tarde.` };
-  const release = parseRelease(await response.json(), currentVersion);
-  return release ? { available: true, ...release } : { available: false, reason: "Você já está na versão mais recente." };
+  const data = await response.json();
+  const candidates = (Array.isArray(data) ? data : [data])
+    .map((release) => parseRelease(release, currentVersion))
+    .filter(Boolean)
+    .sort((a, b) => (newer(a.version, b.version) ? -1 : newer(b.version, a.version) ? 1 : 0));
+  return candidates.length ? { available: true, ...candidates[0] } : { available: false, reason: "Você já está na versão mais recente." };
 }
 
 async function download(url, destination, maxBytes, onProgress, fetcher = fetch) {

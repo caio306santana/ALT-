@@ -2034,9 +2034,10 @@ export default function App() {
                     Electron · React · FastAPI · Ollama
                   </p>
                   <p className="setting-note">
-                    Memória de continuidade, regras por capacidade, navegador e
-                    nuvem com consentimento. Voz, GUI Windows genérica e iOS
-                    continuam no roteiro.
+                    Voz local (Whisper e Dora, “Hey Jarvis”), controle do Windows,
+                    tela, lembretes, rotinas e resumo da manhã, memória revisada,
+                    escolha automática de modelo, nuvem com consentimento e iPhone
+                    pelo Tailscale.
                   </p>
                   <button
                     className="secondary full"
@@ -2097,8 +2098,9 @@ export default function App() {
                   )}
                   <p className="setting-note">
                     Baixe instalador e manifesto da mesma release. A verificação
-                    recusa adulteração e versões antigas. Certificado Windows
-                    depende de configuração de assinatura.
+                    confere a assinatura Ed25519 do projeto e o SHA-256, e recusa
+                    adulteração e versões antigas. Sem certificado Authenticode, o
+                    Windows pode avisar na instalação.
                   </p>
                 </div>
               )}

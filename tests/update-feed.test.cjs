@@ -19,7 +19,9 @@ test('only a newer published release with signed assets is offered, with its not
   assert.equal(parseRelease({...release,assets:[]},'0.3.1').downloadable,false);
   assert.throws(()=>parseRelease({...release,assets:[{...release.assets[0],browser_download_url:'https://evil.example/x.exe'}]},'0.3.1'));
   assert.equal((await checkRelease('0.3.1',async()=>reply(404))).available,false);
-  assert.match((await checkRelease('0.3.1',async()=>reply(404))).reason,/privado/);
+  assert.match((await checkRelease('0.3.1',async()=>reply(404))).reason,/Nenhuma release/);
+  // Prereleases count (every ALT release is one); the newest wins from a list.
+  assert.equal((await checkRelease('0.3.1',async()=>reply(200,[{...release,prerelease:true,tag_name:'v0.3.5'},{...release,prerelease:true}]))).version,'0.4.0');
   assert.equal((await checkRelease('0.3.1',async()=>reply(200,release))).version,'0.4.0');
 });
 

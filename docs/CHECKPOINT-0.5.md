@@ -1,62 +1,49 @@
 # Checkpoint da ALT 0.5
 
-Branch: `work/0.5`. Base recebida do usuário: `5123031`.
-Checkout desta sessão: `C:\Users\caios\Downloads\ALT--main\ALT-current`.
-Não usar a pasta irmã `ALT--main` como base: ela é uma cópia antiga sem Git.
+Branch: `work/0.5`. Pasta de trabalho neste PC: `C:\Users\caios\Downloads\ALT--main\ALT-current`. A pasta irmã `ALT--main` é uma cópia antiga sem Git, e `C:\Users\caios\ALT-` ficou num commit antigo; não usar nenhuma das duas.
 
-## O que terminou nesta rodada
+Plano completo: [PLAN-0.5.md](PLAN-0.5.md). Referências estudadas, só como leitura, sem copiar código: OpenJarvis (Stanford) e Mark-LVI.
 
-- Recuperado o trabalho publicado de voz, anexos, atalhos, correção de ferramentas, Claude e Game Mode.
-- Personalidade não promete executar quando não há ferramenta; confirmações dependem de resultado confirmado.
-- Métricas de preparação, carga, leitura, geração e primeiro texto na mensagem, com painel Desempenho. Provedores que não informam uma etapa deixam o campo desconhecido.
-- Corrigida a sobreposição do botão Acesso total; build recarregado e conferido visualmente na janela de desenvolvimento, com conversa preservada.
-- PDFs digitalizados agora têm OCR local nas páginas sem texto; PDF com texto mantém extração normal. O OCR usa o componente do Windows e PDFium, sem envio de documentos à nuvem.
-- TXT/PDF/DOCX exibem aviso de leitura e quantidade de texto extraído; OCR é identificado como sujeito a erros.
-- Validação de JPEG pelo decoder e correção do orçamento dos trechos de documentos. Anexos sem espaço não são omitidos silenciosamente.
-- Perguntas sobre capacidades recebem os dados reais do provedor, inclusive visão. O Qwen 3.5 4B informou `vision`; geração de imagens continua sem integração.
-- Dependências e especificação PyInstaller atualizadas para PDFium, Pillow e o helper OCR.
+## O que a 0.5 entrega (todas as etapas do plano)
+
+| Etapa | O que faz |
+| --- | --- |
+| 0 — fechar o aberto | Anexos (imagem, PDF com OCR, Word, texto), voz pelo Whisper, atalhos de teclado nas janelas, Claude com ferramentas, Game Mode pela CPU, rodada de correção de ferramenta. |
+| 0.5 — velocidade | Diagnóstico em [LATENCY-0.5.md](LATENCY-0.5.md); velocidade de referência por modelo com aviso; placa ocupada leva ao modo leve; instrução de sistema fixa e contexto do turno no fim; ferramentas fixas (cache reaproveitado, 10/10 no smoke); pré-carga, 30 min carregado, embeddings na CPU, resumo só com o chat parado, até 1024 tokens; interface em lotes de 50 ms. |
+| 1 — confiabilidade | Resultado com estado (feito, não confirmado, falhou, pergunta); abrir traz para a frente o que já está aberto e confirma o processo; fechar pontua, pergunta em empate e nunca mira a ALT nem o Ollama; conteúdo de fora entre marcadores neutralizados; `/no_think` ignorado; trava contra loop. |
+| 2 — permissões | "Sempre permitir" para programas, sites e pastas; conversa protegida depois de ler segredo, CPF, cartão ou tokens de chat; desfazer gravação e download; cartões críticos expiram em 90 s; exemplos aprendidos (desligado). |
+| 3 — ferramentas | Ver a tela e responder sobre ela; volume, brilho e música com leitura antes e depois; lembretes pelo Agendador do Windows (testado de verdade). |
+| 4 — voz JARVIS | Segurar Ctrl+Espaço de qualquer lugar; "Hey Jarvis" (ONNX direto, 0,999 contra 0,0 no teste); "Ei ALT" experimental; voz Dora pt-BR local, frase a frase, com corte; microfone fechado enquanto ela fala; painel Voz. |
+| 5 — memória | Sugestões de fatos para revisar (nada entra sozinho); `memory_recall`; leituras voltam ao modelo e ele responde na mesma mensagem (até 4 rodadas). |
+| 6 — proativa | Resumo da manhã (clima Open-Meteo, lembretes, "da última vez", tópicos, só fatos); rotinas; puxar conversa com regras; tópicos; alertas do PC; aba Rotinas. |
+| 7 — modelo automático | Opção "Automático": simples no 4B, médio no 9B, complexo no Claude com prévia (ou 9B); Game Mode e placa ocupada forçam o 4B; aprende por faixa. |
+| 8 — iPhone | Gateway em 127.0.0.1:47823 publicado pelo `tailscale serve`; QR code de uso único; PWA com chat, voz, foto, cartões e notificações; nada roda sozinho a partir do celular. [IPHONE.md](IPHONE.md). |
 
 ## Evidência de teste
 
-- **127 testes Python passaram; um ignorado por privilégio de symlink. Cinco testes Node passaram; TypeScript/Vite passou.**
-- `scripts/smoke_document_chat.py`: **10/10** casos reais pelo Ollama, nos modelos 4B e 9B, cobrindo TXT, PDF com texto, Word com tabela, PDF digitalizado e JPEG. Dados exclusivamente sintéticos; relatório em `docs/document-chat-smoke.json`.
-- Documentos reais de Downloads, com autorização do usuário, lidos localmente: PDF com texto (814 caracteres), catálogo de 32 páginas digitalizadas (10.369 caracteres por OCR em 14,407 s) e Word (17.425 caracteres). Conteúdos não publicados no Git.
-- No app aberto, o 4B respondeu “Conexão confirmada”; o cartão também informou a abertura do Google durante o teste do usuário.
-- Whisper small baixado com autorização para `.local/ui-test-profile/data/voice/`. Transcrição real de áudio sintético da Maria respondeu HTTP 200; reconheceu parte da frase e cometeu erros. Microfone e conversa falada completa ainda não validados.
-- Medição inicial de inferência em `docs/latency-initial.json`; método e limites em `docs/VALIDATION-0.5-STAGE0.md`. A meta de velocidade e a etapa 0.5 não estão concluídas.
+- Python: suíte completa passando (ver o commit final); Node 5/5; build TypeScript/Vite.
+- Real, neste PC:
+  - Calculadora aberta e fechada com confirmação; Spotify já aberto trazido para a frente em 0,2 s;
+  - Ctrl+N no Bloco de Notas;
+  - lembrete criado, listado e cancelado no Agendador do Windows;
+  - notificação do Windows exibida;
+  - voz Dora tocada no alto-falante, e a fala dela transcrita certinho pelo Whisper;
+  - "Hey Jarvis" detectado em áudio sintético;
+  - clima do Open-Meteo;
+  - gateway do celular servindo a PWA e recusando acesso sem pareamento.
+- Smoke real de ferramentas, Qwen 3.5 4B: `docs/full-access-smoke*.json`.
 
-## Próximo passo imediato
+## Achados e pendências que dependem do usuário
 
-1. **Reiniciar somente o app de desenvolvimento isolado para carregar o backend com OCR e capacidades corrigidas.** O controle de janela foi interrompido por Escape antes dessa atualização; recarregar só a interface não troca os módulos Python. Não declarar que o app instalado foi atualizado.
-2. Conferir um PDF digitalizado pelo clipe na janela aberta, testar a resposta sobre visão/geração e o layout em janela menor. Usar dados sintéticos ou arquivos de Downloads autorizados; não enviar esses conteúdos à nuvem.
-3. Concluir a etapa de velocidade do plano: casos longos/memória/anexos, prefixo fixo, comparação de ferramentas estáveis, aquecimento, keep-alive, embedding na CPU e resumos ociosos. Os dados iniciais mostram que gerar argumentos de ferramenta também é um gargalo; não presumir que só o prompt explique a lentidão.
-
-## O restante do plano está pendente
-
-| Etapa de `PLAN-0.5.md` | O que ainda falta |
-| --- | --- |
-| 0 — validação | Microfone real, voz completa no app, atalhos em janela própria, Game Mode real na CPU e Claude pago configurado/autorizado. |
-| 0.5 — velocidade | Implementação e comparação completa antes/depois; metas ainda sem comprovação. |
-| 1 — confiabilidade | Contrato de resultado, abrir/focar e fechar verificados, fronteira de dados externos, loop guard e autoconhecimento ampliado. |
-| 2 — permissões/desfazer | Sempre permitir por alvo, contaminação da sessão, desfazer e revisão das confirmações. |
-| 3 — ferramentas | Tela, volume/brilho/mídia, lembretes persistentes. |
-| 4 — JARVIS | Captura no backend, Ctrl+Espaço, wake word, Dora, fala incremental, seleção/teste de dispositivos e STOP completo. |
-| 5 — memória | Sugestões revisadas, orçamento de lembranças e “da última vez”. |
-| 6 — proatividade | Agendador, resumo da manhã, silêncio, limites e alertas. |
-| 7 — modelo automático | **Usuário escolheu híbrido:** local no simples, nuvem no complexo com prévia e aprovação. Ainda não habilitado; não ativar API paga sozinho. |
-| 8 — iPhone | Gateway separado, Tailscale, pareamento, PWA e notificações. |
-| 9 — entrega | Testes completos, runtime empacotado, instalador, manifesto, documentação, merge e validação de atualização. |
-
-Pendência explícita do usuário: **tela Sobre e seus três botões de atualização precisam funcionar no aplicativo instalado**. Atualizar o texto antigo sobre voz/GUI e validar releases, procura de atualização e manifesto local; não basta exibir botões.
+- **GPU lenta desde 29/10 às 21:08:** travamento do driver de vídeo (LiveKernelEvent). O 4B caiu de 57 para cerca de 4,5 tok/s. Recomendado reiniciar o PC e medir de novo com `scripts/benchmark_latency.py --cases long`.
+- **Microfone:** o único microfone do Windows é o "WO Mic Device", que só funciona com o app WO Mic conectado. A voz precisa de um microfone de verdade ou do WO Mic ligado.
+- **Chave de atualização:** a chave privada (`.local/update-private-key.pem`) não está neste PC; provavelmente está no notebook onde as releases 0.1 a 0.3 foram geradas. Sem ela, o manifesto da 0.5 não é assinado. O script se recusa, de propósito, a trocar a identidade sozinho.
+- **Assinatura de código (Authenticode):** não dá para fazer daqui. Opções: Azure Trusted Signing (assinatura mensal) ou um certificado OV de uma autoridade certificadora.
+- **iPhone:** o Tailscale ainda não está instalado neste PC; o passo a passo está em IPHONE.md.
+- Interface: os fluxos foram testados por API e testes. Falta uma passada manual na janela (clicar em tudo) com o app rodando.
 
 ## Cuidados para retomar
 
-- O app instalado informado pelo usuário segue na 0.4.1. Metadados do checkout ainda são 0.4.2; só mudar para 0.5.0 ao preparar a entrega completa.
-- Perfil isolado: `.local/ui-test-profile`. Não sobrescrever dados do usuário em AppData.
-- Helper Electron iniciado nesta sessão: PID 17508, caminho `ALT-current/node_modules/electron/dist/electron.exe`, início 29/10/2026 23:36:18. Conferir identidade/horário antes de encerrar; PIDs podem ser reutilizados. Nunca matar processos por nome.
-- O Ollama foi iniciado nesta sessão e usado nos testes locais. Não encerrar instâncias arbitrárias nem alterar sua configuração de GPU sem medição e consentimento.
-- OCR foi validado em desenvolvimento neste Windows, com reconhecimento pt-BR instalado. **Ainda testar o helper e a DLL no pacote PyInstaller.** Limite explícito de 50 páginas que precisam de OCR; nenhuma página é descartada silenciosamente.
-- Dora, wake word e recursos do Tailscale ainda podem exigir downloads/configuração do usuário. A autorização dada até agora foi para o Whisper small.
-- Nunca publicar `.local`, bancos, logs, modelos, áudio, documentos de Downloads ou chaves. A chave privada original de atualização não foi configurada neste checkout.
-- Há um stash local preservando os diagnósticos anteriores à importação de `5123031`; as mudanças úteis já foram integradas. Não reaplicar o stash sobre este código.
-- O agente não tem acesso confiável ao percentual de créditos/contexto. Não inventar aviso automático de 2%; manter checkpoints verificáveis.
+- Nunca publicar `.local`, bancos, logs, modelos, áudio, documentos de Downloads ou chaves.
+- Fechar só processos abertos pelo agente, pelo PID, conferindo o horário de início. Nunca `taskkill /IM`.
+- Editar código com Edit ou com scripts em arquivo; o heredoc do bash desta máquina come barras invertidas.
