@@ -26,6 +26,7 @@ from backend.features import install_features
 from backend.tools.chat_tools import tool_spec,stable_tool_spec
 from backend.monitoring.gpu import GpuWatch,SpeedReference,light_notice
 from backend.tools.outcome import chat_line,note as outcome_note,untrusted
+from backend.voice.text import SpeechText
 from backend.tools.service import ToolProposal
 from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer
 from backend.desktop import DesktopBridge
@@ -51,6 +52,13 @@ def tool_error(exc):
     if isinstance(exc,json.JSONDecodeError):return 'argumentos da ferramenta em JSON inválido.'
     return str(exc)
 
+def acknowledgement(action):
+    """A short line spoken the moment an action is proposed, before it finishes."""
+    target=(action.app or '').removeprefix('catalog:')
+    return {'open_app':f'Abrindo {target}.' if target else 'Abrindo.','close_app':f'Fechando {target}.' if target else 'Fechando.',
+        'open_url':'Abrindo o site.','web_search':'Pesquisando.','screen_look':'Olhando a tela.','system_volume':'Ajustando o volume.',
+        'reminder_create':'Criando o lembrete.','read_webpage':'Lendo a página.'}.get(action.tool,'Certo.')
+
 def think_toggle(call):
     """Qwen sometimes emits a 'tool call' that is only /think or /no_think (seen by OpenJarvis,
     engine/ollama.py); it is not an action and is ignored."""
@@ -71,6 +79,8 @@ class ContextBody(BaseModel):
 
 class ChatBody(ContextBody):
     conversation_id: str = Field(min_length=1,max_length=64)
+    # The request came by voice: the reply is spoken by the backend, sentence by sentence.
+    speak: bool = False
 
 class Settings(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -98,6 +108,13 @@ class Settings(BaseModel):
     gpu_light_auto:bool=False
     # Example turns from the owner's own confirmed actions (off until measured on a healthy GPU).
     learned_examples:bool=False
+    voice_engine:Literal['dora','maria']='dora'
+    voice_speed:float=Field(default=1.05,ge=.8,le=1.4)
+    voice_input:str=Field(default='',max_length=120)
+    voice_output:str=Field(default='',max_length=120)
+    voice_ptt:str=Field(default='Control+Space',max_length=40,pattern=r'^(Control|Alt|Shift)(\+(Control|Alt|Shift)){0,2}\+([A-Z]|Space|F[1-9]|F1[0-2])$')
+    wake_mode:Literal['off','hey_jarvis','ei_alt']='off'
+    voice_replies:bool=True
 
 class PullBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -120,7 +137,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @asynccontextmanager
     async def lifespan(app):
-        gpu.start();preload()
+        gpu.start();preload();app.state.voice_start()
         yield
         tasks.stop_all();engine.stop()
         evaluation=getattr(app.state,'evaluations',None)
@@ -226,6 +243,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         changed=body.model!=store.settings().get('model','')
         store.set_settings(body.model_dump())
         if changed:preload(body.model)
+        app.state.voice_loop.configure()
         return body.model_dump()
 
     @app.get('/system',dependencies=[Depends(auth)])
@@ -238,7 +256,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.post('/actions/stop',dependencies=[Depends(auth)])
     async def stop():
-        engine.stop();tools.revoke();receipts.revoke_all();store.audit('stop_all')
+        engine.stop();tools.revoke();receipts.revoke_all();app.state.voice_loop.stop();store.audit('stop_all')
         return {'stopped':True}
 
     @app.post('/tools/remember/{aid}',dependencies=[Depends(auth)])
@@ -262,7 +280,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.post('/actions/resume',dependencies=[Depends(auth)])
     async def resume():
-        engine.stopped=False;engine.game_mode=False;store.audit('resume')
+        engine.stopped=False;engine.game_mode=False;app.state.voice_loop.resume();store.audit('resume')
         return {'stopped':False}
 
     async def recall_candidates(body,mode):
@@ -502,6 +520,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             text, status, metrics = '', 'interrupted', None
             start = time.monotonic(); checkpoint = start; first = None
             preparation=start-request_start
+            speaker=app.state.speaker
+            speech=SpeechText() if body.speak and store.settings().get('voice_replies',True) else None
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
                 yield line({'type':'start','message_id':mid,'context_messages':context_count,'context_truncated':context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled})
@@ -518,6 +538,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     async for chunk in cancellable(source,event):
                         if event.is_set() or await request.is_disconnected(): break
                         delta = chunk.get('message',{}).get('content','')
+                        if speech and delta:
+                            for sentence in speech.feed(delta):speaker.say(sentence)
                         if not proposed and profile.get('tools') and chunk.get('message',{}).get('tool_calls') and not think_toggle(chunk['message']['tool_calls'][0]):
                             call=chunk['message']['tool_calls'][0];function=call.get('function',{})
                             if function.get('name')!='alt_propose_action':raise ProviderError('O modelo solicitou uma ferramenta não reconhecida.','tool')
@@ -532,9 +554,12 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                 # One correction round: the model sees why the call failed (e.g. a similar program name).
                                 if not corrected and not body.model.startswith('cloud:'):retry=(call,reason);break
                                 proposed=True;delta+=('\n' if text or delta else '')+'Não consegui executar: '+reason
+                                if speech:speaker.say('Não consegui fazer isso. Detalhes na tela.')
                             else:
                                 proposed=True
                                 yield line({'type':'tool_proposal','proposal':proposal})
+                                # Said at once, before the action finishes (Mark LVI's instant acknowledgment).
+                                if speech:speaker.say(acknowledgement(action))
                                 # A screenshot only goes to a cloud model through the card, never by itself.
                                 if tools.can_auto(action,cid) and not (action.tool=='screen_look' and body.model.startswith('cloud:')):
                                     result=await tools.approve(proposal['id'])
@@ -543,7 +568,10 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                     capture=tools.captures.get(proposal['id']) if action.tool=='screen_look' else None
                                     if capture and body.model!='cloud:codex':look=(call,capture);break
                                     delta+='\n'+chat_line(result['result'])
-                                else:delta+='\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.'
+                                    if speech and result['result'].get('status','done')!='done':speaker.say('Pedi, mas não consegui confirmar. Veja na tela.')
+                                else:
+                                    delta+='\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.'
+                                    if speech:speaker.say('Preparei um cartão para você aprovar.')
                         if delta:
                             first = first if first is not None else time.monotonic()-start
                             text += delta
@@ -570,6 +598,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     messages=messages+[{'role':'assistant','content':'','tool_calls':[retry[0]]},
                         {'role':'tool','content':'ERRO DA FERRAMENTA: '+retry[1]+' Corrija os argumentos e chame alt_propose_action de novo; se faltar um dado, pergunte ao usuário em uma frase.'}]
                     source=open_stream(messages)
+                if speech:
+                    for sentence in speech.flush():speaker.say(sentence)
                 if status != 'complete' and not event.is_set() and not await request.is_disconnected():
                     yield line({'type':'error','code':'incomplete','message':'A geração terminou sem confirmação do Ollama. Resposta parcial preservada.'})
             except ProviderError as exc:

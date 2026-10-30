@@ -101,7 +101,8 @@ const allowed = [
   ["POST", /^\/tools\/(remember|undo)\/[a-f0-9-]+$/],
   ["GET", /^\/approvals\/remembered$/],
   ["DELETE", /^\/approvals\/remembered\/[a-f0-9-]+$/],
-  ["POST", /^\/voice\/download$/],
+  ["POST", /^\/voice\/(download|listen|stop|speak|test)$/],
+  ["GET", /^\/voice\/devices$/],
 ];
 function bindShortcut(shortcut) {
   if (
@@ -268,24 +269,11 @@ async function createWindow() {
   win.webContents.on("will-navigate", (event, url) => {
     if (url !== ui) event.preventDefault();
   });
-  // Only the microphone, only for the ALT window itself (voice commands are transcribed locally).
-  const microphone = (contents, permission, mediaTypes) =>
-    contents === win.webContents &&
-    permission === "media" &&
-    Array.isArray(mediaTypes) &&
-    mediaTypes.length > 0 &&
-    mediaTypes.every((type) => type === "audio");
+  // No camera or microphone for the window: voice is captured by the local backend.
   win.webContents.session.setPermissionRequestHandler(
-    (contents, permission, callback, details) =>
-      callback(
-        microphone(contents, permission, details?.mediaTypes) &&
-          details?.requestingUrl?.startsWith(ui),
-      ),
+    (contents, permission, callback) => callback(false),
   );
-  win.webContents.session.setPermissionCheckHandler(
-    (contents, permission, origin, details) =>
-      microphone(contents, permission, [details?.mediaType]),
-  );
+  win.webContents.session.setPermissionCheckHandler(() => false);
   win.on("close", (event) => {
     if (!quitting) {
       event.preventDefault();
@@ -907,19 +895,23 @@ ipcMain.handle("api:stream", async (event, id, kind, body) => {
   if (
     !/^[a-zA-Z0-9-]{1,80}$/.test(id) ||
     operations.has(id) ||
-    !["chat", "pull"].includes(kind) ||
+    !["chat", "pull", "voice"].includes(kind) ||
     operations.size >= 4
   )
     throw new Error("Operação inválida");
   const controller = new AbortController();
   operations.set(id, controller);
   try {
-    const response = await request(
-      "POST",
-      kind === "chat" ? "/chat" : "/setup/pull",
-      body,
-      controller.signal,
-    );
+    // "voice" is the long-lived event stream (state, transcripts, speaking) of the local voice loop.
+    const response =
+      kind === "voice"
+        ? await request("GET", "/voice/events", undefined, controller.signal)
+        : await request(
+            "POST",
+            kind === "chat" ? "/chat" : "/setup/pull",
+            body,
+            controller.signal,
+          );
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";

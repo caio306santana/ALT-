@@ -64,7 +64,8 @@ import {
   VerificationNote,
 } from "./components/AgentPanels";
 import { ApprovalMenu } from "./components/ApprovalMenu";
-import { VoiceButton, speak, stopSpeaking } from "./components/VoiceButton";
+import { VoiceButton, type VoiceState } from "./components/VoiceButton";
+import { VoicePanel } from "./components/VoicePanel";
 import { AttachmentChips, upload, type Attachment } from "./components/Attachments";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
 import { PerformanceDetails } from "./components/PerformanceDetails";
@@ -231,6 +232,9 @@ export default function App() {
     [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(""),
     [attachments, setAttachments] = useState<Attachment[]>([]),
+    [voiceState, setVoiceState] = useState<VoiceState>("off"),
+    [voiceSpeaking, setVoiceSpeaking] = useState(false),
+    [micLevel, setMicLevel] = useState(0),
     [attaching, setAttaching] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -560,6 +564,7 @@ export default function App() {
           consent_receipt: consentReceipt,
           tool_result_id: analysis?.id || "",
           attachment_ids: files.map((f) => f.id),
+          speak: !!spoken,
         },
         (event: StreamEvent) => {
           const flush = () => {
@@ -589,8 +594,6 @@ export default function App() {
               ),
             );
           if (event.type === "delta") reply += event.text || "";
-          if (event.type === "done" && spoken && event.status === "complete")
-            speak(reply.replace(/\n?(Ferramenta concluída|Preparei uma proposta|Pedido enviado|A ação falhou|Preciso que você escolha|Ação iniciada)[^\n]*/g, "").trim() || "Pronto.");
           // Re-rendering the markdown on every token competes with the model for the GPU; batch per 50 ms.
           if (event.type === "delta") {
             pending += event.text || "";
@@ -650,6 +653,35 @@ export default function App() {
       }
     }
   }
+  // Voice events from the local backend: push-to-talk, wake word and spoken replies.
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  const cidRef = useRef(cid);
+  cidRef.current = cid;
+  useEffect(() => {
+    if (!loaded) return;
+    let closed = false;
+    const connect = () => {
+      if (closed) return;
+      window.alt
+        .stream(crypto.randomUUID(), "voice", {}, (event: Record<string, unknown>) => {
+          if (event.type === "state") setVoiceState(event.state as VoiceState);
+          if (event.type === "speaking") setVoiceSpeaking(!!event.speaking);
+          if (event.type === "level") setMicLevel(Number(event.level) || 0);
+          if (event.type === "error" && event.message) setNotice(String(event.message));
+          // Talking over the ALT cuts the reply that is still being generated.
+          if (event.type === "barge" && busyRef.current && cidRef.current)
+            api("POST", `/chat/cancel/${cidRef.current}`).catch(() => {});
+          if (event.type === "transcript" && event.text) sendRef.current("", undefined, String(event.text));
+        })
+        .catch(() => {})
+        .finally(() => { if (!closed) setTimeout(connect, 2000); });
+    };
+    connect();
+    return () => { closed = true; };
+  }, [loaded]);
   async function attachFiles(files: { name: string; blob: Blob }[]) {
     if (!files.length) return;
     setAttaching(true);
@@ -663,7 +695,6 @@ export default function App() {
     finally { setAttaching(false); }
   }
   async function stopAll() {
-    stopSpeaking();
     await api("POST", "/actions/stop");
     setStopped(true);
     setNotice("Ações suspensas. Respostas parciais serão preservadas.");
@@ -1216,8 +1247,9 @@ export default function App() {
                         <Paperclip size={18} />
                       </button>
                       <VoiceButton
-                        disabled={stopped || busy || !loaded}
-                        onText={(text) => send("", undefined, text)}
+                        disabled={stopped || !loaded}
+                        state={voiceState}
+                        speaking={voiceSpeaking}
                         onError={report}
                       />
                       <button
@@ -1843,6 +1875,7 @@ export default function App() {
                 />
               ) : tab === "Comportamento" ? (
                 <div className="setting-group">
+                  <VoicePanel prefs={prefs} update={update} level={micLevel} onError={report} />
                   <div className="setting-heading">Desempenho</div>
                   <select
                     aria-label="Perfil de desempenho"

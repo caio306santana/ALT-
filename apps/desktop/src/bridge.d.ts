@@ -20,7 +20,7 @@ declare global {
       ): Promise<T>;
       stream(
         id: string,
-        kind: "chat" | "pull",
+        kind: "chat" | "pull" | "voice",
         body: unknown,
         callback: (event: StreamEvent) => void,
       ): Promise<void>;

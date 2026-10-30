@@ -553,3 +553,15 @@ body.full-access .composer {
 .taint-note {
   color: #ffc35c;
 }
+.voice-button.speaking {
+  color: #00c9f5;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.voice-button.awake {
+  color: #6dffb0;
+}
+.mic-meter {
+  flex: 1;
+  min-width: 120px;
+  height: 10px;
+}

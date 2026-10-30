@@ -65,6 +65,14 @@ export interface Preferences {
   user_name: string;
   tool_routing?: "stable" | "filtered";
   gpu_light_auto?: boolean;
+  learned_examples?: boolean;
+  voice_engine?: "dora" | "maria";
+  voice_speed?: number;
+  voice_input?: string;
+  voice_output?: string;
+  voice_ptt?: string;
+  wake_mode?: "off" | "hey_jarvis" | "ei_alt";
+  voice_replies?: boolean;
 }
 export interface Personality {
   name: string;

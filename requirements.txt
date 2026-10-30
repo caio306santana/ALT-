@@ -11,3 +11,5 @@ python-docx>=1.1,<2
 pywinauto>=0.6.9,<0.7; sys_platform == "win32"
 faster-whisper>=1.2,<2
 pycaw>=20260927; sys_platform == "win32"
+kokoro-onnx>=0.6,<0.7
+sounddevice>=0.5,<0.6
