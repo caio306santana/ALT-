@@ -1,0 +1,13 @@
+Built with Meta Llama 3.
+Meta Llama 3 is licensed under the Meta Llama 3 Community License,
+Copyright © Meta Platforms, Inc. All Rights Reserved.
+
+Hermes 3 tokenizer metadata published by NousResearch:
+https://huggingface.co/NousResearch/Hermes-3-Llama-3.2-3B
+https://huggingface.co/NousResearch/Hermes-3-Llama-3.1-8B
+
+Model library and license:
+https://ollama.com/library/hermes3
+https://ollama.com/library/hermes3:3b/blobs/475211637354
+
+Only tokenizer metadata is included with ALT-AI; model weights are not included.

@@ -16,14 +16,25 @@ Rodada de 30/10/2026 neste notebook. O usuário relatou o indicador “5.469 / 3
 - Imagens/documentos entram na estimativa; suporte a imagem é conferido antes de atribuir uma falha ao contexto. Informações de capacidades foram compactadas, preservando os fatos de suporte do provedor.
 - Indicador mostra o motor escolhido no Automático e a composição por mensagem, personalidade/memórias, ferramentas, dados auxiliares, imagens/documentos e histórico. Trocar permissões ou anexos refaz a conferência.
 - Rascunho e histórico permanecem preservados quando um envio realmente não cabe. Não há corte silencioso de instruções/memórias escolhidas nem ampliação de permissões.
+- O orçamento de ferramentas considera também as definições formatadas: um smoke real mostrou que só contar JSON compacto subestimava o prompt. Com a correção, a estimativa foi 1.461 tokens e o Ollama mediu 1.387; histórico longo reserva esse espaço.
+
+## Ações simples e Hermes
+
+O relato seguinte mostrou um problema diferente: “abre o bloco de notas” recebia uma análise inventada de pesquisa antiga, após quase oito minutos. Pedidos exatos e únicos para abrir Bloco de Notas ou Calculadora agora passam pelo caminho **ação local direta**, sem carregar modelo, anexar histórico ou consultar a nuvem. A UI identifica a execução local; a mensagem não é atribuída ao Qwen/Hermes. Regras do dono, modo Observação, aprovação, origem do iPhone e STOP continuam sendo aplicados pelo serviço de ferramentas. Falha ou resultado não verificado nunca vira confirmação de sucesso. Pedidos com anexos, resultados de ferramenta, negação, aspas, explicação ou várias ações não são interceptados.
+
+Hermes 3 3B/8B foi acrescentado ao catálogo, com seus próprios tokenizers validados e suporte ao contrato de ferramentas Ollama. Os pesos não foram baixados; ver [HERMES.md](HERMES.md).
+
+Durante a suíte completa apareceu uma violação de acesso nativa do SQLite: a thread do atalho de voz continuava consultando o banco durante `close()`. O fechamento agora usa o mesmo lock das consultas e encerra os trabalhadores de voz, alertas e monitoramento antes de fechar o banco. A regressão de encerramento verifica que esses trabalhadores terminam.
 
 ## Validação e distribuição
 
-Validação do código: **199 testes Python passaram, 1 ignorado por privilégio de symlink, e 5 testes Node passaram**. TypeScript/Vite compilou; o renderer sintético passou nos fluxos de Automático, composição, troca de permissões, rascunho e bloqueio legítimo. Regressões incluem modos 2/4, nuvem sem geração/consentimento, observações de janelas grandes, documentos/imagens no Notebook e blocos completos.
+Validação do código: **233 testes Python passaram, 1 ignorado por privilégio de symlink, e 5 testes Node passaram**, após as correções de encerramento e orçamento. TypeScript/Vite compilou; o renderer sintético passou nos fluxos de Automático, composição, troca de permissões, rascunho, bloqueio legítimo, ação direta sem roteamento de modelo e catálogo Hermes 3B/8B. Regressões incluem modos 2/4, nuvem sem geração/consentimento, observações de janelas grandes, documentos/imagens no Notebook e blocos completos.
 
 Os testes gerais de funcionalidades com nomes de modelo sintéticos agora usam perfil Desktop explícito, para que a contagem conservadora por bytes desses dublês não dependa da bateria/RAM da máquina de teste. Os testes de orçamento Notebook usam esse perfil explicitamente com tokenizer Qwen real. Também foi corrigido um falso roteamento: “abalado” não é pedido de “aba” do navegador; a instrução de acolhimento continua disponível.
 
-Em andamento: validação de resposta local real, geração e smoke do pacote 0.5.1. Atualizar esta seção com os resultados antes de publicar o instalador.
+Resposta local real concluída, em banco temporário, Notebook/modo 2: [relatório](chat-context-0.5.1-smoke.json). Automático escolheu Huihui 4B, respondeu “pronto.” e o contador estimou acima dos tokens reais. Foram cerca de 92 s neste notebook sob carga concorrente; isso comprova funcionamento, não uma melhoria de latência. Nenhuma ação Windows, arquivo pessoal ou API paga foi usada nesse smoke. Hermes não foi testado com pesos reais.
+
+Em andamento: rebuild e smoke do pacote final 0.5.1. Atualizar com os resultados antes de publicar. O candidato inicial de instalador foi gerado antes dessas alterações e não deve ser distribuído. O controle nativo da área de trabalho estava indisponível (`Computer Use native pipe is unavailable`, erro 2); nenhuma abertura real do Bloco de Notas foi validada nesta sessão. Os testes da ação direta usam o serviço real de propostas/permissões e execução simulada, sem tocar documentos/janelas do dono.
 
 O pacote 0.5.0 já publicado permanece inalterado. A correção está sendo preparada como **0.5.1**; atualizar o Git não troca o processo instalado/aberto. Authenticode continua dependência separada. Não declarar instalação concluída sem confirmação.
 

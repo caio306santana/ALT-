@@ -124,6 +124,8 @@ export interface CloudPreview {
   recalled_memories?: {id:string;title:string;kind?:string;score?:number|null;mode?:string}[];
 }
 export type StreamEvent = {
+  model?: string;
+  execution?: "direct" | "model";
   type:
     | "start"
     | "delta"

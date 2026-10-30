@@ -1,6 +1,6 @@
 # Continuidade — ALT-AI 0.5.1
 
-Correção de 30/10/2026 neste notebook: [CHAT_CONTEXT_0.5.1.md](CHAT_CONTEXT_0.5.1.md). Automático era estimado como nome de modelo, usando bytes e bloqueando envios que cabiam no Qwen. Observações de janelas também não tinham orçamento. Código/renderer validados (199 Python, 5 Node, 1 ignorado), resposta real e pacote em andamento. Não afirmar atualização instalada. A seção abaixo descreve a release base 0.5.0, que continua inalterada.
+Correção de 30/10/2026 neste notebook: [CHAT_CONTEXT_0.5.1.md](CHAT_CONTEXT_0.5.1.md). Automático usava bytes em vez do tokenizer real; observações de janelas não tinham orçamento. Agora inclui ferramentas formatadas, ações diretas exatas para Notepad/Calculadora, catálogo Hermes 3B/8B (pesos deixados para depois pelo dono), tokenizers Hermes fixados e encerramento de trabalhadores antes do banco (regressão nativa corrigida). Código/renderer validados (233 Python, 5 Node, 1 ignorado), resposta real Qwen/Huihui confirmada, rebuild do pacote final em andamento. Não afirmar Hermes real testado, abertura real de janela ou atualização instalada. A seção abaixo descreve a release base 0.5.0, que continua inalterada.
 
 Atualizado em 30/10/2026 neste notebook. **Começar por [STATUS.md](STATUS.md)** e [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md). `main` já reúne 0.4.0/0.4.1, 0.4.2 e 0.5; base funcional `e84df62`, igual ao commit da tag `v0.5.0`.
 

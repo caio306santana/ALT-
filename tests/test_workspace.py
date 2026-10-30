@@ -121,13 +121,18 @@ def test_recursive_find_skips_private_names_and_program_registration_detects_cha
         executable.write_bytes(b'changed synthetic, never executed')
         assert client.post('/tools/approve/'+proposal['id']).status_code==400
 
-def test_browser_schema_and_observation_fit_notebook_profile(tmp_path):
-    app,local,_,client=fixture_client(tmp_path)
+def test_browser_schema_and_observation_fit_notebook_profile(tmp_path,monkeypatch):
+    # Notebook is a real-token budget. Unknown fixture names intentionally use
+    # the larger UTF-8 bound and can omit auxiliary observations to stay safe.
+    from test_context_automatic import setup_app
+    app,local,client=setup_app(tmp_path,monkeypatch)
     with client:
         prefs=client.get('/settings').json();prefs['performance']='notebook';client.put('/settings',json=prefs)
         app.state.desktop.snapshot={'snapshot_id':'observed-fixture','url':'https://example.com/','elements':[{'id':'e1','label':'Documentação','tag':'a'}]}
         cid=conversation(client)
-        response=send(client,cid,content='Clique em Documentação no navegador.')
+        response=send(client,cid,model='qwen3.5:4b',content='Clique em Documentação no navegador.')
         assert response.status_code==200,response.text
-        assert 'observed-fixture' in local.contexts[-1][1][-1]['content']
-        assert 'browser_click' in local.profiles[-1]['tools'][0]['function']['parameters']['properties']['tool']['enum']
+        assert 'observed-fixture' in local.messages[-1]['content']
+        assert 'browser_click' in local.profile['tools'][0]['function']['parameters']['properties']['tool']['enum']
+        from backend.context import message_cost,tool_schema_cost
+        assert sum(message_cost(m['content'],'qwen3.5:4b') for m in local.messages)+tool_schema_cost(local.profile['tools'],'qwen3.5:4b')+local.profile['options']['num_predict']+128<=4096

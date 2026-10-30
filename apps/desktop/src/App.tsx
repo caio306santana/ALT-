@@ -47,6 +47,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import {version as appVersion} from '../../../package.json';
 import remarkGfm from "remark-gfm";
+import { isDirectLaunch } from "./direct";
 import type {
   Conversation,
   Message,
@@ -228,6 +229,7 @@ type ContextEstimate = {
   requested_model?: string;
   app_context_omitted?: number;
   components?: Record<string, number>;
+  execution?: "direct";
 };
 const CONTEXT_PARTS: Record<string, string> = {
   message: "Sua mensagem", instructions: "Personalidade e memórias escolhidas",
@@ -320,7 +322,7 @@ export default function App() {
         }));
     } catch {}
     // "Automático" picks the model per message (hybrid: Claude only with the preview).
-    const automatic: Model[] = data.models.length > 1 || cloud.length ? [{ name: "auto", size: 0, provider: "Automático (escolhe 4B, 9B ou Claude)", location: "auto" }] : [];
+    const automatic: Model[] = data.models.length > 1 || cloud.length ? [{ name: "auto", size: 0, provider: "Automático (modelos locais ou Claude)", location: "auto" }] : [];
     setModels([...automatic, ...data.models, ...cloud]);
     setConnected(data.connected);
     setPrefs((p) =>
@@ -441,10 +443,11 @@ export default function App() {
     setContextEstimate(null);
     setContextProblem("");
     const text = input.trim() || (attachments.length ? "Veja o anexo." : "");
-    if (!loaded || !prefs.model || !text || busy) return;
+    const directLaunch = isDirectLaunch(text, attachments.length);
+    if (!loaded || (!prefs.model && !directLaunch) || !text || busy) return;
     let active = true;
     const timeout = setTimeout(() => {
-      api<ContextEstimate>("POST", "/chat/estimate", { conversation_id: cid, model: prefs.model, content: text, memory_ids: memoryIds, attachment_ids: attachments.map(file => file.id) })
+      api<ContextEstimate>("POST", "/chat/estimate", { conversation_id: cid, model: prefs.model || "local:actions", content: text, memory_ids: memoryIds, attachment_ids: attachments.map(file => file.id) })
         .then(value => { if (active) setContextEstimate(value); })
         .catch(() => { if (active) setContextProblem("Não foi possível conferir o contexto. O envio fará uma nova conferência."); });
     }, 350);
@@ -506,6 +509,7 @@ export default function App() {
   ) {
     const files = analysis ? [] : attachments;
     const text = analysis?.content || spoken || input.trim() || (files.length ? "Veja o anexo." : "");
+    const directLaunch = isDirectLaunch(text, files.length, analysis?.id || "");
     // A spoken request gets a spoken answer.
     let reply = "";
     let pending = "";
@@ -515,7 +519,7 @@ export default function App() {
       setError("Retome as ações antes de enviar uma mensagem.");
       return;
     }
-    if (!selected) {
+    if (!selected && !directLaunch) {
       setNotice(
         "Escolha um modelo local no painel Inteligências para conversar.",
       );
@@ -526,9 +530,9 @@ export default function App() {
     setNotice("");
     setBusy(true);
     // "Automático": the backend picks 4B, 9B or Claude for this message; a cloud pick still needs the preview.
-    let model = prefs.model;
+    let model = prefs.model || (directLaunch ? "local:actions" : "");
     let route: { model: string; reason: string; band: string } | null = null;
-    if (model === "auto") {
+    if (model === "auto" && !directLaunch) {
       if (consentReceipt && routedModel.current) model = routedModel.current;
       else {
         try {
@@ -556,7 +560,7 @@ export default function App() {
       });
       setContextEstimate(estimate);
       if (!estimate.fits) throw new Error(estimate.reason || "Este envio excede o contexto disponível.");
-      if (model.startsWith("cloud:") && !consentReceipt) {
+      if (model.startsWith("cloud:") && !consentReceipt && estimate.execution !== "direct") {
         setPendingAnalysis(analysis || null);
         if (analysis) setInput(text);
         setCloudPreview(
@@ -621,6 +625,7 @@ export default function App() {
           };
           if (event.type === "start") {
             accepted = true;
+            if (event.model) setMessages(old => old.map(m => m.id === assistant.id ? { ...m, model: event.model! } : m));
             if (files.length) setAttachments((old) => old.filter((a) => !files.includes(a)));
           }
           if (event.type === "tool_proposal" && event.proposal)
@@ -1325,7 +1330,7 @@ export default function App() {
                         className="send"
                         aria-label="Enviar mensagem"
                         disabled={
-                          (!input.trim() && !attachments.length) || attaching || !selected || stopped || !loaded || contextEstimate?.fits === false
+                          (!input.trim() && !attachments.length) || attaching || (!selected && !isDirectLaunch(input, attachments.length)) || stopped || !loaded || contextEstimate?.fits === false
                         }
                       >
                         <ArrowUp size={20} />
@@ -1335,13 +1340,13 @@ export default function App() {
                 </form>
                 {(contextEstimate || contextProblem) && <div className={`context-indicator ${contextEstimate?.fits === false ? "over-limit" : ""}`} role="status">
                   {contextEstimate ? <span title={`Contagem ${contextEstimate.tokenizer}; inclui personalidade, memórias e histórico enviado.`}>
-                    Contexto: {contextEstimate.input_tokens.toLocaleString("pt-BR")} / {contextEstimate.input_limit.toLocaleString("pt-BR")} tokens
+                    {contextEstimate.execution === "direct" ? "Ação local direta · sem carregar modelo ou usar contexto" : <>Contexto: {contextEstimate.input_tokens.toLocaleString("pt-BR")} / {contextEstimate.input_limit.toLocaleString("pt-BR")} tokens</>}
                     {contextEstimate.fits && contextEstimate.history_included < contextEstimate.history_total ? " · histórico recente; conversa completa salva" : ""}
-                    {contextEstimate.model ? ` · ${contextEstimate.model}${contextEstimate.requested_model === "auto" ? " (Automático)" : ""}` : ""}
+                    {contextEstimate.model && contextEstimate.execution !== "direct" ? ` · ${contextEstimate.model}${contextEstimate.requested_model === "auto" ? " (Automático)" : ""}` : ""}
                     {contextEstimate.app_context_omitted ? " · dados auxiliares reduzidos para caber" : ""}
                   </span> : contextProblem}
                   {contextEstimate?.fits === false && <p>{contextEstimate.reason}</p>}
-                  {contextEstimate?.components && <details className="context-parts">
+                  {contextEstimate?.components && contextEstimate.execution !== "direct" && <details className="context-parts">
                     <summary>O que ocupa o contexto</summary>
                     <dl>{Object.entries(contextEstimate.components).filter(([, value]) => value > 0).map(([key, value]) => <div key={key}><dt>{CONTEXT_PARTS[key] || key}</dt><dd>{value.toLocaleString("pt-BR")} tokens</dd></div>)}</dl>
                   </details>}
@@ -1428,13 +1433,17 @@ export default function App() {
                   <div>
                     <h3>{model.provider || model.name}</h3>
                     <p>
-                      {model.location === "cloud"
+                      {model.location === "auto"
+                        ? "Escolha por mensagem entre os modelos disponíveis"
+                        : model.location === "cloud"
                         ? "Nuvem · revisão do contexto obrigatória"
                         : `Ollama · Local · ${bytes(model.size)} em disco`}
                     </p>
                     <span>
-                      {model.location === "cloud"
-                        ? "Conversa e código · ferramentas Windows no Qwen/Ollama"
+                      {model.location === "auto"
+                        ? "Modelos locais por tamanho e complexidade; nuvem com sua aprovação"
+                        : model.location === "cloud"
+                        ? "Conversa e código · ações diretas locais e ferramentas pelo Ollama"
                         : `${model.details?.parameter_size || "Parâmetros não informados"} · ${model.details?.quantization_level || "Quantização não informada"}`}
                     </span>
                   </div>
@@ -1444,24 +1453,32 @@ export default function App() {
                 </button>
               ))}
               <div className="download-section">
-                <span className="eyebrow">MODELOS QWEN LOCAIS</span>
+                <span className="eyebrow">MODELOS LOCAIS · QWEN E HERMES</span>
                 {[
                   "qwen3.5:2b",
                   "qwen3.5:4b",
                   "qwen3.5:9b",
                   "huihui_ai/qwen3.5-abliterated:4b",
+                  "hermes3:3b",
+                  "hermes3:8b",
                 ]
                   .filter((name) => !models.some((m) => m.name === name))
                   .map((name) => (
                     <div className="download-row" key={name}>
                       <div>
                         <strong>
-                          {name.startsWith("huihui")
+                          {name.startsWith("hermes3:")
+                            ? `Hermes 3 · NousResearch · ${name.split(":")[1].toUpperCase()}`
+                            : name.startsWith("huihui")
                             ? "Huihui Qwen 3.5 · comunitário · 4B"
                             : `Qwen 3.5 ${name.split(":")[1].toUpperCase()}`}
                         </strong>
                         <p>
-                          {name.endsWith("2b")
+                          {name === "hermes3:3b"
+                            ? "Texto e ferramentas · cerca de 2 GB em disco · mais leve"
+                            : name === "hermes3:8b"
+                            ? "Texto e ferramentas · cerca de 4,7 GB em disco · maior uso de RAM/VRAM"
+                            : name.endsWith("2b")
                             ? "Mais leve para notebooks · menor capacidade"
                             : name.endsWith("4b")
                               ? "Mais leve · download de vários GB"

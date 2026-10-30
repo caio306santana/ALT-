@@ -1,0 +1,8 @@
+{
+  "publisher": "NousResearch",
+  "repository": "NousResearch/Hermes-3-Llama-3.1-8B",
+  "revision": "896ea440e5a9e6070e3d8a2774daf2b481ab425b",
+  "source": "https://huggingface.co/NousResearch/Hermes-3-Llama-3.1-8B/resolve/896ea440e5a9e6070e3d8a2774daf2b481ab425b/tokenizer.json",
+  "sha256": "492ebf55999f2a71beed8104e12d808bfcba5a230b7e511f2c6ccbc616f9d76c",
+  "bytes": 9085140
+}

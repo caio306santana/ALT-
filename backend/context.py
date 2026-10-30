@@ -45,13 +45,45 @@ def qwen_tokenizer():
     if hashlib.sha256(path.read_bytes()).hexdigest()!=metadata['sha256']:raise ValueError('Metadados de tokenização alterados. Reinstale o pacote validado da ALT.')
     return Tokenizer.from_file(str(path))
 
+def hermes_tokenizer_name(model):
+    name=(model or '').lower()
+    if name=='hermes3:3b':return 'hermes3-3b'
+    if name in ('hermes3','hermes3:latest','hermes3:8b'):return 'hermes3-8b'
+    return None
+
+@lru_cache(maxsize=2)
+def hermes_tokenizer(name):
+    from tokenizers import Tokenizer
+    root=Path(sys.executable).parent/'tokenizers' if getattr(sys,'frozen',False) else Path(__file__).resolve().parents[1]/'assets'/'tokenizers'
+    path=root/(name+'.json');metadata=json.loads((root/(name+'-provenance.json')).read_text(encoding='utf-8'))
+    if hashlib.sha256(path.read_bytes()).hexdigest()!=metadata['sha256']:raise ValueError('Metadados de tokenização alterados. Reinstale o pacote validado da ALT.')
+    return Tokenizer.from_file(str(path))
+
+def tokenizer_label(model):
+    if has_qwen_tokenizer(model):return 'Qwen 3.5'
+    if hermes_tokenizer_name(model):return 'Hermes 3'
+    return 'estimativa conservadora'
+
 def message_cost(text,model=None):
     if has_qwen_tokenizer(model):
         # Count the model family's actual BPE tokens, reserving role/template
         # overhead separately. UTF-8 bytes are not treated as individual tokens.
         return len(qwen_tokenizer().encode(text,add_special_tokens=False).ids)+32
+    if name:=hermes_tokenizer_name(model):return len(hermes_tokenizer(name).encode(text,add_special_tokens=False).ids)+32
     # Conservative fallback for other models whose tokenizer is not bundled.
     return len(text.encode('utf-8')) + 32
+
+
+def tool_schema_cost(spec,model=None):
+    if not spec:return 0
+    # Engines render tools into the chat template. Counting only compact JSON
+    # underestimated the real Qwen prompt in the live 0.5.1 smoke; budget for
+    # formatted definitions as well, keeping the normal template reserve.
+    rendered=max(message_cost(json.dumps(spec,ensure_ascii=False,separators=(',',':')),model),
+        message_cost(json.dumps(spec,ensure_ascii=False,indent=2),model))
+    # Hermes adds its function-calling/XML instructions around the definitions.
+    # Keep a separate conservative allowance until calibrated with real weights.
+    return rendered+(256 if hermes_tokenizer_name(model) else 0)
 
 
 def compact(value):

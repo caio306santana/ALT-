@@ -277,7 +277,7 @@ class Proactive:
 
 class PcAlerts:
     """CPU or memory above 90% three readings in a row (every 10 s); 5 minutes between alerts per metric."""
-    def __init__(self,settings,notify,quiet):self.settings,self.notify,self.quiet=settings,notify,quiet;self.high={};self.sent={}
+    def __init__(self,settings,notify,quiet):self.settings,self.notify,self.quiet=settings,notify,quiet;self.high={};self.sent={};self.closed=threading.Event()
     def check(self,cpu,ram,clock=time.monotonic):
         alerts=[]
         for metric,value,label in (('cpu',cpu,'O processador'),('ram',ram,'A memória')):
@@ -289,10 +289,13 @@ class PcAlerts:
         def loop():
             import psutil
             psutil.cpu_percent(None)
-            while True:
-                time.sleep(10)
+            while not self.closed.wait(10):
                 try:
                     if not self.settings().get('pc_alerts') or self.quiet():self.high.clear();continue
                     for alert in self.check(psutil.cpu_percent(None),psutil.virtual_memory().percent):self.notify(alert,'ALT · PC')
                 except Exception:pass
-        threading.Thread(target=loop,daemon=True,name='pc-alerts').start()
+        self.thread=threading.Thread(target=loop,daemon=True,name='pc-alerts');self.thread.start()
+
+    def stop(self):
+        self.closed.set()
+        if getattr(self,'thread',None):self.thread.join(timeout=2)

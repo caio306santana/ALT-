@@ -1,0 +1,59 @@
+{
+  "scope": "Synthetic local inference, temporary database, Notebook mode 2. Functional test, not a latency benchmark. No user files, paid requests or OS actions.",
+  "version": "0.5.1",
+  "estimate": {
+    "fits": true,
+    "required_tokens": 1461,
+    "input_tokens": 1461,
+    "input_limit": 3200,
+    "total_context": 4096,
+    "output_reserve": 768,
+    "history_included": 0,
+    "history_total": 0,
+    "tokenizer": "Qwen 3.5",
+    "tool_result_truncated": false,
+    "profile": "notebook",
+    "recall_mode": "",
+    "components": {
+      "message": 39,
+      "instructions": 520,
+      "tools": 781,
+      "app_context": 121,
+      "images": 0,
+      "documents": 0,
+      "recalled": 0,
+      "history": 0,
+      "examples": 0
+    },
+    "app_context_omitted": 0,
+    "attachments": {
+      "images": 0,
+      "documents": []
+    },
+    "model": "huihui_ai/qwen3.5-abliterated:4b",
+    "requested_model": "auto"
+  },
+  "reply": "pronto.",
+  "metrics": {
+    "tokens": 4,
+    "tokens_per_second": 1.9,
+    "first_token_seconds": 88.61,
+    "request_first_token_seconds": 90.156,
+    "total_seconds": 90.719,
+    "request_total_seconds": 92.265,
+    "preparation_seconds": 1.546,
+    "model_load_seconds": 21.0214,
+    "prompt_eval_seconds": 64.9369,
+    "generation_seconds": 2.1079,
+    "provider_total_seconds": 89.8795,
+    "prompt_tokens": 1387,
+    "tools_offered": 10,
+    "verification": {
+      "calculations": [],
+      "sources": [],
+      "issues": 0,
+      "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+    }
+  },
+  "status": "complete"
+}

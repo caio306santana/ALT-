@@ -2,6 +2,8 @@
 
 Assistente pessoal Windows com modelos locais pelo Ollama, memória, voz, ferramentas e cliente para iPhone. ALT é o aplicativo/agente e sua identidade; Qwen e os demais motores são modelos de terceiros.
 
+**Hermes 3:** a 0.5.1 acrescenta as opções locais 3B e 8B. O download é opcional e ficou para depois por escolha do dono. Ver [uso, requisitos e validação](docs/HERMES.md). Built with Meta Llama 3.
+
 **Estado atual:** código **0.5.1** em `main`, corrigindo o bloqueio falso de contexto no Automático e limitando observações auxiliares. Código/renderer testados; pacote em validação. Ver [correção 0.5.1](docs/CHAT_CONTEXT_0.5.1.md). A [release v0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0) permanece publicada com instalador e manifesto originais; ela ainda não contém esse ajuste. [STATUS.md](docs/STATUS.md) registra as evidências e pendências. Assinar o manifesto não instala a atualização nem substitui Authenticode.
 
 ## O que a 0.5 inclui

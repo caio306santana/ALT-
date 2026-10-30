@@ -51,6 +51,7 @@ class VoiceLoop:
         self.chunks=queue.Queue(maxsize=200);self.stream=None;self.lock=threading.Lock()
         self.mode='off';self.recording=None;self.vad=None;self.awake_until=0.0;self.state='off'
         self.stopped=False
+        self.closed=threading.Event()
 
     # Device and stream ---------------------------------------------------------------------------
     def open(self):
@@ -135,10 +136,15 @@ class VoiceLoop:
 
     def resume(self):self.stopped=False;self.configure()
 
+    def shutdown(self):
+        self.closed.set();self.stop()
+        for thread in getattr(self,'threads',[]):thread.join(timeout=2)
+
     # Threads -------------------------------------------------------------------------------------
     def worker(self):
-        while True:
-            chunk=self.chunks.get()
+        while not self.closed.is_set():
+            try:chunk=self.chunks.get(timeout=.2)
+            except queue.Empty:continue
             try:self.process(chunk)
             except Exception as exc:self.emit(type='error',message='Falha no áudio: '+str(exc)[:120])
 
@@ -177,8 +183,7 @@ class VoiceLoop:
         import ctypes
         user32=ctypes.WinDLL('user32');user32.GetAsyncKeyState.restype=ctypes.c_short
         held_since=None;active=False;codes=[];checked=0
-        while True:
-            time.sleep(1/30)
+        while not self.closed.wait(1/30):
             # The setting is reread every 2 s, not on each of the 30 polls per second.
             if time.monotonic()-checked>2:
                 checked=time.monotonic()

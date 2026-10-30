@@ -103,12 +103,16 @@ class GpuWatch:
 
     def start(self,interval=5):
         if getattr(self,'thread',None) or self.counters.query is None:return
+        self.closed=threading.Event()
         def loop():
-            while True:
+            while not self.closed.is_set():
                 try:self.observe()
                 except Exception:pass
-                time.sleep(interval)
+                self.closed.wait(interval)
         self.thread=threading.Thread(target=loop,daemon=True,name='gpu-watch');self.thread.start()
+
+    def stop(self):
+        if getattr(self,'closed',None):self.closed.set();self.thread.join(timeout=2)
 
 class SpeedReference:
     """Best generation speed seen per model on this computer; it only decays slowly, so a bad evening

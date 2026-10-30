@@ -1,6 +1,6 @@
 # Estado atual e próximos passos — ALT-AI 0.5.1
 
-**Correção atual:** o código 0.5.1 resolve a falsa contagem do modo Automático e limita dados auxiliares de janelas. Suíte: 199 testes Python/5 Node passaram, 1 ignorado; renderer e build passaram. O pacote ainda está em validação: ver [CHAT_CONTEXT_0.5.1.md](CHAT_CONTEXT_0.5.1.md). As informações de instalador/hash na tabela abaixo são da base 0.5.0, preservada sem alterações.
+**Correção atual:** o código 0.5.1 resolve a falsa contagem do Automático, limita dados auxiliares de janelas, reserva ferramentas formatadas e adiciona ação direta para Bloco de Notas/Calculadora, sem carregar LLM. Inclui catálogo [Hermes 3 3B/8B](HERMES.md), sem baixar pesos por escolha do dono, e encerramento seguro dos trabalhadores/banco. Suíte: 233 testes Python/5 Node passaram, 1 ignorado; renderer e build passaram. O pacote final ainda está em validação: ver [CHAT_CONTEXT_0.5.1.md](CHAT_CONTEXT_0.5.1.md). As informações de instalador/hash na tabela abaixo são da base 0.5.0, preservada sem alterações.
 
 Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. As evidências funcionais do PC principal estão em [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md); não foram repetidas nesta rodada de assinatura/documentação.
 

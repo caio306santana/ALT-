@@ -36,8 +36,9 @@ class Speaker:
         self.directory=directory;self.settings=settings
         self.kokoro=None;self.lock=threading.Lock();self.jobs=queue.Queue();self.audio=queue.Queue(maxsize=4)
         self.generation=0;self.speaking_until=0.0;self.listeners=[]
-        threading.Thread(target=self._synth_loop,daemon=True,name='tts-synth').start()
-        threading.Thread(target=self._play_loop,daemon=True,name='tts-play').start()
+        self.closed=threading.Event()
+        self.threads=[threading.Thread(target=self._synth_loop,daemon=True,name='tts-synth'),threading.Thread(target=self._play_loop,daemon=True,name='tts-play')]
+        for thread in self.threads:thread.start()
 
     def installed(self):return all((self.directory/name).is_file() for name in KOKORO_FILES)
 
@@ -68,7 +69,11 @@ class Speaker:
     def speaking(self):return time.monotonic()<self.speaking_until
 
     def say(self,text):
-        if text.strip():self.jobs.put((self.generation,text.strip()))
+        if text.strip() and not self.closed.is_set():self.jobs.put((self.generation,text.strip()))
+
+    def shutdown(self):
+        self.closed.set();self.stop()
+        for thread in self.threads:thread.join(timeout=2)
 
     def stop(self):
         """Cut everything queued or playing (STOP, push-to-talk, wake word)."""
@@ -86,17 +91,21 @@ class Speaker:
             except Exception:pass
 
     def _synth_loop(self):
-        while True:
-            generation,text=self.jobs.get()
+        while not self.closed.is_set():
+            try:generation,text=self.jobs.get(timeout=.2)
+            except queue.Empty:continue
             if generation!=self.generation:continue
             try:samples,rate=self.synth(text)
             except Exception as exc:
                 self._emit({'type':'error','message':'A voz falhou: '+str(exc)[:120]});continue
-            if generation==self.generation:self.audio.put((generation,samples,rate))
+            while generation==self.generation and not self.closed.is_set():
+                try:self.audio.put((generation,samples,rate),timeout=.2);break
+                except queue.Full:continue
 
     def _play_loop(self):
-        while True:
-            generation,samples,rate=self.audio.get()
+        while not self.closed.is_set():
+            try:generation,samples,rate=self.audio.get(timeout=.2)
+            except queue.Empty:continue
             if generation!=self.generation:continue
             try:
                 import sounddevice as sd

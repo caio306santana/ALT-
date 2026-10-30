@@ -35,6 +35,11 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             estimate=client.post('/chat/estimate',headers=headers,json={'conversation_id':cid,'model':'qwen3.5:4b','content':'Estou organizando meus projetos e quero discutir ideias com calma. '*70})
             assert estimate.status_code==200,estimate.text
             assert estimate.json()['fits'] and estimate.json()['tokenizer']=='Qwen 3.5',estimate.text
+            for model in ('hermes3:3b','hermes3:8b'):
+                hermes=client.post('/chat/estimate',headers=headers,json={'model':model,'content':'Quero discutir ideias com calma. '*40})
+                assert hermes.status_code==200 and hermes.json()['fits'] and hermes.json()['tokenizer']=='Hermes 3',hermes.text
+            direct=client.post('/chat/estimate',headers=headers,json={'model':'auto','content':'abre o bloco de notas'})
+            assert direct.status_code==200 and direct.json()['execution']=='direct' and direct.json()['input_tokens']==0,direct.text
             assert 'Alt Cunningham' in prefs['personality']['tone']
             policy=client.get('/policy',headers=headers).json()
             assert policy['policy']['memory_recall']=='manual' and policy['boundaries']

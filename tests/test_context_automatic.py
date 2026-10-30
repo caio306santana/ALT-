@@ -126,3 +126,19 @@ def test_distress_word_is_not_mistaken_for_a_browser_tab_request():
     assert 'web_search' not in names
     names,_,_=route('Abra uma nova aba.',{'level':1})
     assert 'open_url' in names
+
+
+def test_long_history_leaves_room_for_formatted_tool_definitions(tmp_path,monkeypatch):
+    app,provider,client=setup_app(tmp_path,monkeypatch)
+    with client:
+        prefs=client.get('/settings').json();prefs['performance']='notebook';client.put('/settings',json=prefs)
+        client.put('/permissions',json={'level':2})
+        cid=conversation(client)
+        for i in range(40):app.state.store.add(cid,'user' if i%2==0 else 'assistant',('Registro sintético antigo. '*15)+str(i))
+        response=client.post('/chat',json={'conversation_id':cid,'model':'qwen3.5:4b','content':'Vamos continuar.'})
+        assert response.status_code==200,response.text
+        # The actual engine formats tool definitions inside its chat template;
+        # history must not use the room consumed by that formatting.
+        rendered_tools=message_cost(json.dumps(provider.profile['tools'],ensure_ascii=False,indent=2),'qwen3.5:4b')
+        assert sum(message_cost(m['content'],'qwen3.5:4b') for m in provider.messages)+rendered_tools+provider.profile['options']['num_predict']+128<=4096
+        assert len(client.get(f'/conversations/{cid}/messages').json())==42

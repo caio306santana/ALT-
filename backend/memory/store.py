@@ -31,6 +31,10 @@ class Store:
         with self.lock:
             return [dict(r) for r in self.db.execute(sql, args).fetchall()]
 
+    def close(self):
+        # sqlite must not be closed while a native worker is inside execute.
+        with self.lock:self.db.close()
+
     def write(self, sql, args=()):
         with self.lock:
             self.db.execute(sql, args)

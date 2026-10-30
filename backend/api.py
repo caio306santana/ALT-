@@ -24,6 +24,7 @@ from backend.providers.codex import CodexProvider
 from backend.providers.anthropic import AnthropicProvider
 from backend.features import install_features
 from backend.tools.chat_tools import tool_spec,stable_tool_spec
+from backend.tools import direct
 from backend.monitoring.gpu import GpuWatch,SpeedReference,light_notice
 from backend.tools.outcome import chat_line,note as outcome_note,untrusted
 from backend.voice.text import SpeechText
@@ -33,7 +34,7 @@ from backend.routing import ModelRouter
 from backend.remote import RemoteManager
 from backend.tools import system
 from backend.tools.service import ToolProposal,site_in_request
-from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer,fit_context_blocks
+from backend.context import message_cost,tool_excerpt,ContextLimitError,tokenizer_label,fit_context_blocks,tool_schema_cost
 from backend.desktop import DesktopBridge
 from backend.workspace_features import install_workspace_features
 from backend.agent_features import install_agent_features
@@ -159,7 +160,7 @@ class Settings(BaseModel):
 
 class PullBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    model: Literal['qwen3.5:2b','qwen3.5:4b','qwen3.5:9b','huihui_ai/qwen3.5-abliterated:4b']
+    model: Literal['qwen3.5:2b','qwen3.5:4b','qwen3.5:9b','huihui_ai/qwen3.5-abliterated:4b','hermes3:3b','hermes3:8b']
 
 def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     if len(token) < 32:
@@ -188,7 +189,10 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             try:await asyncio.wait_for(asyncio.shield(evaluation.task),5)
             except asyncio.TimeoutError:
                 evaluation.task.cancel();await asyncio.gather(evaluation.task,return_exceptions=True)
-        store.db.close()
+        app.state.pc_alerts.stop();gpu.stop()
+        await asyncio.to_thread(app.state.voice_loop.shutdown)
+        await asyncio.to_thread(app.state.speaker.shutdown)
+        store.close()
 
     app = FastAPI(title='ALT-AI local API',version='0.5.1',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan)
     app.state.store = store
@@ -493,7 +497,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             capabilities=['vision'] if body.model=='cloud:anthropic' else [] if body.model=='cloud:codex' else await ollama.capabilities(body.model) if hasattr(ollama,'capabilities') else None
             blocks.insert(0,capability_guidance(body.model,capabilities,status['level'],engine.game_mode,definition if spec else [],app.state.voice.installed()))
         context_limit=24000 if body.model.startswith('cloud:') else profile['options']['num_ctx']-min(profile['options']['num_predict'],768)-128
-        schema_cost=cost(json.dumps(spec,ensure_ascii=False,separators=(',',':'))) if spec else 0
+        schema_cost=tool_schema_cost(spec,body.model)
         attached=attachments.rows(body.attachment_ids,body.conversation_id)
         images=[row for row in attached if row['kind']=='image']
         if images:
@@ -571,7 +575,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         estimate={'fits':True,'required_tokens':required,'input_tokens':chars,'input_limit':context_limit,
             'total_context':profile['options']['num_ctx'],'output_reserve':profile['options']['num_predict'],
             'history_included':len(context),'history_total':len(previous),
-            'tokenizer':'Qwen 3.5' if has_qwen_tokenizer(body.model) else 'estimativa conservadora',
+            'tokenizer':tokenizer_label(body.model),
             'tool_result_truncated':result_truncated,'profile':profile['effective'],'recall_mode':recall_mode,
             'components':components,'app_context_omitted':omitted,
             'attachments':{'images':len(images),'documents':[row['name'] for row in documents]}}
@@ -581,12 +585,14 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     async def estimate_context(body:ContextBody):
         if body.conversation_id and not store.conversation(body.conversation_id):raise HTTPException(404,'Conversa não encontrada')
         requested=body.model
+        if direct.direct_action(body.content,body.attachment_ids,body.tool_result_id):
+            return {**direct.estimate(),'model':'local:actions','requested_model':requested}
         if requested=='auto':
             route=await router.choose(body.content)
             if not route['model']:raise HTTPException(409,route['reason'])
             body=body.model_copy(update={'model':route['model']})
         try:result=(await context_for(body))[-1]
-        except ContextLimitError as exc:result={**exc.estimate,'reason':str(exc),'tokenizer':'Qwen 3.5' if has_qwen_tokenizer(body.model) else 'estimativa conservadora'}
+        except ContextLimitError as exc:result={**exc.estimate,'reason':str(exc),'tokenizer':tokenizer_label(body.model)}
         return {**result,'model':body.model,'requested_model':requested}
 
     @app.post('/chat/preview',dependencies=[Depends(auth)])
@@ -631,9 +637,17 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         request_start=time.monotonic()
         if not body.content.strip(): raise HTTPException(422,'Mensagem vazia')
         if not store.conversation(body.conversation_id): raise HTTPException(404,'Conversa não encontrada')
-        payload,profile,previous_count,context_count,result_truncated,recalled,estimate=await context_for(body)
+        action_direct=direct.direct_action(body.content,body.attachment_ids,body.tool_result_id)
+        if action_direct:
+            # A local launch does not load a model, send cloud context or need a
+            # tokenizer budget. All permissions are applied by ToolService below.
+            payload={'messages':[]};profile={'tools':True,'effective':'direct'}
+            previous_count=len(store.messages(body.conversation_id));context_count=0
+            result_truncated=False;recalled=[];estimate=direct.estimate()
+        else:payload,profile,previous_count,context_count,result_truncated,recalled,estimate=await context_for(body)
         try:
-            if body.model in ('cloud:codex','cloud:anthropic'):
+            if action_direct:pass
+            elif body.model in ('cloud:codex','cloud:anthropic'):
                 status=await asyncio.to_thread(codex.status) if body.model=='cloud:codex' else anthropic.status()
                 if not status['available']:raise HTTPException(409,status['reason'])
                 receipts.consume(body.consent_receipt,payload)
@@ -649,9 +663,10 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         store.add(cid,'user',body.content+('\n\n📎 '+', '.join(names) if names else ''));attachments.bind(body.attachment_ids,cid)
         if not previous_count:
             store.write('UPDATE conversations SET title=? WHERE id=?',(body.content.strip()[:65],cid))
-        mid = store.add(cid,'assistant','',body.model,'streaming')
+        reply_model='local:actions' if action_direct else body.model
+        mid = store.add(cid,'assistant','',reply_model,'streaming')
         # Another program (usually a game) holding the graphics card: answer short instead of crawling.
-        busy=gpu.state() if not body.model.startswith('cloud:') and not engine.game_mode else {'busy':False}
+        busy=gpu.state() if not action_direct and not body.model.startswith('cloud:') and not engine.game_mode else {'busy':False}
         if busy['busy']:
             if store.settings().get('gpu_light_auto'):
                 light=performance_profile(store.settings().get('performance','auto'),True)
@@ -666,15 +681,16 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             speech=SpeechText() if body.speak and store.settings().get('voice_replies',True) else None
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
-                yield line({'type':'start','message_id':mid,'context_messages':context_count,'context_truncated':context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled})
+                yield line({'type':'start','message_id':mid,'model':reply_model,'execution':'direct' if action_direct else 'model','context_messages':context_count,'context_truncated':False if action_direct else context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled})
                 if busy['busy']:yield line({'type':'notice','message':light_notice(busy)})
                 def open_stream(messages,with_tools=True):
+                    if action_direct:return direct.stream(action_direct)
                     offered=profile.get('tools') if with_tools else None
                     if body.model=='cloud:codex':return codex.stream(messages,event)
                     if body.model=='cloud:anthropic':return anthropic.stream(messages,event,offered)
                     return ollama.stream(body.model,messages,event,{**profile,'tools':offered})
                 messages=payload['messages'];source=open_stream(messages)
-                proposed=False;corrected=False;rounds=0;seen=set()
+                proposed=False;corrected=bool(action_direct);rounds=0;seen=set()
                 while True:
                     retry=None;look=None;follow=None
                     async for chunk in cancellable(source,event):
@@ -726,7 +742,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                     # Reads come back to the model, which answers or takes the next step (max 4 rounds).
                                     if action.tool in FOLLOW_UP and rounds<MAX_ROUNDS and not body.model.startswith('cloud:'):
                                         follow=(call,result['result']);break
-                                    delta+='\n'+chat_line(result['result'])
+                                    delta+='\n'+(direct.reply(action_direct,result['result']) if action_direct else chat_line(result['result']))
                                     if speech and result['result'].get('status','done')!='done':speaker.say('Pedi, mas não consegui confirmar. Veja na tela.')
                                 else:
                                     delta+='\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.'
@@ -738,10 +754,11 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                         if time.monotonic()-checkpoint > 0.5:
                             store.checkpoint(mid,text,'streaming'); checkpoint=time.monotonic()
                         if chunk.get('done'):
-                            offered=profile.get('tools',[])
+                            offered=profile.get('tools',[]) if not action_direct else []
                             tool_count=len(offered[0]['function']['parameters']['properties']['tool']['enum']) if offered else 0
                             metrics=inference_metrics(chunk,first=first,elapsed=time.monotonic()-start,preparation=preparation,tools_offered=tool_count)
-                            observed=speed.observe(body.model,metrics,engine.game_mode or busy['busy'])
+                            if action_direct:metrics['execution']='direct'
+                            observed=speed.observe(body.model,metrics,engine.game_mode or busy['busy']) if not action_direct else None
                             if observed:
                                 metrics['speed']=observed
                                 if observed.get('warning'):yield line({'type':'notice','message':observed['warning']})
@@ -783,9 +800,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     except Exception:pass
                 store.checkpoint(mid,text,status,metrics)
                 engine.active.pop(cid,None)
-                store.audit('generation_'+status,body.model)
-                if status=='complete':knowledge.schedule_summary(cid,body.model);suggestions.schedule(cid,body.model)
-                if body.route_band:
+                store.audit('generation_'+status,reply_model)
+                if status=='complete' and not action_direct:knowledge.schedule_summary(cid,body.model);suggestions.schedule(cid,body.model)
+                if body.route_band and not action_direct:
                     router.record(body.route_band,body.model,status=='complete')
                     if metrics is not None:metrics['route']={'band':body.route_band,'reason':body.route_reason}
             yield line({'type':'done','status':status,'metrics':metrics})
