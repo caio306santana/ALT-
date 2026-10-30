@@ -20,6 +20,7 @@ export interface Metrics {
   tools_offered?: number;
   verification?: Verification;
   speed?: { reference: number; ratio: number; warning?: string };
+  route?: { band: string; reason: string };
 }
 export interface Verification {
   calculations: { claim: string; expression: string; stated: string; actual: number; ok: boolean; rounded?: boolean }[];
@@ -41,7 +42,7 @@ export interface Model {
   size: number;
   details?: { parameter_size?: string; quantization_level?: string };
   provider?: string;
-  location?: "local" | "cloud";
+  location?: "local" | "cloud" | "auto";
 }
 export interface Preferences {
   accent: string;

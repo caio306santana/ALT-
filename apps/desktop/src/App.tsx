@@ -308,7 +308,9 @@ export default function App() {
           location: "cloud",
         }));
     } catch {}
-    setModels([...data.models, ...cloud]);
+    // "Automático" picks the model per message (hybrid: Claude only with the preview).
+    const automatic: Model[] = data.models.length > 1 || cloud.length ? [{ name: "auto", size: 0, provider: "Automático (escolhe 4B, 9B ou Claude)", location: "auto" }] : [];
+    setModels([...automatic, ...data.models, ...cloud]);
     setConnected(data.connected);
     setPrefs((p) =>
       !p.model && data.models.length
@@ -477,6 +479,8 @@ export default function App() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [busy]);
+  const routedModel = useRef("");
+  const routeInfo = useRef<{ model: string; reason: string; band: string } | null>(null);
   const selected = models.find((m) => m.name === prefs.model);
   const modelName =
     selected?.provider || selected?.name || "Selecionar inteligência";
@@ -509,6 +513,21 @@ export default function App() {
     setError("");
     setNotice("");
     setBusy(true);
+    // "Automático": the backend picks 4B, 9B or Claude for this message; a cloud pick still needs the preview.
+    let model = prefs.model;
+    let route: { model: string; reason: string; band: string } | null = null;
+    if (model === "auto") {
+      if (consentReceipt && routedModel.current) model = routedModel.current;
+      else {
+        try {
+          route = await api<{ model: string; reason: string; band: string }>("POST", "/chat/route", { content: text });
+          model = route.model;
+          routedModel.current = route.model;
+          routeInfo.current = route;
+        } catch (e) { setBusy(false); report(e); return; }
+      }
+      route = route || routeInfo.current;
+    }
     let id = cid;
     let accepted = false;
     let attempted = false;
@@ -519,19 +538,19 @@ export default function App() {
         setCid(id);
       }
       const estimate = await api<ContextEstimate>("POST", "/chat/estimate", {
-        conversation_id: id, model: prefs.model, content: text,
+        conversation_id: id, model, content: text,
         memory_ids: memoryIds, tool_result_id: analysis?.id || "",
         attachment_ids: files.map((f) => f.id),
       });
       setContextEstimate(estimate);
       if (!estimate.fits) throw new Error(estimate.reason || "Este envio excede o contexto disponível.");
-      if (prefs.model.startsWith("cloud:") && !consentReceipt) {
+      if (model.startsWith("cloud:") && !consentReceipt) {
         setPendingAnalysis(analysis || null);
         if (analysis) setInput(text);
         setCloudPreview(
           await api<CloudPreview>("POST", "/chat/preview", {
             conversation_id: id,
-            model: prefs.model,
+            model,
             content: text,
             memory_ids: memoryIds,
             tool_result_id: analysis?.id || "",
@@ -554,7 +573,7 @@ export default function App() {
         id: crypto.randomUUID(),
         role: "assistant",
         content: "",
-        model: prefs.model,
+        model,
         status: "streaming",
         created: new Date().toISOString(),
         metrics: null,
@@ -568,10 +587,12 @@ export default function App() {
         "chat",
         {
           conversation_id: id,
-          model: prefs.model,
+          model,
           content: text,
           memory_ids: memoryIds,
           consent_receipt: consentReceipt,
+          route_band: route?.band || "",
+          route_reason: route?.reason || "",
           tool_result_id: analysis?.id || "",
           attachment_ids: files.map((f) => f.id),
           speak: !!spoken,

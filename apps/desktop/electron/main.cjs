@@ -71,7 +71,7 @@ const allowed = [
   ],
   [
     "POST",
-    /^\/(memories|themes|permissions\/revoke|tools\/propose|chat\/(preview|estimate))$/,
+    /^\/(memories|themes|permissions\/revoke|tools\/propose|chat\/(preview|estimate|route))$/,
   ],
   ["PUT", /^\/(permissions|providers\/anthropic)$/],
   ["PUT", /^\/memories\/[a-f0-9-]+$/],

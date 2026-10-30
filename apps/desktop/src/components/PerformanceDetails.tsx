@@ -13,6 +13,7 @@ export function PerformanceDetails({ metrics }: { metrics: Metrics }) {
         <dt>Leitura do contexto</dt><dd>{seconds(metrics.prompt_eval_seconds)}</dd>
         <dt>Geração da resposta</dt><dd>{seconds(metrics.generation_seconds)}</dd>
         <dt>Total desde o envio</dt><dd>{seconds(metrics.request_total_seconds)}</dd>
+        {metrics.route && <><dt>Escolha automática</dt><dd>{metrics.route.band} · {metrics.route.reason}</dd></>}
         <dt>Ferramentas oferecidas</dt><dd>{metrics.tools_offered ?? "Não informado"}</dd>
         {metrics.speed && <><dt>Velocidade normal deste PC</dt><dd>{metrics.speed.reference.toFixed(0)} tokens/s ({Math.round(metrics.speed.ratio * 100)}% nesta resposta)</dd></>}
       </dl>

@@ -29,6 +29,7 @@ from backend.tools.outcome import chat_line,note as outcome_note,untrusted
 from backend.voice.text import SpeechText
 from backend.memory.suggestions import MemorySuggestions
 from backend.proactive import Proactive,PcAlerts
+from backend.routing import ModelRouter
 from backend.tools import system
 from backend.tools.service import ToolProposal
 from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer
@@ -99,6 +100,9 @@ class ChatBody(ContextBody):
     conversation_id: str = Field(min_length=1,max_length=64)
     # The request came by voice: the reply is spoken by the backend, sentence by sentence.
     speak: bool = False
+    # Set by the desktop when the automatic choice picked the model (shown with the reply, used to learn).
+    route_band: Literal['','simples','médio','complexo'] = ''
+    route_reason: str = Field(default='',max_length=200)
 
 class Settings(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -139,6 +143,8 @@ class Settings(BaseModel):
     quiet_end:str=Field(default='08:00',pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
     topics:list[str]=Field(default_factory=list,max_length=10)
     pc_alerts:bool=False
+    # Hybrid automatic choice may pick Claude for complex requests (always with the preview).
+    auto_cloud:bool=True
     voice_engine:Literal['dora','maria']='dora'
     voice_speed:float=Field(default=1.05,ge=.8,le=1.4)
     voice_input:str=Field(default='',max_length=120)
@@ -224,6 +230,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     proactive=Proactive(store,ollama,engine,tools,app.state.speaker,lambda text,title:system.toast(text,title,data_dir/'notifications'),lambda query:public_search(query))
     pc_alerts=PcAlerts(store.settings,lambda text,title:system.toast(text,title,data_dir/'notifications'),proactive.quiet)
     app.state.proactive=proactive;app.state.pc_alerts=pc_alerts;tools.routines=proactive.routines
+    router=ModelRouter(store,ollama,anthropic,engine,gpu);app.state.router=router
     tools.memory_search=lambda query:search_memories(library,query)
     attachments=install_attachments(app,auth,store,data_dir)
 
@@ -295,6 +302,12 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     async def stop():
         engine.stop();tools.revoke();receipts.revoke_all();app.state.voice_loop.stop();store.audit('stop_all')
         return {'stopped':True}
+
+    @app.post('/chat/route',dependencies=[Depends(auth)])
+    async def chat_route(request:Request):
+        """Automatic model: which model fits this message, and why."""
+        content=str((json.loads(await request.body() or b'{}') or {}).get('content',''))[:16000]
+        return await router.choose(content)
 
     @app.get('/routines',dependencies=[Depends(auth)])
     async def routines_list():return proactive.routines.list()
@@ -713,6 +726,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 engine.active.pop(cid,None)
                 store.audit('generation_'+status,body.model)
                 if status=='complete':knowledge.schedule_summary(cid,body.model);suggestions.schedule(cid,body.model)
+                if body.route_band:
+                    router.record(body.route_band,body.model,status=='complete')
+                    if metrics is not None:metrics['route']={'band':body.route_band,'reason':body.route_reason}
             yield line({'type':'done','status':status,'metrics':metrics})
         return StreamingResponse(generate(),media_type='application/x-ndjson',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
     return app
