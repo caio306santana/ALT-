@@ -48,3 +48,26 @@ def test_partial_names_need_four_letters():
     assert appidentity.score(['wp'],'WPS Office','')==0
     assert appidentity.score(['spot'],'Spotify','')==60
     assert appidentity.score(['spotify'],'Spotify','')==100
+
+def test_learned_examples_come_only_from_confirmed_short_requests(tmp_path):
+    import json
+    from test_features import fixture_client
+    from test_backend import conversation
+    app,local,_,client=fixture_client(tmp_path)
+    with client:
+        store=app.state.store;old=conversation(client)
+        store.add(old,'user','abre o spotify')
+        rows=[('a1','open_app',{'tool':'open_app','app':'catalog:Spotify'},{'status':'done'}),
+              ('a2','open_url',{'tool':'open_url','url':'https://youtube.com'},{'status':'unverified'}),
+              ('a3','write_text',{'tool':'write_text','content':'segredo'},{'status':'done'})]
+        for aid,tool,payload,result in rows:
+            store.write('INSERT INTO actions VALUES(?,?,?,?,?,?,?)',(aid,tool,json.dumps(payload),'complete',json.dumps(result),'2999-01-01T00:00:00','2999-01-01T00:00:00'))
+            store.write('INSERT INTO action_context VALUES(?,?)',(aid,old))
+        settings=client.get('/settings').json();settings['learned_examples']=True;client.put('/settings',json=settings)
+        scope=client.get('/permissions').json()['scopes'][0]['id'];client.post('/permissions/grant',json={'level':4,'scope_ids':[scope]})
+        cid=conversation(client);client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'abre o discord'})
+        sent=local.contexts[-1][1]
+        assert sent[1]=={'role':'user','content':'abre o spotify'}
+        assert sent[2]['tool_calls'][0]['function']['arguments']=={'tool':'open_app','app':'catalog:Spotify'}
+        # Unconfirmed and file-writing actions never become examples.
+        assert not any('youtube' in json.dumps(m) or 'segredo' in json.dumps(m) for m in sent[:-1])

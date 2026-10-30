@@ -96,6 +96,8 @@ class Settings(BaseModel):
     # 'stable' keeps the same tools every turn so the prompt cache is reused; 'filtered' routes by keywords.
     tool_routing:Literal['stable','filtered']='stable'
     gpu_light_auto:bool=False
+    # Example turns from the owner's own confirmed actions (off until measured on a healthy GPU).
+    learned_examples:bool=False
 
 class PullBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -239,6 +241,25 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         engine.stop();tools.revoke();receipts.revoke_all();store.audit('stop_all')
         return {'stopped':True}
 
+    @app.post('/tools/remember/{aid}',dependencies=[Depends(auth)])
+    async def remember_approval(aid:str):
+        """'Sempre permitir' from a card: only low-risk targets (apps, sites, folders)."""
+        rows=store.rows('SELECT tool,payload FROM actions WHERE id=?',(aid,))
+        if not rows:raise HTTPException(404,'Ação não encontrada.')
+        return tools.remembered.remember(rows[0]['tool'],json.loads(rows[0]['payload']))
+
+    @app.get('/approvals/remembered',dependencies=[Depends(auth)])
+    async def remembered_list():return tools.remembered.list()
+
+    @app.delete('/approvals/remembered/{rid}',dependencies=[Depends(auth)])
+    async def remembered_remove(rid:str):tools.remembered.remove(rid);return {'ok':True}
+
+    @app.post('/tools/undo/{aid}',dependencies=[Depends(auth)])
+    async def undo_action(aid:str):
+        if engine.stopped:raise PermissionError('Ações suspensas.')
+        if tools.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para desfazer.')
+        return await asyncio.to_thread(tools.undo.run,aid,tools.undo_setters())
+
     @app.post('/actions/resume',dependencies=[Depends(auth)])
     async def resume():
         engine.stopped=False;engine.game_mode=False;store.audit('resume')
@@ -255,6 +276,26 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             return continuity.recall(body.content,body.memory_ids)[:3],'termos (busca semântica indisponível: instale/indexe o EmbeddingGemma)'
         if mode in ('automatic','semantic'):return continuity.recall(body.content,body.memory_ids)[:3],'termos'
         return [],''
+
+    def learned_examples(offered,limit=3):
+        """Recent requests of this owner that ended in a confirmed action, as example turns for the
+        model (OpenJarvis skill overlays). Only the short request and the arguments, never file text."""
+        turns=[];seen=set()
+        rows=store.rows("SELECT a.tool,a.payload,a.result,a.created,c.conversation_id FROM actions a JOIN action_context c ON c.id=a.id WHERE a.status='complete' AND c.conversation_id!='' ORDER BY a.created DESC LIMIT 60")
+        for row in rows:
+            if row['tool'] not in offered or row['tool'] in seen or row['tool'] in ('write_text','run_command'):continue
+            try:result=json.loads(row['result'] or '{}')
+            except ValueError:continue
+            if result.get('status','done')!='done':continue
+            asked=store.rows("SELECT content FROM messages WHERE conversation_id=? AND role='user' AND created<=? ORDER BY created DESC LIMIT 1",(row['conversation_id'],row['created']))
+            if not asked or len(asked[0]['content'])>120 or '📎' in asked[0]['content']:continue
+            payload={k:v for k,v in json.loads(row['payload']).items() if v not in ('',None) and k in ('tool','app','url','query','keys','window_id','expression')}
+            seen.add(row['tool'])
+            turns.append([{'role':'user','content':asked[0]['content']},
+                {'role':'assistant','content':'','tool_calls':[{'function':{'name':'alt_propose_action','arguments':payload}}]},
+                {'role':'tool','content':'{"status":"done"}'},{'role':'assistant','content':'Feito.'}])
+            if len(turns)>=limit:break
+        return turns
 
     async def context_for(body):
         cost=lambda text:message_cost(text,body.model)
@@ -356,11 +397,16 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 if chars+cost(addition)>context_limit:continue
                 if TURN_HEADER not in user_content:user_content+=TURN_HEADER.rstrip('\n')
                 user_content+=addition;chars+=cost(addition);recalled.append({'id':row['id'],'title':row['title'],'kind':row.get('kind','memory'),'score':row.get('score'),'mode':recall_mode})
+        examples=[]
+        if spec and prefs.get('learned_examples') and not body.model.startswith('cloud:'):
+            for turn in learned_examples(definition):
+                if chars+sum(cost(json.dumps(m,ensure_ascii=False)) for m in turn)>context_limit-512:break
+                examples+=turn;chars+=sum(cost(json.dumps(m,ensure_ascii=False)) for m in turn)
         for message in reversed(previous):
             if chars+cost(message['content'])>context_limit:break
             context.insert(0,{'role':message['role'],'content':message['content']});chars+=cost(message['content'])
         if not body.model.startswith('cloud:'):profile['options']['num_predict']=min(profile['options']['num_predict'],profile['options']['num_ctx']-chars-128)
-        messages=[{'role':'system','content':prompt}]+context+[{'role':'user','content':user_content,**({'images':[attachments.image_data(row) for row in images]} if images else {})}]
+        messages=[{'role':'system','content':prompt}]+examples+context+[{'role':'user','content':user_content,**({'images':[attachments.image_data(row) for row in images]} if images else {})}]
         payload={'conversation_id':body.conversation_id,'model':body.model,'messages':messages}
         if body.model=='cloud:anthropic':payload['configuration']=anthropic.config().model_dump()
         estimate={'fits':True,'required_tokens':required,'input_tokens':chars,'input_limit':context_limit,
@@ -485,9 +531,10 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                             else:
                                 proposed=True
                                 yield line({'type':'tool_proposal','proposal':proposal})
-                                if tools.can_auto(action):
+                                if tools.can_auto(action,cid):
                                     result=await tools.approve(proposal['id'])
                                     yield line({'type':'tool_result','action_id':proposal['id'],'result':result['result']})
+                                    if isinstance(result['result'],dict) and result['result'].get('taint'):yield line({'type':'notice','message':result['result']['taint']})
                                     delta+='\n'+chat_line(result['result'])
                                 else:delta+='\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.'
                         if delta:

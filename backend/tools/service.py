@@ -23,6 +23,10 @@ from backend.tools.windows_ui import WindowsUI,parse_keys,CLOSING
 from backend.tools.app_catalog import AppCatalog,normalize
 from backend.tools import appidentity
 from backend.tools.outcome import outcome
+from backend.security.guard import RememberedApprovals,Undo,SINKS,sensitive_reason
+
+# Tools whose results bring outside content into the conversation (checked for taint).
+READERS={'read_text','read_webpage','web_search','windows_read','browser_read','list_files','find_files'}
 import fnmatch
 import threading
 
@@ -31,7 +35,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command']
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command','undo']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
@@ -82,6 +86,7 @@ class ToolService:
         self.store,self.engine=store,engine
         self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
         self.gui=WindowsUI(store);self.catalog=AppCatalog()
+        self.remembered=RememberedApprovals(store);self.undo=Undo(store);self.taint={}
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
         self.file_history=data_dir/'file-history'
@@ -138,12 +143,17 @@ class ToolService:
         self.store.audit('supervised_session_granted',json.dumps({'level':level,'scopes':sorted(self.auto_scopes),'persistent':True}))
         return self.status()
 
-    def can_auto(self,body):
+    def can_auto(self,body,conversation_id=''):
         level=self.status()['level']
         decision=self.policy.decision(body.tool)
-        if level not in (3,4) or decision=='deny':return False
+        if level<2 or decision=='deny':return False
         # A command is free-form code: it always waits for the owner's approval card.
         if body.tool=='run_command':return False
+        # After sensitive content was read here, anything that could carry it out waits for the card.
+        if conversation_id in self.taint and body.tool in SINKS:return False
+        if level in (2,3) and self.remembered.allows(body.tool,body.model_dump()):return True
+        if level==2:return False
+        if body.tool=='undo':return level==4
         # Full access: everything the owner did not block runs without review.
         # Closing a program the ALT did not open can lose unsaved work, so it is reviewed.
         if level==4:
@@ -299,6 +309,12 @@ class ToolService:
             if body.tool=='close_app':
                 tracked=body.app in self.launched
                 preview['notice']=('Solicita fechamento normal da janela aberta pela ALT' if tracked else 'Solicita fechamento normal das janelas abertas deste programa')+'; o programa pode pedir para salvar documentos.'
+        elif body.tool=='undo':
+            target=body.target or self.undo.last()
+            if not target or not self.undo.available(target):raise ValueError('Não há ação recente da ALT para desfazer.')
+            body.target=target;payload=body.model_dump()
+            row=self.store.rows('SELECT tool FROM actions WHERE id=?',(target,))
+            preview.update({'undo_action':target,'undone_tool':row[0]['tool'] if row else ''})
         elif body.tool=='run_command':
             command=body.command.strip() or body.content.strip()
             if not command:raise ValueError('Informe o comando do PowerShell.')
@@ -355,8 +371,10 @@ class ToolService:
             preview['url']=body.url;preview['external_notice']='A página será consultada sem cookies ou sessões pessoais.'
         # In full access the owner already accepted unattended writes.
         preview['critical']=body.tool=='write_text' and body.scope_id=='windows-profile' and self.status()['level']!=4
+        if conversation_id in self.taint and body.tool in SINKS:preview['taint']=self.taint[conversation_id]+'; por isso esta ação espera sua aprovação.'
         aid=str(uuid4())
-        self.pending[aid]=(None,payload,fingerprint)
+        # Critical cards (writing in the Windows profile) expire after 90 s, like Mark LVI's confirmations.
+        self.pending[aid]=(time.monotonic()+90 if preview['critical'] else None,payload,fingerprint)
         self.previews[aid]=preview
         self.store.write('INSERT INTO actions VALUES(?,?,?,?,?,?,?)',(aid,body.tool,json.dumps(payload), 'proposed',None,now(),now()))
         self.store.write('INSERT INTO action_context VALUES(?,?)',(aid,conversation_id))
@@ -385,6 +403,13 @@ class ToolService:
         self.store.write("UPDATE actions SET status='running',updated=? WHERE id=?",(now(),aid))
         try:
             result=await asyncio.to_thread(self.execute,ToolProposal(**entry[1]),entry[2],event)
+            if isinstance(result,dict):
+                if self.undo.record(aid,entry[1]['tool'],result):result['undo_available']=True
+                contexts=self.store.rows('SELECT conversation_id FROM action_context WHERE id=?',(aid,))
+                cid=contexts[0]['conversation_id'] if contexts else ''
+                if cid and entry[1]['tool'] in READERS:
+                    reason=sensitive_reason(json.dumps(result,ensure_ascii=False))
+                    if reason:self.taint[cid]=reason;result['taint']=reason+'; a partir daqui, ações que enviam dados para fora pedem aprovação nesta conversa.'
             self.store.write("UPDATE actions SET status='complete',result=?,updated=? WHERE id=?",(json.dumps(result,ensure_ascii=False),now(),aid))
             self.store.audit('tool_complete',aid)
             return {'id':aid,'status':'complete','result':result}
@@ -464,6 +489,7 @@ class ToolService:
             if os.name!='nt':raise ValueError('Abertura de pastas disponível no Windows.')
             os.startfile(str(path));return {'open_requested':str(path)}
         if body.tool=='run_command':return self.run_command(body.command,event)
+        if body.tool=='undo':return self.undo.run(body.target,self.undo_setters())
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
             if body.app.startswith('catalog:'):return self.open_catalog(self.catalog_entry(body.app))
@@ -496,6 +522,10 @@ class ToolService:
             if not opened:raise ValueError('O sistema não confirmou a abertura do navegador.')
             return self.confirm_browser(body.url)
         raise ValueError('Ferramenta indisponível.')
+
+    def undo_setters(self):
+        """Inverse operations for system settings, filled in by the system tools."""
+        return getattr(self,'setters',{})
 
     def open_catalog(self,entry):
         """Already running: bring its window forward instead of starting a second copy. Otherwise open
@@ -601,7 +631,7 @@ class ToolService:
         return outcome('done' if not alive else 'unverified',close_requested=bool(sent),windows=len(sent),notice='Fechado.' if not alive else 'Fechamento normal solicitado; o programa pode aguardar confirmação para salvar. Nenhum processo foi forçado.')
 
     def revoke(self):
-        self.level=1;self.auto_scopes.clear();self.save_authorization();self.cancel_pending()
+        self.level=1;self.auto_scopes.clear();self.save_authorization();self.cancel_pending();self.taint.clear()
 
     def cancel_pending(self):
         self.pending.clear();self.previews.clear();self.critical_confirmed.clear()

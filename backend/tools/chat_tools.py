@@ -27,7 +27,7 @@ BRIEF={
     'read_text':'lê um arquivo de texto (scope_id, path)','write_text':'grava um arquivo de texto (scope_id, path, content)',
     'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo (url, path)',
     'find_files':'procura arquivos (scope_id, path, query)','open_folder':'abre uma pasta no Explorer (scope_id, path)',
-    'calculate':'calcula uma expressão (expression)','browser_open':'abre site no navegador ALT (url)','browser_read':'lê a página do navegador ALT',
+    'calculate':'calcula uma expressão (expression)','undo':'desfaz a última gravação ou download da ALT (target vazio = última)','browser_open':'abre site no navegador ALT (url)','browser_read':'lê a página do navegador ALT',
     'browser_back':'volta uma página no navegador ALT','browser_click':'clica no navegador ALT (target, snapshot_id)',
     'browser_type':'digita no navegador ALT (target, snapshot_id, content)',
 }
@@ -74,6 +74,7 @@ def route(content,status):
     if any(word in text for word in ('feche','fecha','fechar','encerr')):names+=['close_app']
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
     if any(word in text for word in ('baixe','baixar','download')):names+=['download_file']
+    if level>=2 and any(word in text for word in ('desfaz','desfazer','desfaça','reverte','reverter','volta como estava')):names+=['undo']
     if level>=2 and any(word in text for word in ('comando','powershell','terminal','execute','executar','rode ','rodar','instale','instalar','winget','ipconfig')):names+=['run_command']
     keys=any(word in text for word in KEY_WORDS)
     windows=(status.get('windows') or level==4) and (keys or any(word in text for word in ('janela','aplicativo aberto','programa aberto','no app','botão','botao','campo','clique','clicar','digite','escreva')))
@@ -95,6 +96,7 @@ def build_spec(names,browser,windows):
     if 'calculate' in names:relevant.add('expression')
     if 'download_file' in names:relevant.update(('url','path','scope_id'))
     if 'run_command' in names:relevant.add('command')
+    if 'undo' in names:relevant.add('target')
     if windows:relevant.update(('window_id','target','snapshot_id','content'))
     if 'windows_keys' in names:relevant.add('keys')
     properties={key:{**{k:v for k,v in value.items() if k in ('type','enum')},**({'description':HINTS[key]} if key in HINTS else {})} for key,value in properties.items() if key in relevant}

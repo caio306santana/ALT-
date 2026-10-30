@@ -33,6 +33,34 @@ const labels: Record<string, string> = {
   shell: "Comandos do PowerShell (sempre com cartão de aprovação)",
 };
 
+type Remembered = { id: string; tool: string; target: string; created: string };
+const rememberedLabel: Record<string, string> = { open_app: "Programa", open_url: "Site", open_folder: "Pasta" };
+// Targets the owner allowed with "Aprovar e sempre permitir"; removing one brings the card back.
+function RememberedApprovals({ onError }: { onError: (e: unknown) => void }) {
+  const [rows, setRows] = useState<Remembered[]>([]);
+  const load = () => api<Remembered[]>("GET", "/approvals/remembered").then(setRows).catch(onError);
+  useEffect(() => { load(); }, []);
+  return (
+    <>
+      <h3>Sempre permitidos: {rows.length}</h3>
+      <p className="setting-note">
+        Abrem sem perguntar nos modos Pedir aprovação e Usar minhas regras. Comandos, fechar programas,
+        gravar arquivos e downloads nunca entram aqui.
+      </p>
+      {rows.length > 0 && (
+        <div className="program-chips">
+          {rows.map((row) => (
+            <span key={row.id} className="attachment-chip">
+              <span>{rememberedLabel[row.tool] || row.tool}: {row.target.replace("catalog:", "")}</span>
+              <button type="button" aria-label={"Remover " + row.target} onClick={() => api("DELETE", "/approvals/remembered/" + row.id).then(load).catch(onError)}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function OwnerControlPanel({ notify, onError }: Feedback) {
   const [state, setState] = useState<PolicyState | null>(null),
     [draft, setDraft] = useState<OwnerPolicy | null>(null),
@@ -187,6 +215,7 @@ export function OwnerControlPanel({ notify, onError }: Feedback) {
         </p>
         <pre className="prompt-preview">{state.effective_prompt}</pre>
       </details>
+      <RememberedApprovals onError={onError} />
       {fullAccess ? (
         <>
           <h3>

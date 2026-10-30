@@ -6,6 +6,8 @@ export type ChatAction = {
   result?: unknown;
   state: "proposed" | "complete" | "rejected" | "error" | "interrupted" | "cancelled";
 };
+// Low-risk targets the owner can allow once and for all; never commands, closing or writing.
+const REMEMBERABLE = ["open_app", "open_url", "open_folder"];
 export function ChatActionCard({
   action,
   onUpdate,
@@ -18,7 +20,7 @@ export function ChatActionCard({
   onError: (error: unknown) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  async function approve() {
+  async function approve(remember = false) {
     setBusy(true);
     try {
       const permission = await window.alt.request<{ level: number }>(
@@ -37,6 +39,7 @@ export function ChatActionCard({
         "POST",
         `/tools/approve/${action.id}`,
       );
+      if (remember) await window.alt.request("POST", `/tools/remember/${action.id}`);
       onUpdate({ ...action, state: "complete", result: result.result });
     } catch (e) {
       try {
@@ -117,6 +120,7 @@ export function ChatActionCard({
           <pre>{String(preview.diff) || "Sem alteração de conteúdo."}</pre>
         </details>
       )}
+      {!!preview.taint && <p className="setting-note taint-note">{String(preview.taint)}</p>}
       {action.state === "proposed" && <p className="setting-note">Sem prazo. Execute ou recuse quando quiser; mudanças no alvo serão conferidas ao executar.</p>}
       {(action.state === "interrupted" || action.state === "error") && <div className="button-row"><button className="secondary" disabled={busy} onClick={async () => {
         setBusy(true);
@@ -128,10 +132,15 @@ export function ChatActionCard({
       }}>Preparar nova proposta para revisar</button></div>}
       {action.state === "proposed" && (
         <div className="button-row">
-          <button className="primary" disabled={busy} onClick={approve}>
+          <button className="primary" disabled={busy} onClick={() => approve()}>
             <Shield size={13} />
             {busy ? "Executando…" : "Aprovar e executar"}
           </button>
+          {REMEMBERABLE.includes(String(preview.tool)) && (
+            <button className="secondary" disabled={busy} title="Na próxima vez, este mesmo programa, site ou pasta abre sem perguntar." onClick={() => approve(true)}>
+              Aprovar e sempre permitir
+            </button>
+          )}
           <button
             className="secondary"
             onClick={() =>
@@ -151,10 +160,23 @@ export function ChatActionCard({
             <summary>Resultado da ferramenta</summary>
             <pre>{JSON.stringify(action.result, null, 2)}</pre>
           </details>
-          <button className="secondary" onClick={onAnalyze}>
-            <Check size={13} />
-            Pedir à ALT para analisar este resultado
-          </button>
+          <div className="button-row">
+            <button className="secondary" onClick={onAnalyze}>
+              <Check size={13} />
+              Pedir à ALT para analisar este resultado
+            </button>
+            {!!(action.result as Record<string, unknown> | undefined)?.undo_available && (
+              <button className="secondary" disabled={busy} onClick={async () => {
+                setBusy(true);
+                try {
+                  const undone = await window.alt.request<Record<string, unknown>>("POST", `/tools/undo/${action.id}`);
+                  onUpdate({ ...action, result: { ...(action.result as Record<string, unknown>), undo_available: false, undone: undone.notice } });
+                } catch (e) { onError(e); }
+                finally { setBusy(false); }
+              }}>Desfazer</button>
+            )}
+          </div>
+          {!!(action.result as Record<string, unknown> | undefined)?.undone && <p className="setting-note">{String((action.result as Record<string, unknown>).undone)}</p>}
         </>
       )}
     </div>

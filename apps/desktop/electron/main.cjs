@@ -98,6 +98,9 @@ const allowed = [
   ["GET", /^\/(windows\/candidates|windows\/grants|maintenance\/status)$/],
   ["DELETE", /^\/windows\/grants\/[a-f0-9-]+$/],
   ["GET", /^\/voice\/status$/],
+  ["POST", /^\/tools\/(remember|undo)\/[a-f0-9-]+$/],
+  ["GET", /^\/approvals\/remembered$/],
+  ["DELETE", /^\/approvals\/remembered\/[a-f0-9-]+$/],
   ["POST", /^\/voice\/download$/],
 ];
 function bindShortcut(shortcut) {
