@@ -1,5 +1,6 @@
 """Small typed tools with per-action approval. PowerShell commands always need an explicit approval card."""
 import ast
+import re
 import asyncio
 import difflib
 import hashlib
@@ -76,6 +77,26 @@ def calculate(expression):
         return value
     try:return walk(tree.body)
     except (SyntaxError,ZeroDivisionError,OverflowError) as exc:raise ValueError('Expressão inválida.') from exc
+
+SITES={'google':'google.com','youtube':'youtube.com','gmail':'mail.google.com','netflix':'netflix.com','twitch':'twitch.tv',
+    'github':'github.com','instagram':'instagram.com','facebook':'facebook.com','twitter':'x.com','x':'x.com','reddit':'reddit.com',
+    'linkedin':'linkedin.com','amazon':'amazon.com.br','mercado livre':'mercadolivre.com.br','chatgpt':'chatgpt.com','wikipedia':'pt.wikipedia.org'}
+
+def site_for(name):
+    """A program name that is really a website, or a bare domain: the URL to open instead."""
+    key=normalize(name or '').removeprefix('o ').removeprefix('a ').strip()
+    if key in SITES:return SITES[key]
+    if re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)+',(name or '').strip().lower()):return name.strip().lower()
+    return None
+
+BROWSERS=('chrome','edge','firefox','brave','opera','navegador')
+
+def site_in_request(body,message):
+    """open_app(chrome) for "abre o youtube" / "nova aba no google": the site the user named, as open_url."""
+    if body.tool!='open_app' or not any(b in normalize(body.app or '') for b in BROWSERS):return body
+    text=' '+re.sub(r'[^a-z0-9 ]',' ',normalize(message or ''))+' '
+    site=next((url for key,url in SITES.items() if len(key)>1 and f' {key} ' in text),None)
+    return ToolProposal(tool='open_url',url=site) if site else body
 
 def normalize_url(url,query=''):
     """'google.com' -> https://google.com; only a query -> a Google search in the default browser."""
@@ -312,7 +333,13 @@ class ToolService:
             preview.update({'url':body.url,'path':str(path),'external_notice':'O arquivo será baixado da internet e salvo sem ser aberto ou executado.'})
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
         elif body.tool in ('open_app','close_app'):
-            body.app=self.resolve_app(body.app);payload=body.model_dump()
+            try:body.app=self.resolve_app(body.app)
+            except ValueError:
+                # The small model sometimes picks open_app for a site ("abre o youtube"): open the site instead.
+                site=site_for(body.app) if body.tool=='open_app' else None
+                if not site:raise
+                return self.proposal(ToolProposal(tool='open_url',url=site),conversation_id)
+            payload=body.model_dump()
             preview['app']=body.app.removeprefix('catalog:')
             if body.tool=='close_app':
                 tracked=body.app in self.launched
@@ -699,7 +726,7 @@ class ToolService:
         for row in rows:
             payload=json.loads(row['payload'])
             if row['status']=='superseded':continue
-            preview=self.previews.get(row['id']) or {key:value for key,value in payload.items() if key in ('tool','path','query','url','app','expression') and value}
+            preview=self.previews.get(row['id']) or {key:(str(value)[:200] if key=='content' else value) for key,value in payload.items() if key in ('tool','path','query','url','app','expression','value','keys','command','window_id','target','content') and value}
             state='proposed' if row['status']=='proposed' and row['id'] in self.pending else 'complete' if row['status']=='complete' else 'rejected' if row['status']=='rejected' else 'cancelled' if row['status']=='cancelled' else 'interrupted' if row['status'] in ('proposed','interrupted') else 'error'
             result.append({'id':row['id'],'preview':preview,'state':state,'result':json.loads(row['result']) if row['result'] else None})
         return result

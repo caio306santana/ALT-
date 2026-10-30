@@ -32,7 +32,7 @@ CASES=[
     ('olha minha tela e me diz o que tem','screen_look','screen_look'),
     ('abaixa o volume pra 30','system_volume','30'),
     ('me lembra de beber água em 10 minutos','reminder_create','água'),
-    ('pausa a música','media_key|windows_keys','pla'),
+    ('pausa a música','media_key|windows_keys','pa'),
     ('você lembra qual é a minha cor favorita?','memory_recall','cor'),
 ]
 CHAT=['oi, tudo bem?','me ajuda a organizar meu dia, tenho academia às 7h e trabalho das 9h às 18h']

@@ -32,7 +32,7 @@ from backend.proactive import Proactive,PcAlerts
 from backend.routing import ModelRouter
 from backend.remote import RemoteManager
 from backend.tools import system
-from backend.tools.service import ToolProposal
+from backend.tools.service import ToolProposal,site_in_request
 from backend.context import message_cost,tool_excerpt,ContextLimitError,has_qwen_tokenizer
 from backend.desktop import DesktopBridge
 from backend.workspace_features import install_workspace_features
@@ -50,6 +50,7 @@ SYSTEM = ('Você é ALT-AI, uma assistente pessoal calma, natural e objetiva. Re
 
 TURN_HEADER='\n\n[CONTEXTO DESTE TURNO, fornecido pelo aplicativo]\n'
 # Results the model must see to answer (or to choose the next step) in the same reply.
+TOOL_NAMES=set(ToolProposal.model_fields['tool'].annotation.__args__)
 FOLLOW_UP={'web_search','read_webpage','read_text','list_files','find_files','windows_read','memory_recall','reminder_list','browser_read'}
 MAX_ROUNDS=4
 
@@ -472,12 +473,15 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             if any(name.startswith('reminder_') for name in definition):
                 from datetime import datetime
                 tool_context+=f'\nAgora (horário local do computador): {datetime.now():%Y-%m-%d %H:%M}. Para lembretes use value no formato 2026-10-30T15:00 ou "em 10 minutos".'
-            if 'window_id' in spec[0]['function']['parameters']['properties']:
+            # Only when the request is about windows: with the list on every turn, "abre o youtube" read the
+            # open YouTube window instead of opening the site.
+            about_windows=not likely or any(name.startswith('windows_') for name in likely)
+            if 'window_id' in spec[0]['function']['parameters']['properties'] and about_windows:
                 tool_context+='\nJanelas autorizadas: '+json.dumps([{'window_id':g['id'],'titulo':g['title'][:60]} for g in status['windows'][:5]],ensure_ascii=False,separators=(',',':'))
                 if status['level']==4:
                     try:opened=await asyncio.wait_for(asyncio.to_thread(tools.gui.inventory),3)
                     except Exception:opened=[]
-                    tool_context+='\nJanelas abertas (use o título como window_id): '+json.dumps([w['title'][:60] for w in opened[:12]],ensure_ascii=False,separators=(',',':'))
+                    tool_context+='\nJanelas abertas (window_id pode ser o nome do programa, ex.: chrome; com várias, a ALT usa a da frente): '+json.dumps([w['title'][:60] for w in opened[:12]],ensure_ascii=False,separators=(',',':'))
                 for grant in status['windows'][:5]:
                     observed=(tools.gui.snapshots.get(grant['id']) or {}).get('public')
                     if observed:
@@ -664,14 +668,23 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                             for sentence in speech.feed(delta):speaker.say(sentence)
                         if not proposed and profile.get('tools') and chunk.get('message',{}).get('tool_calls') and not think_toggle(chunk['message']['tool_calls'][0]):
                             call=chunk['message']['tool_calls'][0];function=call.get('function',{})
-                            if function.get('name')!='alt_propose_action':raise ProviderError('O modelo solicitou uma ferramenta não reconhecida.','tool')
+                            # Small models sometimes call a tool by its own name (the description lists them):
+                            # treat "open_app"(app=...) as alt_propose_action(tool="open_app", app=...).
+                            if function.get('name')!='alt_propose_action':
+                                if function.get('name') not in TOOL_NAMES:raise ProviderError('O modelo solicitou uma ferramenta não reconhecida.','tool')
+                                arguments=function.get('arguments',{})
+                                if isinstance(arguments,str):
+                                    try:arguments=json.loads(arguments or '{}')
+                                    except ValueError:arguments={}
+                                function={'name':'alt_propose_action','arguments':{**(arguments if isinstance(arguments,dict) else {}),'tool':function['name']}}
+                                call={**call,'function':function}
                             try:
                                 arguments=function.get('arguments',{})
                                 if isinstance(arguments,str):arguments=json.loads(arguments)
                                 # Loop guard (OpenJarvis agents/loop_guard.py): the same call again ends the rounds.
                                 signature=json.dumps(arguments,sort_keys=True,ensure_ascii=False)
                                 if signature in seen:raise ValueError('a mesma ação já foi feita nesta resposta; não vou repetir.')
-                                action=ToolProposal(**arguments)
+                                action=site_in_request(ToolProposal(**arguments),body.content)
                                 # Off the event loop: preparing a window or app action can touch slow Windows APIs.
                                 proposal=await asyncio.to_thread(tools.proposal,action,cid)
                                 seen.add(signature)

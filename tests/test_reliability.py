@@ -71,3 +71,39 @@ def test_learned_examples_come_only_from_confirmed_short_requests(tmp_path):
         assert sent[2]['tool_calls'][0]['function']['arguments']=={'tool':'open_app','app':'catalog:Spotify'}
         # Unconfirmed and file-writing actions never become examples.
         assert not any('youtube' in json.dumps(m) or 'segredo' in json.dumps(m) for m in sent[:-1])
+
+def test_a_tool_called_by_its_own_name_is_repaired(tmp_path):
+    from test_features import fixture_client
+    from test_backend import conversation,events
+    app,local,_,client=fixture_client(tmp_path)
+    async def model_stream(model,messages,cancel,profile=None):
+        yield {'message':{'tool_calls':[{'function':{'name':'calculate','arguments':{'expression':'6*7'}}}]}}
+        yield {'done':True,'eval_count':3}
+    local.stream=model_stream
+    with client:
+        client.put('/permissions',json={'level':2})
+        data=events(client.post('/chat',json={'conversation_id':conversation(client),'model':'fixture:4b','content':'calcule 6*7'}))
+        proposal=next(e['proposal'] for e in data if e['type']=='tool_proposal')
+        assert proposal['preview']['expression']=='6*7' and not [e for e in data if e['type']=='error']
+
+def test_open_app_for_a_website_opens_the_site(tmp_path):
+    from test_features import fixture_client
+    from backend.tools.service import ToolProposal
+    app,local,_,client=fixture_client(tmp_path)
+    with client:
+        tools=app.state.tools
+        scope=client.get('/permissions').json()['scopes'][0]['id'];client.post('/permissions/grant',json={'level':4,'scope_ids':[scope]})
+        tools.catalog.resolve=lambda name:(_ for _ in ()).throw(ValueError('Programa não encontrado.'))
+        assert tools.proposal(ToolProposal(tool='open_app',app='YouTube'))['preview']=={'tool':'open_url','url':'https://youtube.com','critical':False}
+        assert tools.proposal(ToolProposal(tool='open_app',app='github.com'))['preview']['url']=='https://github.com'
+        try:tools.proposal(ToolProposal(tool='open_app',app='Programa Inexistente'));assert False
+        except ValueError:pass
+
+def test_opening_the_browser_for_a_named_site_opens_the_site():
+    from backend.tools.service import ToolProposal,site_in_request
+    chrome=ToolProposal(tool='open_app',app='catalog:Google Chrome')
+    assert site_in_request(chrome,'abre o youtube').url=='youtube.com'
+    assert site_in_request(chrome,'abra uma nova aba no Google!').tool=='open_url'
+    assert site_in_request(chrome,'abre o chrome') is chrome
+    spotify=ToolProposal(tool='open_app',app='catalog:Spotify')
+    assert site_in_request(spotify,'abre o spotify no youtube') is spotify
