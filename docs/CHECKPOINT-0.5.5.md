@@ -48,3 +48,16 @@ Decisões do dono:
 - Downloads reais em sites variados (a pontuação de links foi testada com páginas simuladas).
 - No PC principal, feito pelo dono: Tailscale, pareamento e `ollama ps` com 100% GPU.
 - Authenticode.
+
+## 0.5.6 — abrir e digitar com segurança
+
+[Release v0.5.6](https://github.com/caio306santana/ALT-/releases/tag/v0.5.6): prévia, tag no commit `895bbaf`. Instalador de 219.561.802 bytes, SHA256 `099abaeb…1146`, igual ao do GitHub.
+
+**Conferido:** manifesto público, feed (a 0.5.5 recebe a oferta da 0.5.6) e smoke empacotado. 277 testes Python passaram.
+
+**O que mudou:**
+- **"Abre o bloco de notas e digita X"** é ação direta: abre um documento novo e digita.
+- **`windows_type`** funciona sem leitura prévia: escolhe o campo de texto principal.
+- **Correção de risco:** antes, o `SetValue` substituía o documento inteiro, o que podia apagar uma nota não salva. Agora um documento que já tem texto nunca é sobrescrito; a ALT só acrescenta no final quando o dono pede.
+
+**Pendente:** o teste real com o Bloco de Notas. Não foi feito porque o Bloco de Notas do dono estava aberto com texto não salvo.
