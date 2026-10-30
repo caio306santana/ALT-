@@ -1,8 +1,8 @@
-# ALT-AI 0.5.0
+# ALT-AI
 
 Assistente pessoal Windows com modelos locais pelo Ollama, memória, voz, ferramentas e cliente para iPhone. ALT é o aplicativo/agente e sua identidade; Qwen e os demais motores são modelos de terceiros.
 
-**Estado atual:** `main` já contém 0.4.0/0.4.1, 0.4.2 e 0.5.0. A [release v0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0) está publicada como prévia, com instalador e manifesto Ed25519. [STATUS.md](docs/STATUS.md) registra o que foi conferido, as evidências do PC principal e as pendências. Assinar o manifesto não instala a atualização nem substitui assinatura Windows Authenticode.
+**Estado atual:** código **0.5.1** em `main`, corrigindo o bloqueio falso de contexto no Automático e limitando observações auxiliares. Código/renderer testados; pacote em validação. Ver [correção 0.5.1](docs/CHAT_CONTEXT_0.5.1.md). A [release v0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0) permanece publicada com instalador e manifesto originais; ela ainda não contém esse ajuste. [STATUS.md](docs/STATUS.md) registra as evidências e pendências. Assinar o manifesto não instala a atualização nem substitui Authenticode.
 
 ## O que a 0.5 inclui
 

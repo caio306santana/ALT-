@@ -21,6 +21,13 @@
 .composer-caption { font-size: 9px; gap: 10px; }
 .context-indicator { font-size: 10px; line-height: 1.6; color: #a8a4b7; padding: 7px 8px 0; overflow-wrap: anywhere; }
 .context-indicator.over-limit { color: #ff9eae; }
+.context-indicator > p { margin: 5px 0; font-size: 11px; }
+.context-parts { margin-top: 4px; font-size: 11px; }
+.context-parts summary { cursor: pointer; width: fit-content; }
+.context-parts dl { margin: 8px 0 4px; max-width: 440px; }
+.context-parts dl > div { display: flex; justify-content: space-between; gap: 16px; }
+.context-parts dt { overflow-wrap: anywhere; }
+.context-parts dd { margin: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .approval-control { position: relative; min-width: 0; }
 .composer-controls button.approval-trigger { display: flex; align-items: center; gap: 6px; width: auto; height: 30px; padding: 4px 8px; font-size: 11px; border-radius: 7px; color: #b5b0c3; }
 .approval-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

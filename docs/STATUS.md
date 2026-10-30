@@ -1,4 +1,6 @@
-# Estado atual e próximos passos — ALT-AI 0.5.0
+# Estado atual e próximos passos — ALT-AI 0.5.1
+
+**Correção atual:** o código 0.5.1 resolve a falsa contagem do modo Automático e limita dados auxiliares de janelas. Suíte: 199 testes Python/5 Node passaram, 1 ignorado; renderer e build passaram. O pacote ainda está em validação: ver [CHAT_CONTEXT_0.5.1.md](CHAT_CONTEXT_0.5.1.md). As informações de instalador/hash na tabela abaixo são da base 0.5.0, preservada sem alterações.
 
 Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. As evidências funcionais do PC principal estão em [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md); não foram repetidas nesta rodada de assinatura/documentação.
 
@@ -6,7 +8,7 @@ Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. A
 
 | Item | Estado confirmado |
 | --- | --- |
-| Código | `main`, versão **0.5.0**. Base funcional conferida: `e84df62`; commits posteriores de documentação não modificam o instalador. |
+| Código base publicado | Versão **0.5.0**, tag no commit `e84df62`. A correção 0.5.1 posterior não está nesse instalador. |
 | Trabalhos anteriores | 0.4.0/0.4.1, 0.4.2 e `work/0.5` já integrados em `main`. As branches anteriores são referências históricas. |
 | Release | [v0.5.0 publicada como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0), não é rascunho. |
 | Instalador | `ALT-AI-Setup-0.5.0-x64.exe`, **216.270.399 bytes**, baixado da release existente; nenhum rebuild/substituição nesta rodada. |

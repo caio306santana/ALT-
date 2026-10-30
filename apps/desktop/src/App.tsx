@@ -224,6 +224,16 @@ type ContextEstimate = {
   history_total: number;
   tokenizer: string;
   reason?: string;
+  model?: string;
+  requested_model?: string;
+  app_context_omitted?: number;
+  components?: Record<string, number>;
+};
+const CONTEXT_PARTS: Record<string, string> = {
+  message: "Sua mensagem", instructions: "Personalidade e memórias escolhidas",
+  tools: "Ferramentas", app_context: "Dados auxiliares do aplicativo", images: "Imagens",
+  documents: "Documentos", recalled: "Memórias recuperadas", history: "Histórico enviado",
+  examples: "Exemplos", tool_result: "Resultado de ferramenta",
 };
 
 export default function App() {
@@ -267,6 +277,7 @@ export default function App() {
   const followEnd = useRef(true);
   const [contextEstimate, setContextEstimate] = useState<ContextEstimate | null>(null);
   const [contextProblem, setContextProblem] = useState("");
+  const [contextRevision, setContextRevision] = useState(0);
   const [chatActions, setChatActions] = useState<ChatAction[]>([]),
     [pendingAnalysis, setPendingAnalysis] = useState<{
       id: string;
@@ -429,15 +440,16 @@ export default function App() {
   useEffect(() => {
     setContextEstimate(null);
     setContextProblem("");
-    if (!loaded || !prefs.model || !input.trim() || busy) return;
+    const text = input.trim() || (attachments.length ? "Veja o anexo." : "");
+    if (!loaded || !prefs.model || !text || busy) return;
     let active = true;
     const timeout = setTimeout(() => {
-      api<ContextEstimate>("POST", "/chat/estimate", { conversation_id: cid, model: prefs.model, content: input.trim(), memory_ids: memoryIds })
+      api<ContextEstimate>("POST", "/chat/estimate", { conversation_id: cid, model: prefs.model, content: text, memory_ids: memoryIds, attachment_ids: attachments.map(file => file.id) })
         .then(value => { if (active) setContextEstimate(value); })
         .catch(() => { if (active) setContextProblem("Não foi possível conferir o contexto. O envio fará uma nova conferência."); });
     }, 350);
     return () => { active = false; clearTimeout(timeout); };
-  }, [input, cid, memoryIds, prefs, loaded, busy]);
+  }, [input, cid, memoryIds, attachments, prefs, loaded, busy, contextRevision, view]);
   useEffect(() => {
     if (!timerRunning || remaining <= 0) return;
     if (!timerDeadline.current)
@@ -1295,7 +1307,7 @@ export default function App() {
                       >
                         <Timer size={18} />
                       </button>
-                      <ApprovalMenu disabled={stopped || busy} onError={report} />
+                      <ApprovalMenu disabled={stopped || busy} onError={report} onChanged={() => setContextRevision(value => value + 1)} />
                     </div>
                     {busy ? (
                       <button
@@ -1325,8 +1337,14 @@ export default function App() {
                   {contextEstimate ? <span title={`Contagem ${contextEstimate.tokenizer}; inclui personalidade, memórias e histórico enviado.`}>
                     Contexto: {contextEstimate.input_tokens.toLocaleString("pt-BR")} / {contextEstimate.input_limit.toLocaleString("pt-BR")} tokens
                     {contextEstimate.fits && contextEstimate.history_included < contextEstimate.history_total ? " · histórico recente; conversa completa salva" : ""}
-                    {!contextEstimate.fits ? ` · ${contextEstimate.reason}` : ""}
+                    {contextEstimate.model ? ` · ${contextEstimate.model}${contextEstimate.requested_model === "auto" ? " (Automático)" : ""}` : ""}
+                    {contextEstimate.app_context_omitted ? " · dados auxiliares reduzidos para caber" : ""}
                   </span> : contextProblem}
+                  {contextEstimate?.fits === false && <p>{contextEstimate.reason}</p>}
+                  {contextEstimate?.components && <details className="context-parts">
+                    <summary>O que ocupa o contexto</summary>
+                    <dl>{Object.entries(contextEstimate.components).filter(([, value]) => value > 0).map(([key, value]) => <div key={key}><dt>{CONTEXT_PARTS[key] || key}</dt><dd>{value.toLocaleString("pt-BR")} tokens</dd></div>)}</dl>
+                  </details>}
                 </div>}
                 {(!selected || prefs.model.startsWith("cloud:")) && (
                   <div className="composer-caption">

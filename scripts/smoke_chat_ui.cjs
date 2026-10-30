@@ -11,7 +11,7 @@ app.whenReady().then(async()=>{
  async function draft(value){await js(`(()=>{const el=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event('input',{bubbles:true}));})()`);}
  try {
   await win.loadFile(path.join(root,'apps/desktop/dist/index.html'));
-  await until(`!!document.querySelector('.approval-trigger') && document.querySelector('.approval-trigger').textContent.includes('Acesso amplo')`);
+  await until(`!!document.querySelector('.approval-trigger') && document.querySelector('.approval-trigger').textContent.includes('Acesso total')`);
   assert.ok(await js(`document.querySelector('.approval-trigger').getBoundingClientRect().width > 100`),'Approval label should be visible, not squeezed into an icon button');
   assert.equal(await js(`!!document.querySelector('.settings-panel')`),false);
   fs.mkdirSync(path.join(root,'.local'),{recursive:true});
@@ -24,6 +24,9 @@ app.whenReady().then(async()=>{
   const value='Mensagem sintética que precisa permanecer no rascunho se o backend recusar.';
   await draft(value);
   await until(`!!document.querySelector('.context-indicator')`);
+  assert.ok(await js(`document.querySelector('.context-indicator').textContent.includes('qwen3.5:4b (Automático)')`));
+  await js(`document.querySelector('.context-parts summary').click()`);
+  assert.ok(await js(`document.querySelector('.context-parts').open && document.querySelector('.context-parts').textContent.includes('Personalidade e memórias escolhidas')`));
   await js(`document.querySelector('button[aria-label="Enviar mensagem"]').click()`);
   await until(`document.body.textContent.includes('Falha sintética de transporte')`);
   assert.equal(await js(`document.querySelector('textarea').value`),value);
@@ -33,6 +36,13 @@ app.whenReady().then(async()=>{
   await until(`!!document.querySelector('.context-indicator.over-limit')`);
   assert.equal(await js(`document.querySelector('button[aria-label="Enviar mensagem"]').disabled`),true);
   assert.equal(await js(`window.chatFixture.calls()`),1);
+  // A permission change must refresh a previously blocked estimate without editing the draft.
+  await js(`window.chatFixture.setFailure('stream');document.querySelector('.approval-trigger').click()`);
+  await until(`!!document.querySelector('.approval-popover')`);
+  await js(`Array.from(document.querySelectorAll('.approval-popover button')).find(b=>b.textContent.includes('Somente conversar')).click()`);
+  await until(`!!document.querySelector('.context-indicator') && !document.querySelector('.context-indicator.over-limit')`);
+  assert.equal(await js(`document.querySelector('button[aria-label="Enviar mensagem"]').disabled`),false);
+  assert.equal(await js(`document.querySelector('textarea').value`),value+' Maior.');
   // Visual pass of the 0.4 layout: labeled sidebar, main panels, collapsed and light.
   // Hidden windows only repaint on request; invalidate so each capture shows the current view.
   const shot=async name=>{win.webContents.invalidate();await delay(300);fs.writeFileSync(path.join(root,'.local',name),(await win.webContents.capturePage()).toPNG());};

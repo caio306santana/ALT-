@@ -32,7 +32,7 @@ class Maintenance:
     def export(self):
         snapshot=self.snapshot();raw=snapshot.read_bytes()
         if len(raw)>60_000_000:raise ValueError('Backup excede o limite de exportação de 60 MB. Use uma cópia privada do diretório de dados com a ALT encerrada.')
-        metadata={'format':'alt-ai-backup','version':1,'app_version':'0.5.0','db_schema':SCHEMA_VERSION,'sha256':hashlib.sha256(raw).hexdigest(),'created':datetime.now(timezone.utc).isoformat(),'credentials_included':False}
+        metadata={'format':'alt-ai-backup','version':1,'app_version':'0.5.1','db_schema':SCHEMA_VERSION,'sha256':hashlib.sha256(raw).hexdigest(),'created':datetime.now(timezone.utc).isoformat(),'credentials_included':False}
         output=io.BytesIO()
         with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as archive:
             archive.writestr('database.sqlite3',raw);archive.writestr('manifest.json',json.dumps(metadata))

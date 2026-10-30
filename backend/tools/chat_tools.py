@@ -80,7 +80,7 @@ def route(content,status):
     # ordinary requests ("abre o google", "nova aba") and left the model with the wrong tool.
     # Only opening is always on: with calculate always offered, the 9B "calculated" a daily schedule.
     if level>=3:names+=['open_url','open_app']
-    if not browser and any(word in text for word in ('pesquis','busque','buscar','procure','naveg','acesse','página','pagina','site','https://','http://','.com','aba','google','youtube','link','abr','entra')):names+=['web_search','read_webpage','open_url']
+    if not browser and (any(word in text for word in ('pesquis','busque','buscar','procure','naveg','acesse','página','pagina','site','https://','http://','.com','google','youtube','link','abr','entra')) or re.search(r'\babas?\b',text)):names+=['web_search','read_webpage','open_url']
     if level>=2 and any(word in text for word in ('arquivo','pasta','documento','salve','grave','leia','listar','escreva no','crie um')):names+=['list_files','find_files','read_text','write_text','open_folder']
     if any(word in text for word in ('abra','abre','abrir','abri','inici','calculadora','bloco de notas','notepad','programa','aplicativo','app ')):names+=['open_app']
     if any(word in text for word in ('feche','fecha','fechar','encerr')):names+=['close_app']

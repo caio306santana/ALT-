@@ -25,6 +25,7 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
                     break
                 except httpx.ConnectError: time.sleep(.1)
             assert response.status_code==200,response.text
+            assert response.json()['version']==json.loads((root/'package.json').read_text(encoding='utf-8'))['version']
             assert client.get('/health').status_code==401
             headers={'Authorization':'Bearer '+token}
             cid=client.post('/conversations',headers=headers).json()['id']
@@ -52,6 +53,14 @@ with tempfile.TemporaryDirectory(prefix='alt-packaged-') as directory:
             assert authorization['persistent'] and authorization['expires_in'] is None
             assert client.post('/tools/approve/'+proposal['id'],headers=headers).json()['result']['value']==30
             client.post('/permissions/revoke',headers=headers)
+            detected=client.get('/models',headers=headers).json()
+            if detected.get('connected') and detected.get('models'):
+                client.put('/permissions',headers=headers,json={'level':2})
+                auto=client.post('/chat/estimate',headers=headers,json={'model':'auto','content':'oi'})
+                assert auto.status_code==200,auto.text
+                assert auto.json()['fits'] and auto.json()['model']!='auto',auto.text
+                assert auto.json()['requested_model']=='auto' and auto.json()['components']
+                client.post('/permissions/revoke',headers=headers)
             system=client.get('/system',headers=headers).json()
             assert system['ram']['total']>0
             print(json.dumps({'packaged_backend':'ok','health':response.json(),'cpu':system['cpu']['name'],'profile':system.get('performance',{}).get('effective'),'authentication':'401 without token','conversation_storage':'ok','personality_memory_permissions_tools':'ok','owner_policy_programs_browser_queue_import_recall':'ok'},ensure_ascii=False))

@@ -7,13 +7,30 @@ from functools import lru_cache
 
 
 class ContextLimitError(ValueError):
-    def __init__(self, required, limit, total, output):
+    def __init__(self, required, limit, total, output, components=None):
         self.estimate={'fits':False,'required_tokens':required,'input_tokens':required,
             'input_limit':limit,'total_context':total,'output_reserve':output,
             'history_included':0,'history_total':0}
+        if components is not None:self.estimate['components']=dict(components)
         super().__init__(f'Este envio precisa de cerca de {required} tokens de entrada; '
             f'o contexto deste perfil permite {limit}. Reduza a mensagem ou as memórias '
             'selecionadas. O histórico anterior continua salvo.')
+
+
+def fit_context_blocks(blocks,budget,cost,header=''):
+    """Fit complete application observations, never slicing JSON or trust markers.
+
+    The owner's message, instructions and explicit memories are budgeted by the
+    caller first. Omitted observations can be read again with the relevant tool.
+    """
+    selected='';omitted=0
+    notice='\n[Dados auxiliares limitados ao contexto. Use ferramentas para obter observações necessárias; não invente os dados omitidos.]'
+    for block in blocks:
+        candidate=(selected+'\n'+block) if selected else header+block
+        if cost(candidate+notice)<=budget:selected=candidate
+        else:omitted+=1
+    if omitted and cost(selected+notice)<=budget:selected+=notice
+    return selected,omitted
 
 
 def has_qwen_tokenizer(model):

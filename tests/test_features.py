@@ -23,6 +23,10 @@ class FixtureCodex:
 def fixture_client(tmp_path):
     local,cloud=FixtureProvider(),FixtureCodex()
     app=create_app(tmp_path,TOKEN,local,cloud)
+    # Synthetic model names use a byte upper bound, not Qwen's tokenizer.
+    # Keep general feature tests independent of the host's RAM/battery; tests
+    # of Notebook budgets set that profile explicitly with a real tokenizer.
+    app.state.store.set_settings({'performance':'desktop'})
     return app,local,cloud,TestClient(app,headers=HEADERS)
 
 def test_personality_real_prompt_persists_across_models(tmp_path):

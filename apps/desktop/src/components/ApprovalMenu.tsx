@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Shield, Zap } from "lucide-react";
 
 type Permissions = { level: number; auto_scopes: string[]; scopes: { id: string; path: string }[] };
-export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError: (e: unknown) => void }) {
+export function ApprovalMenu({ disabled, onError, onChanged }: { disabled: boolean; onError: (e: unknown) => void; onChanged?: () => void }) {
   const [open, setOpen] = useState(false);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [working, setWorking] = useState(false);
@@ -38,6 +38,7 @@ export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError
       if (level <= 2) await window.alt.request("PUT", "/permissions", { level });
       else await window.alt.grantWindows(level as 3 | 4, scope);
       await refresh();
+      onChanged?.();
       setOpen(false);
     } catch (e) { onError(e); }
     finally { setWorking(false); }
@@ -58,7 +59,7 @@ export function ApprovalMenu({ disabled, onError }: { disabled: boolean; onError
         <span><b>{mode.name}</b><small>{mode.text}</small></span>{permissions?.level === mode.level && <Check size={16} />}
       </button>)}
       <label>Pasta para “Usar minhas regras”<select value={scope} disabled={working} onChange={e => setScope(e.target.value)}>{permissions?.scopes.filter(s => s.id !== "windows-profile").map(s => <option value={s.id} key={s.id}>{s.path}</option>)}</select></label>
-      <button type="button" disabled={working} onClick={async () => { try { await window.alt.chooseWorkspace(); await refresh(); } catch (e) { onError(e); } }}>Escolher outra pasta</button>
+      <button type="button" disabled={working} onClick={async () => { try { await window.alt.chooseWorkspace(); await refresh(); onChanged?.(); } catch (e) { onError(e); } }}>Escolher outra pasta</button>
       <small className="approval-note">O alcance é o da sua conta Windows. Credenciais e elevação administrativa ficam sempre de fora. STOP corta tudo na hora. Ajuste cada capacidade em Controle e regras.</small>
     </div>}
   </div>;
