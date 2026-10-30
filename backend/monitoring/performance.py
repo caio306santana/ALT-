@@ -14,8 +14,10 @@ def performance_profile(requested='auto',game=False):
         return {'requested':requested,'effective':'game','detected':detected,'options':options,'keep_alive':'1m'}
     if profile=='notebook':
         options={'num_ctx':4096,'num_predict':768,'num_thread':max(1,min(4,cores))}
-        keep_alive='2m'
-    else:
-        options={'num_ctx':8192,'num_predict':4096}
         keep_alive='5m'
+    else:
+        # 1024 tokens is a long answer for a chat; 4096 let old replies ramble for minutes.
+        options={'num_ctx':8192,'num_predict':1024}
+        # Loaded for 30 min: reloading the 9B took 34-55 s in the 30/10 measurements.
+        keep_alive='30m'
     return {'requested':requested,'effective':profile,'detected':detected,'options':options,'keep_alive':keep_alive}

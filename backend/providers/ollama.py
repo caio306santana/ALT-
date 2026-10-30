@@ -72,6 +72,14 @@ class Ollama:
             except (httpx.HTTPError,ValueError):return None
         return cache[model]
 
+    async def preload(self,model,profile):
+        """Load the model with the chat's options (a different num_ctx would reload it on the first message)."""
+        options={k:v for k,v in profile['options'].items() if k in ('num_ctx','num_gpu','num_thread')}
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(180,connect=5),trust_env=False) as client:
+                await client.post(self.base_url+'/api/generate',json={'model':model,'keep_alive':profile['keep_alive'],'options':options,'stream':False})
+        except httpx.HTTPError:pass
+
     async def unload(self,model):
         entries=await self.models()
         if not any(m.get('name')==model and not m.get('remote_host') and not m.get('remote_model') and 'cloud' not in model.lower() for m in entries):raise ProviderError('Modelo local não disponível.','connection')
@@ -128,7 +136,9 @@ class Ollama:
         model=next((m['name'] for m in entries if m.get('name','').split(':')[0]=='embeddinggemma' and not m.get('remote_host')),None)
         if not model:raise ValueError('Instale EmbeddingGemma para ativar a busca semântica local.')
         async with httpx.AsyncClient(timeout=120,trust_env=False) as client:
-            response=await client.post(self.base_url+'/api/embed',json={'model':model,'input':texts,'truncate':False,'keep_alive':'5m'})
+            response=await client.post(self.base_url+'/api/embed',json={'model':model,'input':texts,'truncate':False,'keep_alive':'5m',
+                # On the processor: on an 8 GB card the embedding model would push the chat model out of VRAM.
+                'options':{'num_gpu':0}})
             response.raise_for_status()
             vectors=response.json().get('embeddings',[])
             if len(vectors)!=len(texts):raise ValueError('O modelo não retornou todos os vetores.')

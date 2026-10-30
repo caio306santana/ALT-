@@ -64,7 +64,7 @@ class Evaluations:
         if not names or len(names)>3 or len(set(names))!=len(names) or any(n not in available for n in names):raise ValueError('Escolha de um a três modelos locais instalados.')
         ids=case_ids or [c['id'] for c in CASES]
         if len(set(ids))!=len(ids) or any(cid not in {c['id'] for c in CASES} for cid in ids):raise ValueError('Caso de comparação inválido.')
-        cancel=self.engine.begin('evaluation');prefs=self.store.settings();profile=performance_profile(prefs.get('performance','auto'))
+        cancel=self.engine.begin('evaluation');prefs=self.store.settings();profile=performance_profile(prefs.get('performance','auto'),self.engine.game_mode)
         run={'id':str(uuid4()),'status':'running','created':now(),'models':[available[n] for n in names],
              'profile':profile,'cases':[c for c in CASES if c['id'] in ids],'results':[],'ratings':{},'notice':'Prompts sintéticos sem memórias ou nuvem. Verificações automáticas são heurísticas explícitas; respostas e métricas não provam ausência de recusas nem qualidade geral.'}
         self.save(run)

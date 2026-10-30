@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shield, Check, Wrench, ExternalLink } from "lucide-react";
+import { Shield, Check, Wrench, ExternalLink, AlertTriangle } from "lucide-react";
 export type ChatAction = {
   id: string;
   preview: Record<string, unknown>;
@@ -52,11 +52,24 @@ export function ChatActionCard({
   const preview = action.preview;
   // Opening things needs no analysis: once done it collapses to one line.
   const done = action.state === "complete" ? summary(preview, action.result) : null;
-  if (done)
+  // Only an observed result gets the check mark; "unverified" and "ask" say so plainly.
+  const outcome = String(((action.result || {}) as Record<string, unknown>).status || "done");
+  const detail = String(((action.result || {}) as Record<string, unknown>).notice || "");
+  if (done && outcome === "done")
     return (
       <div className="chat-action-done">
         <Check size={14} />
         <span>{done}</span>
+      </div>
+    );
+  if (done && (outcome === "unverified" || outcome === "ask" || outcome === "failed"))
+    return (
+      <div className={"chat-action-done " + outcome}>
+        <AlertTriangle size={14} />
+        <span>
+          {outcome === "unverified" ? "Pedido enviado, não confirmado: " : outcome === "ask" ? "Preciso que você escolha: " : "Falhou: "}
+          {detail || done}
+        </span>
       </div>
     );
   return (
@@ -152,13 +165,17 @@ function summary(preview: Record<string, unknown>, result: unknown) {
   const value = (result || {}) as Record<string, unknown>;
   switch (preview.tool) {
     case "open_app":
-      return `${String(preview.app)} aberto`;
+      return value.already_running
+        ? `${String(preview.app)} já estava aberto: trouxe para a frente`
+        : `${String(preview.app)} aberto`;
     case "open_url":
       return `Aberto no navegador: ${String(value.opened || preview.url)}`;
     case "open_folder":
       return `Pasta aberta: ${String(preview.path)}`;
     case "close_app":
-      return `Fechamento solicitado: ${String(preview.app)}`;
+      if (value.status === "ask" && Array.isArray(value.options))
+        return `mais de um programa corresponde (${value.options.join(", ")})`;
+      return value.status === "done" ? `${String(preview.app)} fechado` : `Fechamento solicitado: ${String(preview.app)}`;
     case "calculate":
       return `${String(preview.expression)} = ${String(value.value)}`;
     case "windows_keys":

@@ -532,3 +532,21 @@ body.full-access .composer {
   color: inherit;
   cursor: pointer;
 }
+
+/* Generation far below this PC's normal speed (busy or stuck graphics card). */
+.performance-warning {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid #ffb020;
+  background: color-mix(in srgb, #ffb020 12%, transparent);
+  font-size: 12px;
+}
+
+/* Actions the ALT could not confirm, or that need a choice. */
+.chat-action-done.unverified,
+.chat-action-done.ask {
+  color: #ffc35c;
+}
+.chat-action-done.failed {
+  color: #ff6b84;
+}

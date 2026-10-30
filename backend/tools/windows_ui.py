@@ -143,8 +143,11 @@ class WindowsUI:
             window=self.window(gid)
             import ctypes
             from pywinauto.keyboard import send_keys
-            try:window.set_focus()
-            except Exception:pass
+            from backend.tools.appidentity import focus
+            # AttachThreadInput gets past Windows refusing focus to a background process.
+            if not focus(int(window.handle)):
+                try:window.set_focus()
+                except Exception:pass
             user32=ctypes.WinDLL('user32',use_last_error=True)
             user32.GetForegroundWindow.restype=ctypes.c_void_p
             user32.GetAncestor.argtypes=[ctypes.c_void_p,ctypes.c_uint];user32.GetAncestor.restype=ctypes.c_void_p

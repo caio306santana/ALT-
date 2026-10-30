@@ -39,12 +39,12 @@ def test_opt_in_recall_is_visible_budgeted_and_does_not_bypass_cloud_consent(tmp
         body=client.get('/policy').json()['policy'];body['memory_recall']='automatic';client.put('/policy',json=body)
         data=events(send(client,cid,content='Como retomo Aurora?'))
         assert data[0]['recalled_memories'][0]['id']==memory['id']
-        assert 'Markdown' in local.contexts[-1][1][0]['content']
+        assert 'Markdown' in local.contexts[-1][1][-1]['content']
         assert client.get('/memories/search',params={'q':'decisoes Aurora'}).json()[0]['id']==memory['id']
         payload={'conversation_id':cid,'model':'cloud:codex','content':'Retomar Aurora'}
         assert client.post('/chat',json=payload).status_code==403 and not cloud.calls
         preview=client.post('/chat/preview',json=payload).json()
-        assert 'Markdown' in preview['messages'][0]['content']
+        assert 'Markdown' in preview['messages'][-1]['content']
         client.put('/memories/'+memory['id'],json={'title':'Projeto Aurora','content':'Aurora usa outro formato.'})
         assert client.post('/chat',json={**payload,'consent_receipt':preview['consent_receipt']}).status_code==403
 

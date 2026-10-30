@@ -33,10 +33,13 @@ async def main(args):
 
     save()
     for model in args.models:
-        for case, prompt in [('chat', 'Responda apenas: pronto.'), ('app_proposal', 'Abra o Spotify.')]:
+        cases = [('chat', 'Responda apenas: pronto.'), ('app_proposal', 'Abra o Spotify.'),
+                 # A few tokens say little about generation speed; this one produces ~200.
+                 ('long', 'Explique em cerca de 150 palavras como funciona a fotossíntese.')]
+        for case, prompt in [c for c in cases if c[0] in args.cases]:
             for repeat in range(args.repeats):
                 profile = performance_profile(args.profile)
-                profile['options']['num_predict'] = 96
+                profile['options']['num_predict'] = 320 if case == 'long' else 96
                 spec = tool_spec(prompt, {'level': 4}) if case == 'app_proposal' else None
                 if spec:
                     profile['tools'] = spec
@@ -70,6 +73,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--models', nargs='+', default=['qwen3.5:4b', 'qwen3.5:9b'])
     parser.add_argument('--repeats', type=int, choices=range(1, 6), default=2)
+    parser.add_argument('--cases', nargs='+', choices=['chat', 'app_proposal', 'long'], default=['chat', 'app_proposal', 'long'])
     parser.add_argument('--profile', choices=['auto', 'desktop', 'notebook'], default='desktop')
     parser.add_argument('--output', default='.local/latency-baseline.json')
     asyncio.run(main(parser.parse_args()))

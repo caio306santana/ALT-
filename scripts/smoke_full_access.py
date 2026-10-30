@@ -13,9 +13,11 @@ from fastapi.testclient import TestClient
 from backend.api import create_app
 from backend.evaluations import automatic_checks
 
-MODELS=sys.argv[1:] or ['qwen3.5:4b']
+# --routing=stable compares the fixed tool set against keyword routing (default: filtered).
+ROUTING=next((a.split('=',1)[1] for a in sys.argv[1:] if a.startswith('--routing=')),'filtered')
+MODELS=[a for a in sys.argv[1:] if not a.startswith('--')] or ['qwen3.5:4b']
 token='synthetic-full-access-smoke-'+'x'*40
-output=Path(__file__).resolve().parents[1]/'docs'/'full-access-smoke.json'
+output=Path(__file__).resolve().parents[1]/'docs'/('full-access-smoke.json' if ROUTING=='filtered' else f'full-access-smoke-{ROUTING}.json')
 # (message, expected tool, text the arguments must contain)
 CASES=[
     ('abra uma nova aba no google','open_url','google'),
@@ -37,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='alt-full-access-') as directory:
     tools=app.state.tools
     tools.execute=lambda body,fingerprint,event:{'dry_run':True}
     with TestClient(app,headers={'Authorization':'Bearer '+token}) as client:
-        prefs=client.get('/settings').json();prefs['performance']='desktop';client.put('/settings',json=prefs)
+        prefs=client.get('/settings').json();prefs['performance']='desktop';prefs['tool_routing']=ROUTING;client.put('/settings',json=prefs)
         scope=client.get('/permissions').json()['scopes'][0]['id']
         assert client.post('/permissions/grant',json={'level':4,'scope_ids':[scope]}).json()['level']==4
         tools.catalog.entries()

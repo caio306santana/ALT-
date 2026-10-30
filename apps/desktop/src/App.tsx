@@ -478,6 +478,8 @@ export default function App() {
     const text = analysis?.content || spoken || input.trim() || (files.length ? "Veja o anexo." : "");
     // A spoken request gets a spoken answer.
     let reply = "";
+    let pending = "";
+    let flushTimer: number | undefined;
     if (!text || busy) return;
     if (stopped) {
       setError("Retome as ações antes de enviar uma mensagem.");
@@ -560,6 +562,15 @@ export default function App() {
           attachment_ids: files.map((f) => f.id),
         },
         (event: StreamEvent) => {
+          const flush = () => {
+            flushTimer = undefined;
+            if (!pending) return;
+            const chunk = pending;
+            pending = "";
+            setMessages((old) =>
+              old.map((m) => (m.id === assistant.id ? { ...m, content: m.content + chunk } : m)),
+            );
+          };
           if (event.type === "start") {
             accepted = true;
             if (files.length) setAttachments((old) => old.filter((a) => !files.includes(a)));
@@ -579,15 +590,17 @@ export default function App() {
             );
           if (event.type === "delta") reply += event.text || "";
           if (event.type === "done" && spoken && event.status === "complete")
-            speak(reply.replace(/\n?(Ferramenta concluída|Preparei uma proposta)[^\n]*/g, "").trim() || "Pronto.");
-          if (event.type === "delta")
-            setMessages((old) =>
-              old.map((m) =>
-                m.id === assistant.id
-                  ? { ...m, content: m.content + (event.text || "") }
-                  : m,
-              ),
-            );
+            speak(reply.replace(/\n?(Ferramenta concluída|Preparei uma proposta|Pedido enviado|A ação falhou|Preciso que você escolha|Ação iniciada)[^\n]*/g, "").trim() || "Pronto.");
+          // Re-rendering the markdown on every token competes with the model for the GPU; batch per 50 ms.
+          if (event.type === "delta") {
+            pending += event.text || "";
+            if (flushTimer === undefined) flushTimer = window.setTimeout(flush, 50);
+          }
+          if (event.type === "done" || event.type === "error") {
+            if (flushTimer !== undefined) window.clearTimeout(flushTimer);
+            flush();
+          }
+          if (event.type === "notice" && event.message) setNotice(event.message);
           if (event.type === "error")
             setError(event.message || "Erro ao gerar resposta");
           if (event.type === "start")
@@ -1847,9 +1860,24 @@ export default function App() {
                   </select>
                   <p className="setting-note">
                     O perfil econômico usa contexto de 4K, respostas de até 768
-                    tokens e libera o modelo após 2 minutos sem uso. Para maior
+                    tokens e libera o modelo após 5 minutos sem uso. O desktop
+                    mantém o modelo carregado por 30 minutos. Para maior
                     leveza, baixe opcionalmente o Qwen 2B em Inteligências.
                   </p>
+                  <Toggle
+                    title="Ferramentas fixas (mais rápido)"
+                    text="Oferece sempre o mesmo conjunto de ferramentas, para o Ollama reaproveitar o que já leu e responder antes."
+                    checked={prefs.tool_routing === "stable"}
+                    onChange={() =>
+                      update("tool_routing", prefs.tool_routing === "stable" ? "filtered" : "stable")
+                    }
+                  />
+                  <Toggle
+                    title="Placa ocupada: usar o processador"
+                    text="Quando um jogo estiver usando a placa de vídeo, responde pelo processador em vez de disputar com ele."
+                    checked={!!prefs.gpu_light_auto}
+                    onChange={() => update("gpu_light_auto", !prefs.gpu_light_auto)}
+                  />
                   <Toggle
                     title="Sempre no topo"
                     text="Mantenha a ALT-AI visível."

@@ -19,6 +19,7 @@ export interface Metrics {
   provider_total_seconds?: number | null;
   tools_offered?: number;
   verification?: Verification;
+  speed?: { reference: number; ratio: number; warning?: string };
 }
 export interface Verification {
   calculations: { claim: string; expression: string; stated: string; actual: number; ok: boolean; rounded?: boolean }[];
@@ -62,6 +63,8 @@ export interface Preferences {
   shortcut: string;
   always_on_top: boolean;
   user_name: string;
+  tool_routing?: "stable" | "filtered";
+  gpu_light_auto?: boolean;
 }
 export interface Personality {
   name: string;
@@ -108,7 +111,8 @@ export type StreamEvent = {
     | "done"
     | "progress"
     | "tool_proposal"
-    | "tool_result";
+    | "tool_result"
+    | "notice";
   proposal?: { id: string; preview: Record<string, unknown> };
   action_id?: string;
   result?: unknown;

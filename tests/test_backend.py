@@ -176,7 +176,7 @@ def test_notebook_profile_limits_generation_and_can_be_overridden(tmp_path):
         assert profile['options']['num_ctx']==4096
         assert profile['options']['num_predict']<=1024
         assert profile['options']['num_thread']<=4
-        assert profile['keep_alive']=='2m'
+        assert profile['keep_alive']=='5m'
         settings['performance']='desktop';client.put('/settings',json=settings)
         send(client,cid)
         assert provider.profiles[-1]['options']['num_ctx']>profile['options']['num_ctx']

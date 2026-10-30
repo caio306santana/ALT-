@@ -14,7 +14,47 @@ HINTS={
 KEY_WORDS=('atalho','tecla','aperte','pressione','ctrl','alt+','fecha a aba','feche a aba','fechar aba','próxima aba','proxima aba','aba anterior',
     'role ','rola ','rolar','desça','desce','suba a página','recarreg','atualize a página','f5','pause','pausa','próxima música','proxima musica','volume','tela cheia')
 
+# Stable set for modes 2-4, core first and capped at 14 like Mark LVI's local budget. The same list every
+# turn keeps the prompt prefix identical, so Ollama reuses its cache instead of rereading tools and history.
+STABLE=['open_app','open_url','web_search','close_app','windows_keys','windows_read','windows_invoke','windows_type',
+    'read_webpage','list_files','read_text','write_text','run_command','download_file']
+BRIEF={
+    'open_app':'abre um programa instalado pelo nome (app)','open_url':'abre um site em nova aba do navegador padrão (url ou query)',
+    'web_search':'pesquisa na internet (query)','close_app':'fecha um programa (app)','read_webpage':'lê o texto de uma página (url)',
+    'windows_keys':'envia um atalho de teclado a uma janela (window_id = título ou programa, keys)',
+    'windows_read':'lê os elementos de uma janela aberta (window_id)','windows_invoke':'clica num elemento lido (window_id, target, snapshot_id)',
+    'windows_type':'digita num campo lido (window_id, target, snapshot_id, content)','list_files':'lista uma pasta (scope_id, path)',
+    'read_text':'lê um arquivo de texto (scope_id, path)','write_text':'grava um arquivo de texto (scope_id, path, content)',
+    'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo (url, path)',
+    'find_files':'procura arquivos (scope_id, path, query)','open_folder':'abre uma pasta no Explorer (scope_id, path)',
+    'calculate':'calcula uma expressão (expression)','browser_open':'abre site no navegador ALT (url)','browser_read':'lê a página do navegador ALT',
+    'browser_back':'volta uma página no navegador ALT','browser_click':'clica no navegador ALT (target, snapshot_id)',
+    'browser_type':'digita no navegador ALT (target, snapshot_id, content)',
+}
+STABLE_FIELDS=('tool','app','url','query','scope_id','path','content','command','keys','window_id','target','snapshot_id','expression')
+
 def tool_spec(content,status):
+    names,browser,windows=route(content,status)
+    if not names:return None
+    return build_spec(names,browser,windows)
+
+def stable_tool_spec(content,status,allowed=lambda name:True):
+    """Modes 2-4: the same tools every turn, plus any routed tool outside the core list."""
+    routed,browser,_=route(content,status)
+    # Window tools only where they can work: full access, or windows the owner granted (rarely changes).
+    usable=lambda n:allowed(n) and (not n.startswith('windows_') or status['level']==4 or bool(status.get('windows')))
+    names=[n for n in STABLE if usable(n)]+[n for n in routed if n not in STABLE and usable(n)]
+    if not names:return None,[]
+    schema=ToolProposal.model_json_schema()['properties']
+    properties={key:{**{k:v for k,v in schema[key].items() if k in ('type','enum')},**({'description':HINTS[key]} if key in HINTS else {})} for key in STABLE_FIELDS}
+    properties['tool']={'type':'string','enum':names}
+    description=('Executa uma ação no computador; o aplicativo aplica permissões e aprovações. Só afirme execução com resultado confirmado. '
+        'Ferramentas: '+'; '.join(f'{n}: {BRIEF[n]}' for n in names if n in BRIEF)+'. '
+        'Em janelas, windows_invoke e windows_type usam target e snapshot_id lidos por windows_read.')
+    spec=[{'type':'function','function':{'name':'alt_propose_action','description':description,'parameters':{'type':'object','properties':properties,'required':['tool'],'additionalProperties':False}}}]
+    return spec,[n for n in routed if allowed(n)]
+
+def route(content,status):
     text=content.lower()
     names=[]
     level=status['level']
@@ -42,8 +82,9 @@ def tool_spec(content,status):
         if any(word in text for word in ('clique','clicar','aperte','pressione','marque','selecione')):names+=['windows_invoke']
         if any(word in text for word in ('digite','escreva','preencha')):names+=['windows_type']
         if keys:names+=['windows_keys']
-    if not names:return None
-    names=list(dict.fromkeys(names))
+    return list(dict.fromkeys(names)),browser,windows
+
+def build_spec(names,browser,windows):
     schema=ToolProposal.model_json_schema();properties={key:value for key,value in schema['properties'].items() if key in {'tool','query','url','scope_id','path','content','app','expression','target','snapshot_id','window_id','command','keys'}}
     relevant={'tool'}
     if any(name in names for name in ('web_search','read_webpage','open_url')):relevant.update(('query','url'))

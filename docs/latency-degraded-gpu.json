@@ -1,0 +1,499 @@
+{
+  "created_utc": "2026-10-30T03:14:56.155345+00:00",
+  "scope": "Inferência local com prompts sintéticos; nenhuma ferramenta executada. Não mede abertura real de programas.",
+  "initial_running": [],
+  "results": [
+    {
+      "model": "qwen3.5:4b",
+      "case": "chat",
+      "repeat": 1,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 3,
+        "tokens_per_second": 5.66,
+        "first_token_seconds": 20.594,
+        "request_first_token_seconds": 20.594,
+        "total_seconds": 21.125,
+        "request_total_seconds": 21.125,
+        "preparation_seconds": 0,
+        "model_load_seconds": 19.6762,
+        "prompt_eval_seconds": 0.6724,
+        "generation_seconds": 0.5305,
+        "provider_total_seconds": 20.8865,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "chat",
+      "repeat": 2,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 6.44,
+        "first_token_seconds": 0.703,
+        "request_first_token_seconds": 0.703,
+        "total_seconds": 1.328,
+        "request_total_seconds": 1.328,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.2232,
+        "prompt_eval_seconds": 0.2484,
+        "generation_seconds": 0.6208,
+        "provider_total_seconds": 1.0979,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "chat",
+      "repeat": 3,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 6.38,
+        "first_token_seconds": 1.172,
+        "request_first_token_seconds": 1.172,
+        "total_seconds": 1.797,
+        "request_total_seconds": 1.797,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0037,
+        "prompt_eval_seconds": 0.9386,
+        "generation_seconds": 0.6265,
+        "provider_total_seconds": 1.5735,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "app_proposal",
+      "repeat": 1,
+      "profile": "desktop",
+      "first_output_kind": "tool_call_complete",
+      "tool_calls": [
+        {
+          "id": "call_b8dd82tu",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 4.12,
+        "first_token_seconds": 11.328,
+        "request_first_token_seconds": 11.328,
+        "total_seconds": 11.531,
+        "request_total_seconds": 11.531,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0044,
+        "prompt_eval_seconds": 0.8156,
+        "generation_seconds": 10.4373,
+        "provider_total_seconds": 11.3022,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "app_proposal",
+      "repeat": 2,
+      "profile": "desktop",
+      "first_output_kind": "tool_call_complete",
+      "tool_calls": [
+        {
+          "id": "call_s2ge4519",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 4.59,
+        "first_token_seconds": 9.672,
+        "request_first_token_seconds": 9.672,
+        "total_seconds": 9.89,
+        "request_total_seconds": 9.89,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0047,
+        "prompt_eval_seconds": 0.2599,
+        "generation_seconds": 9.3722,
+        "provider_total_seconds": 9.6481,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "app_proposal",
+      "repeat": 3,
+      "profile": "desktop",
+      "first_output_kind": "tool_call_complete",
+      "tool_calls": [
+        {
+          "id": "call_ixx5ouoh",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 4.59,
+        "first_token_seconds": 10.422,
+        "request_first_token_seconds": 10.422,
+        "total_seconds": 10.625,
+        "request_total_seconds": 10.625,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0048,
+        "prompt_eval_seconds": 1.0213,
+        "generation_seconds": 9.3652,
+        "provider_total_seconds": 10.3994,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "long",
+      "repeat": 1,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 264,
+        "tokens_per_second": 4.21,
+        "first_token_seconds": 0.906,
+        "request_first_token_seconds": 0.906,
+        "total_seconds": 63.594,
+        "request_total_seconds": 63.594,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0042,
+        "prompt_eval_seconds": 0.549,
+        "generation_seconds": 62.685,
+        "provider_total_seconds": 63.366,
+        "prompt_tokens": 492,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "long",
+      "repeat": 2,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 239,
+        "tokens_per_second": 4.25,
+        "first_token_seconds": 0.484,
+        "request_first_token_seconds": 0.484,
+        "total_seconds": 56.672,
+        "request_total_seconds": 56.672,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0037,
+        "prompt_eval_seconds": 0.2409,
+        "generation_seconds": 56.1855,
+        "provider_total_seconds": 56.4355,
+        "prompt_tokens": 492,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "long",
+      "repeat": 3,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 219,
+        "tokens_per_second": 4.27,
+        "first_token_seconds": 0.468,
+        "request_first_token_seconds": 0.468,
+        "total_seconds": 51.765,
+        "request_total_seconds": 51.765,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0036,
+        "prompt_eval_seconds": 0.2418,
+        "generation_seconds": 51.2889,
+        "provider_total_seconds": 51.5397,
+        "prompt_tokens": 492,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "chat",
+      "repeat": 1,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 9.97,
+        "first_token_seconds": 34.844,
+        "request_first_token_seconds": 34.844,
+        "total_seconds": 35.25,
+        "request_total_seconds": 35.25,
+        "preparation_seconds": 0,
+        "model_load_seconds": 33.8234,
+        "prompt_eval_seconds": 0.7887,
+        "generation_seconds": 0.4011,
+        "provider_total_seconds": 35.0203,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "chat",
+      "repeat": 2,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 10.0,
+        "first_token_seconds": 0.453,
+        "request_first_token_seconds": 0.453,
+        "total_seconds": 0.86,
+        "request_total_seconds": 0.86,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0048,
+        "prompt_eval_seconds": 0.2163,
+        "generation_seconds": 0.4,
+        "provider_total_seconds": 0.6277,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "chat",
+      "repeat": 3,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 3,
+        "tokens_per_second": 11.27,
+        "first_token_seconds": 0.453,
+        "request_first_token_seconds": 0.453,
+        "total_seconds": 0.718,
+        "request_total_seconds": 0.718,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0042,
+        "prompt_eval_seconds": 0.2004,
+        "generation_seconds": 0.2662,
+        "provider_total_seconds": 0.4781,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "app_proposal",
+      "repeat": 1,
+      "profile": "desktop",
+      "first_output_kind": "tool_call_complete",
+      "tool_calls": [
+        {
+          "id": "call_22brocia",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 7.69,
+        "first_token_seconds": 6.985,
+        "request_first_token_seconds": 6.985,
+        "total_seconds": 7.11,
+        "request_total_seconds": 7.11,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0044,
+        "prompt_eval_seconds": 1.1725,
+        "generation_seconds": 5.5889,
+        "provider_total_seconds": 6.879,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "app_proposal",
+      "repeat": 2,
+      "profile": "desktop",
+      "first_output_kind": "tool_call_complete",
+      "tool_calls": [
+        {
+          "id": "call_wm312nsc",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 7.7,
+        "first_token_seconds": 5.86,
+        "request_first_token_seconds": 5.86,
+        "total_seconds": 6.0,
+        "request_total_seconds": 6.0,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0041,
+        "prompt_eval_seconds": 0.178,
+        "generation_seconds": 5.585,
+        "provider_total_seconds": 5.775,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "app_proposal",
+      "repeat": 3,
+      "profile": "desktop",
+      "first_output_kind": "tool_call_complete",
+      "tool_calls": [
+        {
+          "id": "call_a6yxd7xw",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 7.7,
+        "first_token_seconds": 5.875,
+        "request_first_token_seconds": 5.875,
+        "total_seconds": 6.0,
+        "request_total_seconds": 6.0,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0042,
+        "prompt_eval_seconds": 0.1776,
+        "generation_seconds": 5.5842,
+        "provider_total_seconds": 5.7751,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "long",
+      "repeat": 1,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 226,
+        "tokens_per_second": 7.55,
+        "first_token_seconds": 1.094,
+        "request_first_token_seconds": 1.094,
+        "total_seconds": 31.016,
+        "request_total_seconds": 31.016,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0041,
+        "prompt_eval_seconds": 0.6717,
+        "generation_seconds": 29.9249,
+        "provider_total_seconds": 30.79,
+        "prompt_tokens": 492,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "long",
+      "repeat": 2,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 197,
+        "tokens_per_second": 7.51,
+        "first_token_seconds": 0.437,
+        "request_first_token_seconds": 0.437,
+        "total_seconds": 26.672,
+        "request_total_seconds": 26.672,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0042,
+        "prompt_eval_seconds": 0.1912,
+        "generation_seconds": 26.2413,
+        "provider_total_seconds": 26.4439,
+        "prompt_tokens": 492,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "long",
+      "repeat": 3,
+      "profile": "desktop",
+      "first_output_kind": "text",
+      "metrics": {
+        "tokens": 227,
+        "tokens_per_second": 7.45,
+        "first_token_seconds": 0.438,
+        "request_first_token_seconds": 0.438,
+        "total_seconds": 30.906,
+        "request_total_seconds": 30.906,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0058,
+        "prompt_eval_seconds": 0.1939,
+        "generation_seconds": 30.4625,
+        "provider_total_seconds": 30.6699,
+        "prompt_tokens": 492,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    }
+  ]
+}

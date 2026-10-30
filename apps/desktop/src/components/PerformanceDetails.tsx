@@ -14,7 +14,9 @@ export function PerformanceDetails({ metrics }: { metrics: Metrics }) {
         <dt>Geração da resposta</dt><dd>{seconds(metrics.generation_seconds)}</dd>
         <dt>Total desde o envio</dt><dd>{seconds(metrics.request_total_seconds)}</dd>
         <dt>Ferramentas oferecidas</dt><dd>{metrics.tools_offered ?? "Não informado"}</dd>
+        {metrics.speed && <><dt>Velocidade normal deste PC</dt><dd>{metrics.speed.reference.toFixed(0)} tokens/s ({Math.round(metrics.speed.ratio * 100)}% nesta resposta)</dd></>}
       </dl>
+      {metrics.speed?.warning && <p className="performance-warning">{metrics.speed.warning}</p>}
       <small>Tempos medidos no servidor local. Rede e renderização não estão incluídas. Etapas do provedor podem se sobrepor ao primeiro texto.</small>
     </details>
   );

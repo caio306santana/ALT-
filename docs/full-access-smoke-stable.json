@@ -1,0 +1,163 @@
+{
+  "started": "2026-10-30T00:57:40-0300",
+  "dry_run": true,
+  "models": {
+    "qwen3.5:4b": [
+      {
+        "message": "abra uma nova aba no google",
+        "seconds": 27.8,
+        "tool": "open_url",
+        "state": "complete",
+        "preview": {
+          "tool": "open_url",
+          "url": "https://google.com"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o youtube",
+        "seconds": 20.2,
+        "tool": "open_url",
+        "state": "complete",
+        "preview": {
+          "tool": "open_url",
+          "url": "https://youtube.com"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o spotify",
+        "seconds": 20.9,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Spotify"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre a calculadora",
+        "seconds": 10.8,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Calculadora"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "abre o chrome",
+        "seconds": 11.1,
+        "tool": "open_app",
+        "state": "complete",
+        "preview": {
+          "tool": "open_app",
+          "app": "catalog:Google Chrome"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "pesquisa no google o preço da RTX 5070",
+        "seconds": 12.2,
+        "tool": "web_search",
+        "state": "complete",
+        "preview": {
+          "tool": "web_search",
+          "query": "preço da RTX 5070"
+        },
+        "reply": "\nFerramenta concluída conforme suas autorizações. O resultado confirmado está no cartão abaixo.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "rode ipconfig",
+        "seconds": 13.3,
+        "tool": "run_command",
+        "state": "proposed",
+        "preview": {
+          "tool": "run_command",
+          "command": "ipconfig",
+          "external_notice": "Comando do PowerShell com os direitos do seu usuário Windows (sem administrador). Confira o comando inteiro antes de aprovar.",
+          "critical": false
+        },
+        "reply": "Vou executar o comando `ipconfig` agora.\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "fecha o discord",
+        "seconds": 10.5,
+        "tool": "close_app",
+        "state": "proposed",
+        "preview": {
+          "tool": "close_app",
+          "app": "Discord",
+          "notice": "Solicita fechamento normal das janelas abertas deste programa; o programa pode pedir para salvar documentos.",
+          "critical": false
+        },
+        "reply": "\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.",
+        "errors": [],
+        "ok": true
+      },
+      {
+        "message": "oi, tudo bem?",
+        "seconds": 3.9,
+        "tool": null,
+        "state": null,
+        "preview": null,
+        "reply": "Oi. Tudo bem. Como posso ajudar?",
+        "errors": [],
+        "checks": [
+          {
+            "check": "words:120",
+            "label": "Até 120 palavras (6)",
+            "ok": true
+          },
+          {
+            "check": "no_debate",
+            "label": "Sem tom de debate ou lição",
+            "ok": true
+          }
+        ],
+        "ok": true
+      },
+      {
+        "message": "me ajuda a organizar meu dia, tenho academia às 7h e trabalho das 9h às 18h",
+        "seconds": 24.3,
+        "tool": null,
+        "state": null,
+        "preview": null,
+        "reply": "Entendido. Para criar uma organização eficiente baseada nos seus horários (academia às 7h, trabalho 09h-18h), é necessário primeiro determinar suas necessidades de produtividade e disponibilidade para o período matinal e pré-trabalho. Por exemplo: você deseja que eu gere um plano detalhado com base em pesquisa atual de rotinas produtivas ou prefere que eu liste os programas de agendamento (como \"Agendador de Tarefas\") já instalados no seu sistema?",
+        "errors": [],
+        "checks": [
+          {
+            "check": "words:120",
+            "label": "Até 120 palavras (69)",
+            "ok": true
+          },
+          {
+            "check": "no_debate",
+            "label": "Sem tom de debate ou lição",
+            "ok": true
+          }
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "summary": {
+    "qwen3.5:4b": "10/10"
+  }
+}

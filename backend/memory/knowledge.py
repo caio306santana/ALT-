@@ -19,6 +19,7 @@ def unit(vector):
 
 # EmbeddingGemma was trained with these task prompts; bump FORMAT to re-index.
 FORMAT='egemma-prompts-v1'
+IDLE_SECONDS=60
 def query_prompt(text):return 'task: search result | query: '+text
 def document_prompt(title,text):return 'title: '+(title or 'none')+' | text: '+text
 
@@ -237,6 +238,11 @@ class Knowledge:
         if not rows or len(self.continuity.snapshot(cid)[1])-rows[0]['last_summary_count']<12:return
         if cid in self.summary_tasks and not self.summary_tasks[cid].done():return
         async def generate():
+            # Runs only after 60 s without a reply being generated, so it never competes with the next message.
+            quiet=0
+            while quiet<IDLE_SECONDS:
+                await asyncio.sleep(5)
+                quiet=0 if any(not key.startswith(('tool:','model-download')) for key in self.engine.active) else quiet+5
             try:await self.draft_summary(cid,model)
             except Exception:self.store.audit('project_summary_not_generated',cid)
         self.summary_tasks[cid]=asyncio.create_task(generate())

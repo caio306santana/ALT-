@@ -151,7 +151,8 @@ def test_documents_are_indexed_searched_and_recalled_by_project(tmp_path):
         data=events(client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Como faço o bolo de cenoura?'}))
         recalled=data[0]['recalled_memories']
         assert recalled and recalled[0]['kind']=='chunk' and recalled[0]['mode'].startswith('semântica')
-        assert 'cobertura de chocolate' in provider.contexts[-1][1][0]['content']
+        # Recalled memories travel with the message so the system prompt stays cacheable.
+        assert 'cobertura de chocolate' in provider.contexts[-1][1][-1]['content'] and 'cobertura' not in provider.contexts[-1][1][0]['content']
         # Edited content is never ranked with a stale vector.
         app.state.store.write('UPDATE document_chunks SET content=? WHERE document_id=?',('Texto trocado sem cenoura.',imported['id']))
         assert client.post('/knowledge/search',json={'query':'bolo de cenoura'}).json()==[]
@@ -299,7 +300,7 @@ def test_delicate_messages_get_explicit_care_instruction(tmp_path):
     with client:
         cid=conversation(client)
         client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Perdi meu emprego hoje e estou abalado.'})
-        assert 'MOMENTO DELICADO' in provider.contexts[-1][1][0]['content']
+        assert 'MOMENTO DELICADO' in provider.contexts[-1][1][-1]['content']
         client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Quanto é 17 vezes 19?'})
         assert 'MOMENTO DELICADO' not in provider.contexts[-1][1][0]['content']
     cases={c['id']:c for c in CASES}
@@ -335,7 +336,7 @@ def test_granted_windows_are_offered_to_chat_and_tasks_and_can_be_revoked(tmp_pa
         client.post('/chat',json={'conversation_id':cid,'model':'fixture:4b','content':'Na janela, clique em Salvar'})
         tool=provider.profiles[-1]['tools'][0]['function']['parameters']['properties']
         assert {'windows_read','windows_invoke'}<=set(tool['tool']['enum']) and 'window_id' in tool
-        assert 'Teste janela' in provider.contexts[-1][1][0]['content']
+        assert 'Teste janela' in provider.contexts[-1][1][-1]['content']
         assert client.post('/tasks',json={'goal':'x','model':'fixture:4b','window_id':'nao-autorizada'}).status_code==400
         client.delete('/windows/grants/00000000-0000-0000-0000-0000000000ee')
         assert client.get('/windows/grants').json()==[]

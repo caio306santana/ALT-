@@ -21,6 +21,8 @@ from backend.memory.library import reject_secrets
 from backend.security.policy import Policy
 from backend.tools.windows_ui import WindowsUI,parse_keys,CLOSING
 from backend.tools.app_catalog import AppCatalog,normalize
+from backend.tools import appidentity
+from backend.tools.outcome import outcome
 import fnmatch
 import threading
 
@@ -391,6 +393,13 @@ class ToolService:
         finally:self.engine.active.pop('tool:'+aid,None);self.previews.pop(aid,None);self.critical_confirmed.discard(aid)
 
     def execute(self,body,fingerprint,event):
+        """Every result carries a status (done/unverified/failed/ask); tools that cannot observe
+        their effect say so instead of claiming success."""
+        result=self.run(body,fingerprint,event)
+        if isinstance(result,dict) and 'status' not in result:result={'status':'done',**result}
+        return result
+
+    def run(self,body,fingerprint,event):
         if event.is_set() or self.engine.stopped:raise PermissionError('Ação interrompida.')
         self.policy.check(body.tool)
         if body.tool.startswith('windows_'):
@@ -457,7 +466,7 @@ class ToolService:
         if body.tool=='run_command':return self.run_command(body.command,event)
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
-            if body.app.startswith('catalog:'):return self.catalog.open(self.catalog_entry(body.app))
+            if body.app.startswith('catalog:'):return self.open_catalog(self.catalog_entry(body.app))
             if body.app in ('notepad','calculator'):
                 executable=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32'/('notepad.exe' if body.app=='notepad' else 'calc.exe')
             else:
@@ -465,20 +474,66 @@ class ToolService:
                 if not rows:raise ValueError('Aplicativo não registrado.')
                 executable=Path(rows[0]['path']);self.reject_links(executable)
                 if self.executable_hash(executable)!=rows[0]['sha256']:raise ValueError('Executável alterado. Registre novamente pelo seletor nativo.')
-            process=subprocess.Popen([str(executable)],creationflags=subprocess.CREATE_NO_WINDOW)
             import psutil
+            before={p.pid for p in psutil.process_iter()};windows_before={h for h,_,_ in appidentity.windows()}
+            process=subprocess.Popen([str(executable)],creationflags=subprocess.CREATE_NO_WINDOW)
             try:
                 with self.launch_lock:self.launched[body.app]=(process.pid,psutil.Process(process.pid).create_time())
             except psutil.NoSuchProcess:pass
-            return {'launch_requested':body.app,'pid':process.pid}
+            # Calculator hands over to a Store process and exits, so a new window also counts as opened.
+            deadline=time.monotonic()+8
+            while time.monotonic()<deadline:
+                if any(h not in windows_before and (pid==process.pid or pid not in before) for h,pid,_ in appidentity.windows()):
+                    return outcome('done',launch_requested=body.app,pid=process.pid,window_seen=True)
+                time.sleep(.25)
+            alive=process.poll() is None
+            return outcome('unverified' if alive else 'failed',launch_requested=body.app,pid=process.pid,notice='O programa foi iniciado, mas nenhuma janela nova apareceu.' if alive else 'O programa fechou logo depois de abrir.')
         if body.tool=='close_app':
             if body.app not in self.launched and self.status()['level']==4:return self.close_by_name(body.app.removeprefix('catalog:'))
             return self.close_launched(body.app)
         if body.tool=='open_url':
             opened=webbrowser.open(body.url)
             if not opened:raise ValueError('O sistema não confirmou a abertura do navegador.')
-            return {'opened':body.url}
+            return self.confirm_browser(body.url)
         raise ValueError('Ferramenta indisponível.')
+
+    def open_catalog(self,entry):
+        """Already running: bring its window forward instead of starting a second copy. Otherwise open
+        it and watch for the new process (Mark LVI: at most 12 s, polled every 0.25 s)."""
+        import psutil
+        target=appidentity.link_target(entry['target']) if entry['kind']=='lnk' else ''
+        exe=appidentity.stem_of(target)
+        running=appidentity.matches(exe or entry['name'])
+        if running and running[0]['score']>=60:
+            hwnd,title=running[0]['windows'][0]
+            return outcome('done',app=entry['name'],already_running=True,focused=appidentity.focus(hwnd),window=title[:80])
+        before={p.pid for p in psutil.process_iter()}
+        self.catalog.open(entry)
+        if exe and exe not in ('explorer',):
+            pid=appidentity.wait_for_new(before,lambda name:appidentity.stem_of(name)==exe)
+        else:
+            words=set(normalize(entry['name']).split())
+            deadline=time.monotonic()+12;pid=None
+            while pid is None and time.monotonic()<deadline:
+                pid=next((p for _,p,title in appidentity.windows() if p not in before and words&set(normalize(title).split())),None)
+                time.sleep(.25)
+        if pid:return outcome('done',launch_requested=entry['name'],pid=pid)
+        return outcome('unverified',launch_requested=entry['name'],notice='Pedido enviado ao Windows, mas o programa não apareceu em 12 s.')
+
+    def confirm_browser(self,url):
+        """The browser does not report back; the tab counts as opened when the default browser comes
+        to the front within 3 s."""
+        from backend.tools.app_catalog import default_browser
+        exe={'Google Chrome':'chrome.exe','Microsoft Edge':'msedge.exe','Firefox':'firefox.exe','Brave':'brave.exe','Opera':'opera.exe','Vivaldi':'vivaldi.exe'}.get(default_browser() or '')
+        if os.name!='nt' or not exe:return outcome('unverified',opened=url,notice='Pedido enviado ao navegador padrão; abertura não confirmada.')
+        import ctypes
+        user32=ctypes.WinDLL('user32');user32.GetForegroundWindow.restype=ctypes.c_void_p
+        deadline=time.monotonic()+3
+        while time.monotonic()<deadline:
+            front=user32.GetForegroundWindow()
+            if front and any(h==front and appidentity.exe_name(pid).casefold()==exe for h,pid,_ in appidentity.windows()):return outcome('done',opened=url)
+            time.sleep(.2)
+        return outcome('unverified',opened=url,notice='Pedido enviado ao navegador padrão; ele não apareceu na frente em 3 s.')
 
     def run_command(self,command,event):
         if os.name!='nt':raise ValueError('Comandos disponíveis no Windows.')
@@ -494,42 +549,28 @@ class ToolService:
             time.sleep(.1)
         code=process.wait();reader.join(5)
         output=b''.join(chunks).decode('utf-8','replace')
-        result={'command':command,'exit_code':code,'output':output[-8000:],'truncated':len(output)>8000}
+        result=outcome('failed' if stopped or code else 'done',command=command,exit_code=code,output=output[-8000:],truncated=len(output)>8000)
         if stopped:result['stopped']=stopped
         return result
 
     def close_by_name(self,name):
-        """Normal close (WM_CLOSE) for visible windows of a program the ALT did not launch."""
+        """Normal close (WM_CLOSE) of a program the ALT did not launch, ranked like Mark LVI. Two
+        different programs tied on the best score is a question, not a guess; the ALT and Ollama are
+        never targets; done only when the processes are gone."""
         if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
-        import ctypes
-        from ctypes import wintypes
-        import psutil
-        from backend.tools.windows_ui import EXCLUDED
-        words=set(normalize(name).split())
-        if not words:raise ValueError('Diga qual aplicativo fechar.')
-        user32=ctypes.WinDLL('user32',use_last_error=True);sent=[];own=os.getpid()
-        callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
-        user32.EnumWindows.argtypes=[callback_type,wintypes.LPARAM]
-        user32.IsWindowVisible.argtypes=[wintypes.HWND];user32.IsWindowVisible.restype=wintypes.BOOL
-        user32.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
-        user32.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
-        user32.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
-        @callback_type
-        def visit(hwnd,_):
-            if not user32.IsWindowVisible(hwnd):return True
-            title=ctypes.create_unicode_buffer(256);user32.GetWindowTextW(hwnd,title,256)
-            if not title.value:return True
-            owner=wintypes.DWORD();user32.GetWindowThreadProcessId(hwnd,ctypes.byref(owner))
-            try:exe=psutil.Process(owner.value).name().casefold()
-            except psutil.Error:return True
-            if owner.value==own or exe in EXCLUDED:return True
-            stem=normalize(exe.removesuffix('.exe'))
-            if stem in words or words<=set(normalize(title.value).split()):
-                if user32.PostMessageW(hwnd,0x0010,0,0):sent.append(title.value)
-            return True
-        user32.EnumWindows(visit,0)
-        if not sent:raise ValueError(f'Nenhuma janela aberta de "{name}" foi encontrada.')
-        return {'close_requested':True,'windows':sent[:10],'notice':'Fechamento normal solicitado; o programa pode pedir para salvar. Nenhum processo foi forçado.'}
+        if not normalize(name):raise ValueError('Diga qual aplicativo fechar.')
+        found=appidentity.matches(name)
+        if not found:raise ValueError(f'Nenhuma janela aberta de "{name}" foi encontrada.')
+        best=[group for group in found if group['score']==found[0]['score']]
+        # Store apps show up twice: the app itself and the Windows frame host around it. One program.
+        host=[g for g in best if g['stem'].casefold()=='applicationframehost'];others=[g for g in best if g not in host]
+        if host and len(others)==1:others[0]['windows']+=host[0]['windows'];best=others
+        if len(best)>1:return outcome('ask',options=[group['stem'] for group in best[:5]],notice='Mais de um programa corresponde ao nome; diga qual fechar.')
+        group=best[0];sent=appidentity.post_close([h for h,_ in group['windows']])
+        alive=appidentity.wait_closed(group['pids'])
+        windows=[title for _,title in group['windows']][:10]
+        if not alive:return outcome('done',close_requested=True,program=group['stem'],windows=windows)
+        return outcome('unverified',close_requested=bool(sent),program=group['stem'],windows=windows,notice='Fechamento pedido; o programa continua aberto e pode estar perguntando se você quer salvar.')
 
     def close_launched(self,app_id):
         if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')
@@ -556,7 +597,8 @@ class ToolService:
                 if user32.PostMessageW(hwnd,0x0010,0,0):sent.append(int(hwnd))
             return True
         user32.EnumWindows(visit,0)
-        return {'close_requested':bool(sent),'windows':len(sent),'notice':'Fechamento normal solicitado; o programa pode aguardar confirmação para salvar. Nenhum processo foi forçado.'}
+        alive=appidentity.wait_closed({pid}) if sent else {pid}
+        return outcome('done' if not alive else 'unverified',close_requested=bool(sent),windows=len(sent),notice='Fechado.' if not alive else 'Fechamento normal solicitado; o programa pode aguardar confirmação para salvar. Nenhum processo foi forçado.')
 
     def revoke(self):
         self.level=1;self.auto_scopes.clear();self.save_authorization();self.cancel_pending()

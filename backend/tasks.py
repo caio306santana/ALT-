@@ -55,6 +55,11 @@ def plan_problems(plan):
             problems.append(f'etapa {number} ({action.tool}) precisa de content com o texto exato a digitar')
         if action.tool in ('windows_type','windows_invoke','browser_type','browser_click') and not action.target.strip():
             problems.append(f'etapa {number} ({action.tool}) precisa de target com o rótulo exato do elemento')
+        signature=json.dumps(action.model_dump(),sort_keys=True)
+        # Loop guard (OpenJarvis agents/loop_guard.py): the same step three times, or A-B-A-B ping-pong.
+        signatures=[json.dumps(s.action.model_dump(),sort_keys=True) for s in plan.steps[:number]]
+        if signatures.count(signature)==3:problems.append(f'etapa {number} repete a mesma ação pela terceira vez; o plano entrou em loop')
+        if number>=4 and signatures[-4:-2]==signatures[-2:] and signatures[-1]!=signatures[-2]:problems.append(f'etapas {number-3}-{number} alternam as mesmas duas ações; o plano entrou em loop')
         if action.tool=='windows_keys' and not action.keys.strip():problems.append(f'etapa {number} (windows_keys) precisa de keys, ex.: "ctrl+t"')
         if action.tool=='calculate' and not action.expression.strip():problems.append(f'etapa {number} precisa de expression')
         if action.tool in ('web_search',) and not action.query.strip():problems.append(f'etapa {number} precisa de query')
@@ -109,7 +114,7 @@ class TaskManager:
             'Para elemento ainda não observado use snapshot_id="$latest" e target com rótulo exato. Cálculos usam expression com números e + - * / % **. '
             'expected fica vazio, salvo texto exato realmente verificável no resultado. Sem shell, privilégios ou novas permissões. Ferramentas: '+', '.join(available))
         messages=[{'role':'system','content':instruction},{'role':'user','content':json.dumps(context,ensure_ascii=False)}]
-        profile=performance_profile(self.store.settings().get('performance','auto'))
+        profile=performance_profile(self.store.settings().get('performance','auto'),self.engine.game_mode)
         room=profile['options']['num_ctx']-sum(message_cost(m['content'],model) for m in messages)-128
         if room<256:raise ValueError('Objetivo grande demais para planejar neste perfil. Divida em tarefas menores.')
         profile['options']['num_predict']=min(1536,room);profile['format']=plan_schema(available);text='';done=False
