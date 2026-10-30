@@ -18,6 +18,8 @@ Atualizado em **30/10/2026**, após conferir o Git e a release neste notebook. A
 
 ## O que foi implementado e registrado no PC principal
 
+**Alteração posterior à release, neste notebook:** estudo do [Drael como referência](DRAEL_REVIEW.md), com análise pública estática e limites registrados. A busca da ALT foi ajustada para distinguir uma consulta válida sem resultados de uma falha técnica. Esse ajuste está no código posterior à tag 0.5.0 e **não faz parte do instalador já publicado/assinado**; precisa entrar numa próxima distribuição.
+
 - **Tarefas e ferramentas:** execução em várias ações, verificações de resultado, reparo de escolha de ferramenta, aplicativos/janelas, tela, volume/brilho/música, lembretes e desfazer operações suportadas.
 - **Permissões:** decisões persistentes para programas/sites/pastas; conversas protegidas e revisão de ações críticas. Cartões críticos têm prazo de 90 s; isso é específico da revisão crítica da 0.5, diferente das propostas comuns sem prazo introduzidas na 0.3.1.
 - **Chat e memória:** anexos de imagem/PDF com OCR/Word/texto, busca semântica/documentos/projetos, sugestões revisadas de memória e resultados de ferramentas retornando ao modelo na mesma resposta, até quatro rodadas.

@@ -1,0 +1,50 @@
+{
+  "scope": "Unauthenticated GET of /pt and /chat plus explicitly linked same-origin JS/CSS. No script execution, paid calls, account creation, private data or backend source access.",
+  "records": [
+    {
+      "kind": "page",
+      "url": "https://drael.sh/pt",
+      "file": "landing.html",
+      "bytes": 94988,
+      "sha256": "5010969eae03e5253d4d7b63b96bb7b9103303d38441629adf813a841fb324fe"
+    },
+    {
+      "kind": "page",
+      "url": "https://drael.sh/chat",
+      "file": "chat.html",
+      "bytes": 2170,
+      "sha256": "87c06dc86e65e7c543ff893bece7a685f5787f536ecb1e3770264dde36030144"
+    },
+    {
+      "kind": "asset",
+      "url": "https://drael.sh/app/index-CvCyj_NG.css",
+      "file": "index-CvCyj_NG.css",
+      "bytes": 133418,
+      "sha256": "bb39535d440f5bd256828c4fcf9ad1b9b5145143b8e82e2298aab181381bd12c"
+    },
+    {
+      "kind": "asset",
+      "url": "https://drael.sh/app/index-KPrlp3vd.js",
+      "file": "index-KPrlp3vd.js",
+      "bytes": 2026284,
+      "sha256": "2b6f235c6b52dff9a4f38b6e0da1d09fb2d620bef8d95db7dda7ce1d5469b75f"
+    },
+    {
+      "kind": "asset",
+      "url": "https://drael.sh/assets/app-186B-gWU.css",
+      "file": "app-186B-gWU.css",
+      "bytes": 123388,
+      "sha256": "19f281fdfe27efe5d4572aff146d51693108ca086e0ad3674947cdf03d34a4ce"
+    },
+    {
+      "kind": "asset",
+      "url": "https://drael.sh/assets/app-Cwscrh9Q.js",
+      "file": "app-Cwscrh9Q.js",
+      "bytes": 1270226,
+      "sha256": "60662aa0532b3471316b2f7c5033f3fcaa2b3ed39280d0f5486b34b76698039d"
+    }
+  ],
+  "review_date": "2026-10-30",
+  "scope_timezone": "America/Sao_Paulo",
+  "execution": "none; public assets inspected as inert text"
+}

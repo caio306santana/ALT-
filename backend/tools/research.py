@@ -90,12 +90,19 @@ def search_web(query):
     if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():raise ValueError('Resposta da pesquisa não pôde ser processada com segurança.')
     try:root=ElementTree.fromstring(text)
     except ElementTree.ParseError:raise ValueError('Pesquisa temporariamente indisponível ou bloqueada. Tente uma URL direta.')
+    if root.tag!='rss' or root.find('channel') is None:
+        raise ValueError('Pesquisa temporariamente indisponível ou bloqueada. Tente uma URL direta.')
     results=[]
     for item in root.findall('./channel/item')[:6]:
         link=item.findtext('link','')
         if link.startswith('https://'):results.append({'title':item.findtext('title','')[:250],'url':link,'snippet':item.findtext('description','')[:1500]})
-    if not results:raise ValueError('O serviço não retornou fontes acessíveis. Nenhum resultado foi inventado.')
-    return {'query':query,'provider':'Bing RSS público','results':results,'retrieved_at':datetime.now(timezone.utc).isoformat(),'notice':'Resultados recuperados da internet; não representam verificação independente dos fatos.'}
+    # An empty, valid search is a successful observation, not a transport or
+    # provider failure. Keep those states distinct so the model cannot turn an
+    # outage into "nothing exists", or invent sources to fill an empty list.
+    return {'ok':True,'found':bool(results),'query':query,'provider':'Bing RSS público',
+        'results':results,'retrieved_at':datetime.now(timezone.utc).isoformat(),
+        'notice':'Resultados recuperados da internet; não representam verificação independente dos fatos.' if results else
+            'Pesquisa concluída, mas nenhuma fonte HTTPS utilizável foi retornada para esta consulta. Isso não prova que a informação não exista.'}
 
 DOWNLOAD_LIMIT=1_000_000_000
 
