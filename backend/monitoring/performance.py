@@ -14,7 +14,8 @@ def performance_profile(requested='auto',game=False):
         return {'requested':requested,'effective':'game','detected':detected,'options':options,'keep_alive':'1m'}
     if profile=='notebook':
         options={'num_ctx':4096,'num_predict':768,'num_thread':max(1,min(4,cores))}
-        keep_alive='5m'
+        # Reloading the 4B from disk took 33 s on the notebook (30/10); 15 min covers a pause in the conversation.
+        keep_alive='15m'
     else:
         # 1024 tokens is a long answer for a chat; 4096 let old replies ramble for minutes.
         options={'num_ctx':8192,'num_predict':1024}

@@ -1,4 +1,5 @@
 import asyncio
+import psutil
 import json
 import secrets
 import time
@@ -201,6 +202,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     app.state.engine = engine
     app.state.tools=tools;app.state.codex=codex;app.state.receipts=receipts;app.state.gpu=gpu;app.state.speed=speed
 
+    def alt_models():
+        return {row['model'] for row in store.rows("SELECT DISTINCT model FROM messages WHERE role='assistant' AND model IS NOT NULL")}
     def preload(model=None):
         """Load the chosen local model with the same num_ctx the chat uses, so the first message does not wait."""
         model=model or store.settings().get('model','')
@@ -208,6 +211,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         profile=performance_profile(store.settings().get('performance','auto'),engine.game_mode)
         async def load():
             info=await describe(ollama,model,refresh=True)
+            if profile['effective'] in ('notebook','game') and hasattr(ollama,'release_others'):await ollama.release_others(model,alt_models())
             await ollama.preload(model,effective_profile(profile,info))
         app.state.preload_task=asyncio.get_event_loop().create_task(load())
 
@@ -716,6 +720,13 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             try:
                 yield line({'type':'start','message_id':mid,'model':reply_model,'execution':'direct' if action_direct else 'model','context_messages':context_count,'context_truncated':False if action_direct else context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled,'continuity_summary':None if action_direct else estimate.get('continuity_summary'),'documents':[] if action_direct else [d for d in estimate.get('attachments',{}).get('coverage',[]) if d['sent']<d['total']]})
                 if busy['busy']:yield line({'type':'notice','message':light_notice(busy)})
+                if not action_direct and not body.model.startswith('cloud:') and profile.get('effective') in ('notebook','game'):
+                    # One chat model in memory at a time: two 4B models filled this notebook's RAM.
+                    if hasattr(ollama,'release_others'):
+                        try:await ollama.release_others(body.model,alt_models())
+                        except Exception:pass
+                    free=psutil.virtual_memory().available/1024**3
+                    if free<1.5:yield line({'type':'notice','message':f'Memória do computador quase cheia ({free:.1f} GB livres): a resposta vai demorar bem mais. Fechar navegadores e programas que não estiver usando ajuda.'})
                 cost=lambda value:message_cost(value,body.model)
                 fixed=len(payload['messages'])-1;reserve=profile.get('options',{}).get('num_predict',0)
                 def tool_round(result,aid,budget):

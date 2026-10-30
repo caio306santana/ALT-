@@ -82,10 +82,31 @@ class Ollama:
     async def preload(self,model,profile):
         """Load the model with the chat's options (a different num_ctx would reload it on the first message)."""
         options={k:v for k,v in profile['options'].items() if k in ('num_ctx','num_gpu','num_thread')}
+        self.remember_use(model)
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(180,connect=5),trust_env=False) as client:
                 await client.post(self.base_url+'/api/generate',json={'model':model,'keep_alive':profile['keep_alive'],'options':options,'stream':False})
         except httpx.HTTPError:pass
+
+    async def release_others(self,model,known=()):
+        """Unload chat models this ALT used earlier, keeping only `model` in memory.
+
+        On a notebook two 4B models take ~6 GB of RAM together and push the system into
+        swapping. Only models this ALT used (this session or in its saved replies) are touched;
+        models of other programs and embeddings stay."""
+        used=getattr(self,'used_models',set())|set(known)
+        running=await self.running() or []
+        stale=[m.get('name') for m in running if m.get('name')!=model and m.get('name') in used and 'embed' not in str(m.get('name')).lower()]
+        if not stale:return []
+        async with httpx.AsyncClient(timeout=30,trust_env=False) as client:
+            for name in stale:
+                try:await client.post(self.base_url+'/api/generate',json={'model':name,'keep_alive':0,'stream':False})
+                except httpx.HTTPError:pass
+        return stale
+
+    def remember_use(self,model):
+        if not hasattr(self,'used_models'):self.used_models=set()
+        self.used_models.add(model)
 
     async def unload(self,model):
         entries=await self.models()
@@ -99,6 +120,7 @@ class Ollama:
         try:
             async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
                 profile=profile or {'options':{'num_ctx':8192,'num_predict':4096},'keep_alive':'5m'}
+                self.remember_use(model)
                 payload={
                     'model':model, 'messages':messages, 'stream':True,
                     'options':profile['options'], 'keep_alive':profile['keep_alive']

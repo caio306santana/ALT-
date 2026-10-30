@@ -51,3 +51,42 @@ Durante a geração, a GPU ficou em ~95% de uso. Ela trabalha no limite e rende 
 - **Não alterado:** `OLLAMA_FLASH_ATTENTION`. O `llama-server` já recebe `--flash-attn auto`.
 
 A meta (primeira palavra em menos de 1,5 s no 4B e menos de 3 s no 9B) só pode ser confirmada depois da reinicialização. O primeiro texto de uma resposta simples com o modelo quente já ficou entre 0,45 e 0,9 s.
+
+## Notebook, 30/10 à tarde — medição e ajustes
+
+Notebook i5-1135G7, 4 núcleos e 8 threads, 19,8 GB de RAM, sem placa dedicada: o Ollama roda tudo no processador (`size_vram: 0`).
+
+| Medida | Valor |
+| --- | --- |
+| Leitura do prompt | ~28 tok/s (1.719 tokens em 61,8 s) |
+| Geração | 3,4–4,6 tok/s |
+| Carregar o 4B do disco | 33 s |
+| 8 threads em vez de 4 | sem ganho; trocar o número de threads recarrega o modelo |
+| Mesmo prefixo de 1.527 tokens | leitura cai de 53,5 s para 14,6–16,8 s (cache parcial; o Qwen 3.5 é híbrido) |
+| RAM livre | **0,1–0,4 GB**, com 52,8 de 57,8 GB comprometidos |
+
+Com a RAM tomada, o Windows comprime a memória e usa o disco. Os maiores consumidores eram:
+- dois modelos carregados ao mesmo tempo (Hermes 3B e Qwen 4B, ~3,4 GB);
+- um IDE (~3 GB);
+- três navegadores e vários apps de IA.
+
+**Conversa real pela ALT** (modo conversa, prompt de 478 a 631 tokens):
+
+| Turno | Primeiro texto | Resposta inteira |
+| --- | --- | --- |
+| 1º (modelo recarregado) | 38,8 s | — |
+| Seguintes | 3,8 s e 12,3 s | ~30 s |
+
+A resposta inteira demora por causa da geração a ~4 tok/s.
+
+**Ajustes:**
+- No Notebook e no Modo Jogo, a ALT mantém **um só modelo de conversa carregado**. Ela descarrega os outros que ela mesma usou, nesta sessão ou nas respostas salvas, e nunca mexe em modelos de outros programas nem em embeddings.
+- Avisa quando há **menos de 1,5 GB livres**.
+- Mantém o modelo carregado por 15 min, em vez de 5.
+
+O limite de fundo é o hardware. Ganhos maiores dependem de:
+- fechar programas;
+- um modelo menor para o notebook;
+- aceleração pela GPU integrada.
+
+Os dois últimos são decisões do dono.
