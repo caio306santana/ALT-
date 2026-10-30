@@ -92,3 +92,16 @@ def conversation_urls(store,cid):
     for message in store.messages(cid):
         if message['role']=='user':known|=urls_in(message['content'])
     return known
+
+
+# "Abri", "baixei"...: the model saying it did something on the computer.
+ACTION_CLAIM=re.compile(r'\b(abri|baixei|fechei|digitei|escrevi|salvei|gravei|cliquei|pesquisei|executei|instalei|enviei|criei|apaguei|deletei|'
+    r'movi|copiei|renomeei|configurei|ativei|desativei|liguei|desliguei|pausei|aumentei|abaixei|agendei|coloquei)\b'
+    r'|\bpronto[,!.]?\s+(?:j[aá]\s+)?(?:est[aá]|t[aá])\s+(?:aberto|aberta|feito|baixado|salvo|fechado)',re.I)
+
+def claimed_action(text):
+    """First-person claims of an action, ignoring negated ones ("não abri")."""
+    for match in ACTION_CLAIM.finditer(text or ''):
+        before=text[max(0,match.start()-14):match.start()].casefold()
+        if not re.search(r'\bn[aã]o\b|\bnunca\b|\bsem\b',before):return match.group(0)
+    return None

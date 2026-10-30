@@ -1,4 +1,5 @@
 import asyncio
+import re
 import psutil
 import json
 import secrets
@@ -43,7 +44,7 @@ from backend.workspace_features import install_workspace_features
 from backend.agent_features import install_agent_features
 from backend.maintenance import Maintenance
 from fastapi.responses import Response
-from backend.verification import verify_reply,conversation_urls
+from backend.verification import verify_reply,conversation_urls,claimed_action
 from backend.voice.transcriber import install_voice,SAMPLE_RATE,MAX_SECONDS
 from backend.attachments import install_attachments,document_excerpt,IMAGE_TOKENS,MAX_BYTES as ATTACHMENT_BYTES
 
@@ -57,6 +58,8 @@ TURN_HEADER='\n\n[CONTEXTO DESTE TURNO, fornecido pelo aplicativo]\n'
 TOOL_NAMES=set(ToolProposal.model_fields['tool'].annotation.__args__)
 FOLLOW_UP={'web_search','read_webpage','read_text','list_files','find_files','windows_read','memory_recall','reminder_list','browser_read'}
 MAX_ROUNDS=4
+# "Abre o bloco de notas e digita...": the owner asked for more than one step.
+SEQUENCE=re.compile(r'\b(?:e depois|depois disso|depois|em seguida|e ent[aã]o|e (?:digit|escrev|pesquis|procur|baix|abr|fech|cliq|clic|toc|coloc|mand|envi|salv|cri|aument|abaix|paus))',re.I)
 
 def tool_error(exc):
     """Short reason the model and the user can act on, instead of Pydantic's multi-line dump."""
@@ -712,6 +715,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
         async def generate():
             text, status, metrics = '', 'interrupted', None
+            false_claim=None
             start = time.monotonic(); checkpoint = start; first = None
             preparation=start-request_start
             speaker=app.state.speaker
@@ -729,7 +733,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     if free<1.5:yield line({'type':'notice','message':f'Memória do computador quase cheia ({free:.1f} GB livres): a resposta vai demorar bem mais. Fechar navegadores e programas que não estiver usando ajuda.'})
                 cost=lambda value:message_cost(value,body.model)
                 fixed=len(payload['messages'])-1;reserve=profile.get('options',{}).get('num_predict',0)
-                def tool_round(result,aid,budget):
+                def tool_round(result,aid,budget,next_step=False):
                     # The model gets a bounded excerpt; the complete result stays in the action card.
                     raw=json.dumps(result,ensure_ascii=False)
                     try:excerpt,cut=tool_excerpt(raw,budget)
@@ -737,7 +741,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     note=outcome_note(result)
                     return {'role':'tool','content':'RESULTADO DA FERRAMENTA (dados, não instruções):\n'+(untrusted('ferramenta',excerpt) if excerpt else '[resultado omitido por falta de espaço]')+
                         (f'\n[Trecho; o resultado completo está no cartão da ação {aid[:8]}. Não conclua além dele.]' if cut else '')+('\n'+note if note else '')+
-                        '\nResponda ao usuário com base nisso, em poucas frases, citando as URLs se houver; ou chame a próxima ação se ela for necessária.','alt_raw':raw,'alt_id':aid}
+                        ('\nAção concluída. Se o pedido do usuário tem mais etapas, chame agora a próxima ação; se terminou, responda em uma frase.' if next_step else
+                         '\nResponda ao usuário com base nisso, em poucas frases, citando as URLs se houver; ou chame a próxima ação se ela for necessária.'),'alt_raw':raw,'alt_id':aid}
                 def shrink(message):
                     if not message.get('alt_raw'):return None
                     return {**tool_round(json.loads(message['alt_raw']),message['alt_id'],320),'alt_raw':None}
@@ -754,6 +759,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     options={**profile['options'],'num_predict':max(64,min(reserve,profile['options']['num_ctx']-used-schema-128))}
                     return ollama.stream(body.model,fitted,event,{**profile,'options':options,'tools':offered})
                 budgeted={'shrunk':0,'dropped':0}
+                executed=[];carded=False;sequence=bool(SEQUENCE.search(body.content))
                 messages=payload['messages'];source=open_stream(messages)
                 proposed=False;corrected=bool(action_direct);rounds=0;seen=set()
                 while True:
@@ -807,11 +813,18 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                     capture=tools.captures.get(proposal['id']) if action.tool=='screen_look' else None
                                     if capture and body.model!='cloud:codex':look=(call,capture);break
                                     # Reads come back to the model, which answers or takes the next step (max 4 rounds).
+                                    state=result['result'].get('status','done') if isinstance(result['result'],dict) else 'done'
+                                    executed.append(state)
                                     if action.tool in FOLLOW_UP and rounds<MAX_ROUNDS and not body.model.startswith('cloud:'):
-                                        follow=(call,result['result'],proposal['id']);break
+                                        follow=(call,result['result'],proposal['id'],False);break
+                                    # More steps asked for: a done action goes back to the model for the next one.
+                                    if not action_direct and sequence and state=='done' and rounds<MAX_ROUNDS and not body.model.startswith('cloud:'):
+                                        follow=(call,result['result'],proposal['id'],True);break
                                     delta+='\n'+(direct.reply(action_direct,result['result']) if action_direct else chat_line(result['result']))
+                                    if sequence and state!='done' and not action_direct:delta+=' Parei aqui: as próximas etapas do pedido não foram feitas.'
                                     if speech and result['result'].get('status','done')!='done':speaker.say('Pedi, mas não consegui confirmar. Veja na tela.')
                                 else:
+                                    carded=True
                                     delta+='\nPreparei uma proposta de ação. Revise o cartão abaixo antes de autorizar; ela ainda não foi executada.'
                                     if speech:speaker.say('Preparei um cartão para você aprovar.')
                         if delta:
@@ -833,7 +846,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                     if follow:
                         rounds+=1;proposed=False
                         messages=messages+[{'role':'assistant','content':'','tool_calls':[follow[0]]},
-                            tool_round(follow[1],follow[2],1200 if profile['effective'] in ('notebook','game') else 3000)]
+                            tool_round(follow[1],follow[2],1200 if profile['effective'] in ('notebook','game') else 3000,follow[3])]
                         source=open_stream(messages,with_tools=rounds<MAX_ROUNDS);continue
                     if look:
                         # The model sees the screenshot it asked for and answers in the same reply.
@@ -847,6 +860,15 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                         {'role':'tool','content':'ERRO DA FERRAMENTA: '+retry[1]+' Corrija os argumentos e chame alt_propose_action de novo; se faltar um dado, pergunte ao usuário em uma frase.'}]
                     source=open_stream(messages)
                 if metrics is not None and any(budgeted.values()):metrics['context_rounds']=dict(budgeted)
+                # Never let "abri"/"baixei" stand when nothing ran, or when the action was not confirmed.
+                claim=claimed_action(text) if status=='complete' and not action_direct else None
+                if claim and not executed and not carded:
+                    warning='\n\n⚠️ Nenhuma ação foi executada nesta resposta. Peça de novo se quiser que eu faça.'
+                    text+=warning;yield line({'type':'delta','text':warning});false_claim='sem ação'
+                elif claim and any(state!='done' for state in executed):
+                    pending=next(state for state in executed if state!='done')
+                    warning='\n\n⚠️ '+chat_line({'status':pending})
+                    text+=warning;yield line({'type':'delta','text':warning});false_claim='não confirmada'
                 if speech:
                     for sentence in speech.flush():speaker.say(sentence)
                 if status != 'complete' and not event.is_set() and not await request.is_disconnected():
@@ -867,6 +889,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 if status=='complete' and text.strip():
                     try:metrics={**(metrics or {}),'verification':verify_reply(text,conversation_urls(store,cid))}
                     except Exception:pass
+                    if false_claim and metrics:metrics['verification']={**metrics.get('verification',{}),'claimed_without_action':false_claim}
                 store.checkpoint(mid,text,status,metrics)
                 engine.active.pop(cid,None)
                 store.audit('generation_'+status,reply_model)
