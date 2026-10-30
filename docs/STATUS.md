@@ -1,6 +1,6 @@
 # Estado atual e próximos passos — ALT-AI
 
-**Última release — 30/10/2026: 0.5.6** (abrir e digitar sem apagar texto existente; ver [CHECKPOINT-0.5.5.md](CHECKPOINT-0.5.5.md)). Inclui a 0.5.5: procurar e baixar sozinha, várias etapas por pedido, aviso de "fiz" falso e PC principal como servidor ([PC-SERVIDOR.md](PC-SERVIDOR.md)).
+**Última release — 30/10/2026: [0.5.7](IMAGENS.md)**: gerar imagens no PC (placa ou processador, instalado pela própria ALT) ou por API paga. Antes: 0.5.6 (abrir e digitar sem apagar texto) e 0.5.5 ([CHECKPOINT-0.5.5.md](CHECKPOINT-0.5.5.md)).
 
 **Checkpoint mais recente — 30/10/2026:** **0.5.2 publicada como prévia** (tag `v0.5.2` no commit `2b7d3dd`), com instalador, manifesto assinado e feed conferidos; ver [RELEASE-0.5.2.md](RELEASE-0.5.2.md). As etapas 2 (cartões legíveis) e 3 (contexto em todas as rodadas e resumo de continuidade) do plano Drael estão em `main` como **0.5.3**. A **release 0.5.3 foi publicada como prévia** a pedido do dono, com instalador, manifesto e feed conferidos. O backend empacotado não pôde ser testado aqui: o Controle Inteligente de Aplicativos bloqueou o executável novo sem assinatura. As notas da release avisam disso. Ver [CHECKPOINT-0.5.3.md](CHECKPOINT-0.5.3.md). O dono decidiu **manter local no PC por enquanto**; ordem de trabalho em [PENDENCIAS-LOCAL.md](PENDENCIAS-LOCAL.md). A seção abaixo descreve a 0.5.1, preservada.
 
