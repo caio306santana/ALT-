@@ -1171,9 +1171,14 @@ export default function App() {
                         key={action.id}
                         action={action}
                         onUpdate={(updated, previousId) =>
-                          setChatActions((old) =>
-                            old.map((a) => (a.id === (previousId || updated.id) ? updated : a)),
-                          )
+                          setChatActions((old) => {
+                            const next = old.map((a) => (a.id === (previousId || updated.id) ? updated : a));
+                            // A program found by "procurar e baixar" comes back as its own card to review.
+                            const found = (updated.result as { proposal?: { id: string; preview: Record<string, unknown> } } | undefined)?.proposal;
+                            return found && !next.some((a) => a.id === found.id)
+                              ? [...next, { ...found, state: "proposed" as const }]
+                              : next;
+                          })
                         }
                         onAnalyze={() =>
                           send("", {

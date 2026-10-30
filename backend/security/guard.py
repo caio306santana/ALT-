@@ -18,7 +18,7 @@ from backend.tools.outcome import injected,outcome
 
 REMEMBERABLE={'open_app','open_url','open_folder'}
 # Actions that can carry data out of the conversation or change things on its behalf.
-SINKS={'open_url','web_search','read_webpage','download_file','write_text','windows_type','windows_keys','windows_invoke',
+SINKS={'open_url','web_search','read_webpage','download_file','find_download','write_text','windows_type','windows_keys','windows_invoke',
        'browser_open','browser_type','browser_click','run_command'}
 CPF=re.compile(r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b')
 CARD=re.compile(r'\b(?:\d[ -]?){13,19}\b')
@@ -75,7 +75,7 @@ class Undo:
         if not isinstance(result,dict) or result.get('status','done')!='done':return None
         if tool=='write_text' and result.get('path'):
             data={'path':result['path'],'previous':result.get('previous_version'),'written':file_digest(result['path'])}
-        elif tool=='download_file' and result.get('path'):
+        elif tool in ('download_file','find_download') and result.get('path'):
             data={'path':result['path'],'written':result.get('sha256')}
         elif tool in ('system_volume','system_brightness') and 'before' in result:
             data={'tool':tool,'before':result['before']}

@@ -259,7 +259,29 @@ function ResultView({ action, onError }: { action: ChatAction; onError: (error: 
       </div>
     );
   }
-  if ((tool === "write_text" || tool === "download_file") && result.path) {
+  if (tool === "find_download" && !result.path) {
+    // Not downloaded: several possible files, a program waiting for its own card, or nothing found.
+    const candidates = Array.isArray(result.candidates) ? (result.candidates as Data[]) : [];
+    return (
+      <div className="result-view">
+        {notice}
+        {candidates.length > 0 && (
+          <ol className="source-list">
+            {candidates.slice(0, 4).map((c, index) => (
+              <li key={index}>
+                <button className="link-button" title={String(c.url)} onClick={() => window.alt.openSource(action.id, String(c.url)).catch(onError)}>
+                  {String(c.title || c.url)}
+                  <ExternalLink size={11} />
+                </button>
+                <span className="source-domain">{domain(String(c.url))}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    );
+  }
+  if ((tool === "write_text" || tool === "download_file" || tool === "find_download") && result.path) {
     const full = String(result.path);
     const name = full.split(/[\\/]/).pop() || full;
     return (
@@ -269,7 +291,11 @@ function ResultView({ action, onError }: { action: ChatAction; onError: (error: 
         </p>
         <p className="setting-note">{full}</p>
         {!!result.sha256 && <p className="setting-note">SHA256 {String(result.sha256).slice(0, 16)}…</p>}
-        {tool === "download_file" && <p className="setting-note">Baixado e salvo sem abrir nem executar.</p>}
+        {(tool === "download_file" || tool === "find_download") && (
+          <p className="setting-note">
+            Baixado{result.url ? ` de ${domain(String(result.url))}` : ""} e salvo sem abrir nem executar.
+          </p>
+        )}
         <div className="button-row">
           <button className="secondary" onClick={() => window.alt.revealFile(action.id).catch(onError)}>
             <FolderOpen size={13} /> Mostrar na pasta

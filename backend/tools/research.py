@@ -140,3 +140,74 @@ def download(url,destination,cancel,limit=DOWNLOAD_LIMIT):
                 'notice':'Arquivo salvo; a ALT não abre nem executa arquivos baixados.'}
         finally:connection.close()
     raise ValueError('Número máximo de redirecionamentos excedido.')
+
+
+# "Baixa X do site Y": finding the file link is deterministic code, not a chain of model calls.
+FILE_TYPES={'.pdf','.zip','.7z','.rar','.tar','.gz','.docx','.doc','.xlsx','.xls','.pptx','.ppt','.odt','.csv','.txt','.epub',
+    '.mp3','.wav','.mp4','.png','.jpg','.jpeg','.svg','.iso','.json','.xml',
+    '.exe','.msi','.msix','.appx','.bat','.cmd','.ps1','.vbs','.js','.jar','.scr','.dmg','.apk'}
+# Programs and scripts: found and offered, but downloading them always waits for the owner's card.
+EXECUTABLE={'.exe','.msi','.msix','.appx','.bat','.cmd','.ps1','.vbs','.js','.jar','.scr','.com','.apk'}
+IGNORED={'do','da','de','dos','das','no','na','em','um','os','as','pelo','pela','download','downloads','baixar','baixa','baixe','arquivo','site','pagina','página','oficial','versao','versão','the','para','com','from'}
+
+def file_extension(url):
+    from pathlib import PurePosixPath
+    return PurePosixPath(urllib.parse.unquote(urllib.parse.urlsplit(url).path).lower()).suffix
+
+def is_executable(url):return file_extension(url) in EXECUTABLE
+
+def site_host(site):
+    site=(site or '').strip().lower()
+    if not site:return ''
+    if '://' not in site:site='https://'+site
+    return (urllib.parse.urlsplit(site).hostname or '').removeprefix('www.')
+
+def terms(text):
+    import re,unicodedata
+    text=''.join(c for c in unicodedata.normalize('NFKD',urllib.parse.unquote(text).casefold()) if not unicodedata.combining(c))
+    return {w for w in re.findall(r'[a-z0-9]+',text) if len(w)>1 and w not in IGNORED}
+
+def rank_link(link,wanted,host):
+    url=link['url'];title=link.get('title','')
+    found=(urllib.parse.urlsplit(url).hostname or '').removeprefix('www.')
+    score=0;why=[]
+    extension=file_extension(url)
+    if extension in FILE_TYPES:score+=4;why.append('arquivo '+extension)
+    hits=wanted & terms(title+' '+url)
+    if hits:score+=2*len(hits);why.append('termos: '+', '.join(sorted(hits)))
+    if host:
+        if found==host or found.endswith('.'+host):score+=3;why.append('site pedido')
+        else:score-=4;why.append('outro site: '+found)
+    if 'download' in (url+' '+title).casefold() or 'baixar' in title.casefold():score+=1;why.append('link de download')
+    return {'title':title[:160] or url,'url':url,'score':score,'why':why,'executable':is_executable(url)}
+
+def find_download_candidates(query,site='',search=None,read=None):
+    """Search (restricted to the site when given), read up to 3 result pages and rank their file links."""
+    search=search or search_web;read=read or read_page
+    host=site_host(site);wanted=terms(query)
+    if site and site.startswith('https://') and file_extension(site) in FILE_TYPES:
+        return {'query':query,'site':host,'pages_read':[],'candidates':[{**rank_link({'url':site,'title':'link informado'},wanted,host),'score':99}]}
+    if not wanted and not host:raise ValueError('Diga qual arquivo procurar.')
+    results=search((f'site:{host} ' if host else '')+query+' download').get('results',[])
+    links=[{'title':r.get('title',''),'url':r['url']} for r in results[:6]];pages=[]
+    for result in results[:3]:
+        if file_extension(result['url']) in FILE_TYPES:continue
+        try:page=read(result['url'])
+        except ValueError:continue
+        pages.append(result['url']);links+=page.get('links',[])
+    seen=set();ranked=[]
+    for link in links:
+        if link['url'] in seen:continue
+        seen.add(link['url']);row=rank_link(link,wanted,host)
+        if file_extension(link['url']) in FILE_TYPES or 'download' in link['url'].casefold():ranked.append(row)
+    ranked.sort(key=lambda row:row['score'],reverse=True)
+    return {'query':query,'site':host,'pages_read':pages,'candidates':ranked[:5]}
+
+def clear_choice(candidates,host=''):
+    """The best candidate, when it is a file, on the requested site and clearly ahead of the next one."""
+    if not candidates:return None
+    top=candidates[0]
+    if file_extension(top['url']) not in FILE_TYPES:return None
+    if host and not any('site pedido'==why for why in top['why']):return None
+    if len(candidates)>1 and candidates[1]['score']>=top['score']-1:return None
+    return top

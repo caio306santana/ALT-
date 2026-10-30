@@ -801,6 +801,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                 if body.origin!='phone' and tools.can_auto(action,cid) and not (action.tool=='screen_look' and body.model.startswith('cloud:')):
                                     result=await tools.approve(proposal['id'])
                                     yield line({'type':'tool_result','action_id':proposal['id'],'result':result['result']})
+                                    # A program found by find_download becomes its own card for the owner to review.
+                                    if isinstance(result['result'],dict) and result['result'].get('proposal'):yield line({'type':'tool_proposal','proposal':result['result']['proposal']})
                                     if isinstance(result['result'],dict) and result['result'].get('taint'):yield line({'type':'notice','message':result['result']['taint']})
                                     capture=tools.captures.get(proposal['id']) if action.tool=='screen_look' else None
                                     if capture and body.model!='cloud:codex':look=(call,capture);break

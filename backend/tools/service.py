@@ -17,7 +17,7 @@ from uuid import uuid4
 from pydantic import BaseModel,Field,ConfigDict
 from typing import Literal
 from backend.memory.store import now
-from backend.tools.research import read_page,search_web,download
+from backend.tools.research import read_page,search_web,download,find_download_candidates,clear_choice,is_executable,site_host
 from backend.memory.library import reject_secrets
 from backend.security.policy import Policy
 from backend.tools.windows_ui import WindowsUI,parse_keys,CLOSING
@@ -38,7 +38,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command','undo',
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','find_download','run_command','undo',
         'screen_look','system_volume','system_brightness','media_key','reminder_create','reminder_list','reminder_cancel','memory_recall','routine_create','routine_list']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
@@ -178,6 +178,8 @@ class ToolService:
         if level<2 or decision=='deny':return False
         # A command is free-form code: it always waits for the owner's approval card.
         if body.tool=='run_command':return False
+        # A program or script found on the internet is downloaded only after the owner's card (never executed).
+        if body.tool=='download_file' and is_executable(body.url):return False
         # After sensitive content was read here, anything that could carry it out waits for the card.
         if conversation_id in self.taint and body.tool in SINKS:return False
         if level in (2,3) and self.remembered.allows(body.tool,body.model_dump()):return True
@@ -331,6 +333,16 @@ class ToolService:
             if not path.parent.is_dir():raise ValueError('A pasta de destino precisa existir.')
             payload=body.model_dump()
             preview.update({'url':body.url,'path':str(path),'external_notice':'O arquivo será baixado da internet e salvo sem ser aberto ou executado.'})
+        elif body.tool=='find_download':
+            reject_secrets(body.query+' '+body.url)
+            if not body.query.strip() and not body.url.strip():raise ValueError('Diga qual arquivo baixar e, se souber, de qual site.')
+            if body.url and not re.fullmatch(r'(?:https://)?[\w.-]+\.[a-z]{2,}(?:/\S*)?',body.url.strip(),re.I):raise ValueError('Informe o site como domínio (ex.: 7-zip.org) ou endereço HTTPS.')
+            if not body.scope_id:
+                if self.status()['level']!=4:raise ValueError('Escolha a pasta de destino do download.')
+                body.scope_id='windows-profile'
+            if body.scope_id!='windows-profile':self.scoped(body.scope_id,body.path or '.')
+            payload=body.model_dump()
+            preview.update({'query':body.query,'url':body.url,'external_notice':'A ALT pesquisa o arquivo'+(f' em {site_host(body.url)}' if body.url else '')+', escolhe o link e salva em Downloads sem abrir nem executar. Programas (.exe, .msi…) pedem sua aprovação antes de baixar.'})
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
         elif body.tool in ('open_app','close_app'):
             try:body.app=self.resolve_app(body.app)
@@ -464,6 +476,9 @@ class ToolService:
                 if self.undo.record(aid,entry[1]['tool'],result):result['undo_available']=True
                 contexts=self.store.rows('SELECT conversation_id FROM action_context WHERE id=?',(aid,))
                 cid=contexts[0]['conversation_id'] if contexts else ''
+                if entry[1]['tool']=='find_download' and result.get('review_url'):
+                    found=ToolProposal(tool='download_file',url=result['review_url'],scope_id=entry[1].get('scope_id',''),path=entry[1].get('path',''))
+                    result['proposal']=self.proposal(found,cid)
                 if cid and entry[1]['tool'] in READERS:
                     reason=sensitive_reason(json.dumps(result,ensure_ascii=False))
                     if reason:self.taint[cid]=reason;result['taint']=reason+'; a partir daqui, ações que enviam dados para fora pedem aprovação nesta conversa.'
@@ -494,6 +509,7 @@ class ToolService:
         if body.tool=='web_search':return search_web(body.query)
         if body.tool=='read_webpage':return read_page(body.url)
         if body.tool=='download_file':return download(body.url,self.scoped(body.scope_id,body.path),event)
+        if body.tool=='find_download':return self.find_download(body,event)
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             path=self.scoped(body.scope_id,body.path)
             if body.tool=='find_files':
@@ -719,11 +735,30 @@ class ToolService:
     def history(self):
         return self.store.rows('SELECT id,tool,status,result,created,updated FROM actions ORDER BY created DESC LIMIT 100')
 
+    def find_download(self,body,event):
+        found=find_download_candidates(body.query,body.url)
+        candidates=found['candidates'];top=clear_choice(candidates,found['site'])
+        facts={'query':body.query,'site':found['site'],'pages_read':found['pages_read'],'candidates':candidates}
+        if not candidates:
+            return outcome('failed',**facts,notice='Não achei um link de arquivo para isso'+(f' em {found["site"]}' if found['site'] else '')+'. Diga o endereço da página ou do arquivo.')
+        if not top:
+            return outcome('ask',**facts,options=[f"{c['title']} — {c['url']}" for c in candidates[:4]],notice='Achei mais de um arquivo possível; diga qual baixar.')
+        if top['executable']:
+            # Not downloaded here: approve() turns it into a download_file card the owner reviews.
+            return outcome('ask',**facts,review_url=top['url'],notice=f"É um programa ({top['url'].rsplit('.',1)[-1]}) de {site_host(top['url'])}: revise o cartão para baixar. A ALT nunca executa arquivos baixados.")
+        name=PureWindowsPath(urllib.parse.unquote(urllib.parse.urlsplit(top['url']).path)).name or 'download'
+        relative=body.path or (('Downloads/' if body.scope_id=='windows-profile' else '')+name)
+        if relative.endswith(('/','\\')):relative+=name
+        path=self.scoped(body.scope_id,relative)
+        if not path.parent.is_dir():raise ValueError('A pasta de destino precisa existir.')
+        saved=download(top['url'],path,event)
+        return outcome('done',**saved,**facts,chosen=top)
+
     def artifact(self,aid):
         """A file the ALT itself wrote or downloaded, for "show in folder" or "export a copy".
         The path comes from the stored action, never from the renderer, and must still be a regular file."""
         rows=self.store.rows("SELECT tool,result FROM actions WHERE id=? AND status='complete'",(aid,))
-        if not rows or rows[0]['tool'] not in ('write_text','download_file'):raise ValueError('Arquivo não disponível para esta ação.')
+        if not rows or rows[0]['tool'] not in ('write_text','download_file','find_download'):raise ValueError('Arquivo não disponível para esta ação.')
         try:result=json.loads(rows[0]['result'] or '{}')
         except ValueError:result={}
         if not isinstance(result,dict) or not result.get('path'):raise ValueError('Arquivo não disponível para esta ação.')
@@ -734,10 +769,11 @@ class ToolService:
     def sources(self,aid):
         """HTTPS links a completed search or page read returned; a source link opens only if it is one of them."""
         rows=self.store.rows("SELECT tool,result FROM actions WHERE id=? AND status='complete'",(aid,))
-        if not rows or rows[0]['tool'] not in ('web_search','read_webpage'):raise ValueError('Fontes não disponíveis para esta ação.')
+        if not rows or rows[0]['tool'] not in ('web_search','read_webpage','find_download'):raise ValueError('Fontes não disponíveis para esta ação.')
         try:result=json.loads(rows[0]['result'] or '{}')
         except ValueError:result={}
-        urls=[row.get('url') for row in result.get('results',[]) if isinstance(row,dict)] if rows[0]['tool']=='web_search' else [result.get('url')]
+        if rows[0]['tool']=='find_download':urls=[row.get('url') for row in result.get('candidates',[]) if isinstance(row,dict)]+result.get('pages_read',[])
+        else:urls=[row.get('url') for row in result.get('results',[]) if isinstance(row,dict)] if rows[0]['tool']=='web_search' else [result.get('url')]
         return {'urls':[url for url in urls if isinstance(url,str) and url.startswith('https://')]}
 
     def conversation_actions(self,cid):

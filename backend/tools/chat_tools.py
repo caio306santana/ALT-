@@ -24,7 +24,7 @@ REMINDER_WORDS=('lembre','lembrete','me avise','me avisa','me lembra','alarme','
 # Stable set for modes 2-4, core first and capped at 14 like Mark LVI's local budget. The same list every
 # turn keeps the prompt prefix identical, so Ollama reuses its cache instead of rereading tools and history.
 STABLE=['open_app','open_url','web_search','close_app','windows_keys','windows_read','windows_invoke','windows_type',
-    'read_webpage','list_files','read_text','write_text','run_command','download_file']
+    'read_webpage','list_files','read_text','write_text','run_command','find_download']
 BRIEF={
     'open_app':'abre um programa instalado pelo nome (app)','open_url':'abre um site em nova aba do navegador padrão (url ou query)',
     'web_search':'pesquisa na internet (query)','close_app':'fecha um programa (app)','read_webpage':'lê o texto de uma página (url)',
@@ -32,7 +32,8 @@ BRIEF={
     'windows_read':'lê os elementos de uma janela aberta (window_id)','windows_invoke':'clica num elemento lido (window_id, target, snapshot_id)',
     'windows_type':'digita num campo lido (window_id, target, snapshot_id, content)','list_files':'lista uma pasta (scope_id, path)',
     'read_text':'lê um arquivo de texto (scope_id, path)','write_text':'grava um arquivo de texto (scope_id, path, content)',
-    'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo (url, path)',
+    'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo de um link direto já conhecido (url, path)',
+    'find_download':'procura e baixa um arquivo pelo nome (query: o que baixar; url: o site, se o usuário disse, ex.: 7-zip.org)',
     'find_files':'procura arquivos (scope_id, path, query)','open_folder':'abre uma pasta no Explorer (scope_id, path)',
     'screen_look':'captura a tela do usuário para você ver (sem argumentos)','system_volume':'muda o volume (value: 0-100, +10, -10, mudo, desmutar)',
     'system_brightness':'muda o brilho do monitor (value: 0-100, +10, -10)','media_key':'tocar/pausar ou trocar de música (value: playpause, next, previous)',
@@ -85,7 +86,7 @@ def route(content,status):
     if any(word in text for word in ('abra','abre','abrir','abri','inici','calculadora','bloco de notas','notepad','programa','aplicativo','app ')):names+=['open_app']
     if any(word in text for word in ('feche','fecha','fechar','encerr')):names+=['close_app']
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
-    if any(word in text for word in ('baixe','baixar','download')):names+=['download_file']
+    if any(word in text for word in ('baixe','baixar','baixa ','download')):names+=['find_download']+(['download_file'] if 'https://' in text else [])
     if level>=2 and any(word in text for word in ('desfaz','desfazer','desfaça','reverte','reverter','volta como estava')):names+=['undo']
     if level>=2 and any(word in text for word in SCREEN_WORDS):names+=['screen_look']
     if level>=2 and any(word in text+' ' for word in VOLUME_WORDS):names+=['system_volume']
@@ -115,7 +116,7 @@ def build_spec(names,browser,windows):
     if browser:relevant.add('url')
     if any(name in names for name in ('browser_click','browser_type')):relevant.update(('target','snapshot_id','content'))
     if 'calculate' in names:relevant.add('expression')
-    if 'download_file' in names:relevant.update(('url','path','scope_id'))
+    if 'download_file' in names or 'find_download' in names:relevant.update(('url','path','scope_id','query'))
     if 'run_command' in names:relevant.add('command')
     if 'undo' in names:relevant.add('target')
     if any(n in names for n in ('system_volume','system_brightness','media_key','reminder_create')):relevant.add('value')
