@@ -1,0 +1,328 @@
+{
+  "synthetic_only": true,
+  "cloud_used": false,
+  "results": [
+    {
+      "model": "qwen3.5:4b",
+      "file": "note.txt",
+      "expected": "ALT-731",
+      "upload_status": 200,
+      "notice": "Arquivo lido: note.txt (24 caracteres).",
+      "chat_status": 200,
+      "reply": "O código é ALT-731.",
+      "metrics": {
+        "tokens": 10,
+        "tokens_per_second": 4.77,
+        "first_token_seconds": 20.5,
+        "request_first_token_seconds": 21.844,
+        "total_seconds": 22.609,
+        "request_total_seconds": 23.953,
+        "preparation_seconds": 1.344,
+        "model_load_seconds": 19.0308,
+        "prompt_eval_seconds": 1.1113,
+        "generation_seconds": 2.0967,
+        "provider_total_seconds": 22.2472,
+        "prompt_tokens": 630,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 24.0
+    },
+    {
+      "model": "qwen3.5:4b",
+      "file": "native.pdf",
+      "expected": "ALT-732",
+      "upload_status": 200,
+      "notice": "Arquivo lido: native.pdf (35 caracteres).",
+      "chat_status": 200,
+      "reply": "ALT-732",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 5.12,
+        "first_token_seconds": 1.312,
+        "request_first_token_seconds": 1.671,
+        "total_seconds": 2.484,
+        "request_total_seconds": 2.843,
+        "preparation_seconds": 0.359,
+        "model_load_seconds": 0.005,
+        "prompt_eval_seconds": 0.9892,
+        "generation_seconds": 1.1712,
+        "provider_total_seconds": 2.1747,
+        "prompt_tokens": 636,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 2.875
+    },
+    {
+      "model": "qwen3.5:4b",
+      "file": "table.docx",
+      "expected": "ALT-733",
+      "upload_status": 200,
+      "notice": "Arquivo lido: table.docx (40 caracteres).",
+      "chat_status": 200,
+      "reply": "ALT-733",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 4.95,
+        "first_token_seconds": 1.344,
+        "request_first_token_seconds": 1.719,
+        "total_seconds": 2.562,
+        "request_total_seconds": 2.937,
+        "preparation_seconds": 0.375,
+        "model_load_seconds": 0.007,
+        "prompt_eval_seconds": 1.0243,
+        "generation_seconds": 1.2119,
+        "provider_total_seconds": 2.2525,
+        "prompt_tokens": 634,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 2.984
+    },
+    {
+      "model": "qwen3.5:4b",
+      "file": "scan.pdf",
+      "expected": "ALT-734",
+      "upload_status": 200,
+      "notice": "Arquivo lido: scan.pdf (81 caracteres). Texto reconhecido por OCR local; confira números e nomes.",
+      "chat_status": 200,
+      "reply": "O código é ALT-734.",
+      "metrics": {
+        "tokens": 10,
+        "tokens_per_second": 4.68,
+        "first_token_seconds": 1.344,
+        "request_first_token_seconds": 1.719,
+        "total_seconds": 3.5,
+        "request_total_seconds": 3.875,
+        "preparation_seconds": 0.375,
+        "model_load_seconds": 0.0062,
+        "prompt_eval_seconds": 1.0089,
+        "generation_seconds": 2.1354,
+        "provider_total_seconds": 3.1599,
+        "prompt_tokens": 652,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 4.969
+    },
+    {
+      "model": "qwen3.5:4b",
+      "file": "image.jpg",
+      "expected": "ALT-734",
+      "upload_status": 200,
+      "notice": null,
+      "chat_status": 200,
+      "reply": "ALT-734",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 4.95,
+        "first_token_seconds": 12.078,
+        "request_first_token_seconds": 12.75,
+        "total_seconds": 13.313,
+        "request_total_seconds": 13.985,
+        "preparation_seconds": 0.672,
+        "model_load_seconds": 0.0059,
+        "prompt_eval_seconds": 11.6181,
+        "generation_seconds": 1.2125,
+        "provider_total_seconds": 12.9821,
+        "prompt_tokens": 2748,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 14.015
+    },
+    {
+      "model": "qwen3.5:9b",
+      "file": "note.txt",
+      "expected": "ALT-731",
+      "upload_status": 200,
+      "notice": "Arquivo lido: note.txt (24 caracteres).",
+      "chat_status": 200,
+      "reply": "ALT-731",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 3.1,
+        "first_token_seconds": 72.25,
+        "request_first_token_seconds": 72.609,
+        "total_seconds": 74.406,
+        "request_total_seconds": 74.765,
+        "preparation_seconds": 0.359,
+        "model_load_seconds": 68.3119,
+        "prompt_eval_seconds": 3.5067,
+        "generation_seconds": 1.9381,
+        "provider_total_seconds": 74.1193,
+        "prompt_tokens": 630,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 74.797
+    },
+    {
+      "model": "qwen3.5:9b",
+      "file": "native.pdf",
+      "expected": "ALT-732",
+      "upload_status": 200,
+      "notice": "Arquivo lido: native.pdf (35 caracteres).",
+      "chat_status": 200,
+      "reply": "ALT-732",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 3.19,
+        "first_token_seconds": 1.782,
+        "request_first_token_seconds": 2.25,
+        "total_seconds": 3.657,
+        "request_total_seconds": 4.125,
+        "preparation_seconds": 0.468,
+        "model_load_seconds": 0.0043,
+        "prompt_eval_seconds": 1.467,
+        "generation_seconds": 1.8819,
+        "provider_total_seconds": 3.361,
+        "prompt_tokens": 636,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 4.25
+    },
+    {
+      "model": "qwen3.5:9b",
+      "file": "table.docx",
+      "expected": "ALT-733",
+      "upload_status": 200,
+      "notice": "Arquivo lido: table.docx (40 caracteres).",
+      "chat_status": 200,
+      "reply": "ALT-733",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 3.28,
+        "first_token_seconds": 1.657,
+        "request_first_token_seconds": 2.016,
+        "total_seconds": 3.485,
+        "request_total_seconds": 3.844,
+        "preparation_seconds": 0.359,
+        "model_load_seconds": 0.0049,
+        "prompt_eval_seconds": 1.2562,
+        "generation_seconds": 1.8294,
+        "provider_total_seconds": 3.2361,
+        "prompt_tokens": 634,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 4.047
+    },
+    {
+      "model": "qwen3.5:9b",
+      "file": "scan.pdf",
+      "expected": "ALT-734",
+      "upload_status": 200,
+      "notice": "Arquivo lido: scan.pdf (81 caracteres). Texto reconhecido por OCR local; confira números e nomes.",
+      "chat_status": 200,
+      "reply": "ALT-734",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 3.03,
+        "first_token_seconds": 2.11,
+        "request_first_token_seconds": 2.454,
+        "total_seconds": 4.094,
+        "request_total_seconds": 4.438,
+        "preparation_seconds": 0.344,
+        "model_load_seconds": 0.006,
+        "prompt_eval_seconds": 1.7888,
+        "generation_seconds": 1.9832,
+        "provider_total_seconds": 3.7877,
+        "prompt_tokens": 652,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 6.359
+    },
+    {
+      "model": "qwen3.5:9b",
+      "file": "image.jpg",
+      "expected": "ALT-734",
+      "upload_status": 200,
+      "notice": null,
+      "chat_status": 200,
+      "reply": "ALT-734",
+      "metrics": {
+        "tokens": 6,
+        "tokens_per_second": 3.22,
+        "first_token_seconds": 15.063,
+        "request_first_token_seconds": 17.438,
+        "total_seconds": 16.938,
+        "request_total_seconds": 19.313,
+        "preparation_seconds": 2.375,
+        "model_load_seconds": 0.0054,
+        "prompt_eval_seconds": 14.6804,
+        "generation_seconds": 1.8655,
+        "provider_total_seconds": 16.6685,
+        "prompt_tokens": 2748,
+        "tools_offered": 0,
+        "verification": {
+          "calculations": [],
+          "sources": [],
+          "issues": 0,
+          "notice": "Conferência automática: recalcula contas escritas e compara links com resultados confirmados de ferramentas. Não verifica outras afirmações."
+        }
+      },
+      "ok": true,
+      "seconds": 19.5
+    }
+  ],
+  "passed": 10,
+  "total": 10
+}

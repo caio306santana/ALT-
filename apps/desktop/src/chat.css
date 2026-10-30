@@ -42,6 +42,11 @@
 .light .approval-popover select { background: white; }
 .light .approval-popover button, .light .approval-trigger { color: #433a52; }
 .light .context-indicator, .light .approval-popover small, .light .approval-popover p { color: #62596e; }
+.performance-details { margin-top: 8px; font-size: 12px; color: var(--text-muted, inherit); }
+.performance-details summary { cursor: pointer; width: fit-content; }
+.performance-details dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; max-width: 440px; }
+.performance-details dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.performance-details small { display: block; max-width: 440px; line-height: 1.5; }
 @media (max-width: 800px) {
   .messages { padding: 18px 18px 10px; }
   .composer-area { padding: 8px 14px 12px; }

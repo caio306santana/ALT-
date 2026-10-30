@@ -67,6 +67,7 @@ import { ApprovalMenu } from "./components/ApprovalMenu";
 import { VoiceButton, speak, stopSpeaking } from "./components/VoiceButton";
 import { AttachmentChips, upload, type Attachment } from "./components/Attachments";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
+import { PerformanceDetails } from "./components/PerformanceDetails";
 import {
   OwnerControlPanel,
   EvaluationPanel,
@@ -643,6 +644,7 @@ export default function App() {
       for (const file of files.slice(0, 4 - attachments.length)) {
         const added = await upload(file.name, file.blob);
         setAttachments((old) => (old.length < 4 ? [...old, added] : old));
+        if (added.notice) setNotice(added.notice);
       }
     } catch (e) { report(e); }
     finally { setAttaching(false); }
@@ -1048,6 +1050,9 @@ export default function App() {
                               Copiar
                             </button>
                           </div>
+                        )}
+                        {m.role === "assistant" && m.metrics && m.status !== "streaming" && (
+                          <PerformanceDetails metrics={m.metrics} />
                         )}
                         {m.role === "assistant" && m.status === "complete" && (
                           <VerificationNote verification={m.metrics?.verification} />

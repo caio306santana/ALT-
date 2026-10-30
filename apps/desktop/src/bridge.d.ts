@@ -72,7 +72,7 @@ declare global {
       restoreBackup(): Promise<{ restored: boolean; restart_required: boolean } | null>;
       transcribe(pcm: Uint8Array): Promise<{ text: string; seconds: number; audio_seconds: number }>;
       chooseFiles(): Promise<{ name: string; data: Uint8Array }[]>;
-      attach(name: string, data: Uint8Array): Promise<{ id: string; name: string; kind: "image" | "document"; chars: number }>;
+      attach(name: string, data: Uint8Array): Promise<{ id: string; name: string; kind: "image" | "document"; chars: number; notice?: string }>;
       importDocument(
         projectId: string,
       ): Promise<{ id: string; chunks?: number; name?: string; duplicate: boolean } | null>;

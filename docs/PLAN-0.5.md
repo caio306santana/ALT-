@@ -29,6 +29,7 @@ Decisões do usuário:
 - palavra de ativação "Hey Jarvis" agora, com "Ei ALT" treinado como opção depois de validado;
 - voz feminina natural: Kokoro "Dora" pt-BR, com a Maria (SAPI) de reserva;
 - iPhone por Tailscale e PWA, sem Telegram.
+- Preferência confirmada nesta sessão: híbrido, com modelo local para pedidos simples e nuvem para os complexos, sempre com prévia e aprovação. Isso não ativa a API paga nem envia dados sozinho.
 
 A versão instalada no PC dele ainda é a 0.4.1, a da personalidade que discute e do bug do Bloco de Notas. Tudo aqui só chega a ele pelo instalador do fim.
 
@@ -408,6 +409,10 @@ Testes:
 - revogar derruba a sessão.
 
 ## Etapa 9 — validação real, documentação, instalador e GitHub
+
+Pendência acrescentada pelo usuário durante o teste no PC: validar os três botões da tela **Sobre** (Versões e instaladores, Procurar nova versão e Verificar atualização baixada) no aplicativo instalado, com a release correta e o manifesto verificado. Atualizar também o texto da tela, que ainda diz que voz/GUI genérica estão apenas no roteiro. Não marcar como pronto só porque a interface mostra os botões.
+
+Checkpoint solicitado: manter no GitHub uma lista do que terminou, do que foi testado e do que falta. O agente não tem acesso confiável ao percentual de créditos/contexto do cliente; não inventar detecção dos 2%. Antes de encerrar uma rodada, atualizar `docs/CHECKPOINT-0.5.md` e publicar os fontes sem dados locais, modelos ou credenciais.
 
 1. **Smoke real** com o Ollama, nos modelos 4B e 9B, com `scripts/smoke_full_access.py` ampliado:
    - casos atuais;

@@ -1,5 +1,7 @@
 # Estado atual e próximos passos — ALT-AI
 
+**Nesta branch `work/0.5`, consultar primeiro [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md).** O texto abaixo registra uma rodada anterior; não descreve o estado completo do desenvolvimento atual nem indica que exista instalador 0.5.
+
 Atualizado em 29/10/2026. Este é o ponto de entrada para retomar o projeto em outro PC.
 
 ## Versões

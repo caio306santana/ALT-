@@ -1,0 +1,235 @@
+{
+  "created_utc": "2026-10-30T02:32:57.061284+00:00",
+  "scope": "Inferência local com prompts sintéticos; nenhuma ferramenta executada. Não mede abertura real de programas.",
+  "initial_running": [],
+  "results": [
+    {
+      "model": "qwen3.5:4b",
+      "case": "chat",
+      "repeat": 1,
+      "profile": "desktop",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 5.47,
+        "first_token_seconds": 23.344,
+        "request_first_token_seconds": 23.344,
+        "total_seconds": 24.063,
+        "request_total_seconds": 24.063,
+        "preparation_seconds": 0,
+        "model_load_seconds": 21.6798,
+        "prompt_eval_seconds": 1.3994,
+        "generation_seconds": 0.7315,
+        "provider_total_seconds": 23.8174,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "chat",
+      "repeat": 2,
+      "profile": "desktop",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 5.57,
+        "first_token_seconds": 0.969,
+        "request_first_token_seconds": 0.969,
+        "total_seconds": 1.688,
+        "request_total_seconds": 1.688,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0048,
+        "prompt_eval_seconds": 0.6629,
+        "generation_seconds": 0.7176,
+        "provider_total_seconds": 1.3922,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "app_proposal",
+      "repeat": 1,
+      "profile": "desktop",
+      "tool_calls": [
+        {
+          "id": "call_9px7mxwz",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 3.52,
+        "first_token_seconds": 13.453,
+        "request_first_token_seconds": 13.453,
+        "total_seconds": 13.688,
+        "request_total_seconds": 13.688,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0092,
+        "prompt_eval_seconds": 1.0182,
+        "generation_seconds": 12.2327,
+        "provider_total_seconds": 13.3536,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "app_proposal",
+      "repeat": 2,
+      "profile": "desktop",
+      "tool_calls": [
+        {
+          "id": "call_nnki0f6a",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 4.37,
+        "first_token_seconds": 10.25,
+        "request_first_token_seconds": 10.25,
+        "total_seconds": 10.469,
+        "request_total_seconds": 10.469,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0056,
+        "prompt_eval_seconds": 0.3212,
+        "generation_seconds": 9.8354,
+        "provider_total_seconds": 10.1738,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "chat",
+      "repeat": 1,
+      "profile": "desktop",
+      "metrics": {
+        "tokens": 3,
+        "tokens_per_second": 3.66,
+        "first_token_seconds": 57.781,
+        "request_first_token_seconds": 57.781,
+        "total_seconds": 58.61,
+        "request_total_seconds": 58.61,
+        "preparation_seconds": 0,
+        "model_load_seconds": 55.0162,
+        "prompt_eval_seconds": 2.4069,
+        "generation_seconds": 0.8198,
+        "provider_total_seconds": 58.2893,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "chat",
+      "repeat": 2,
+      "profile": "desktop",
+      "metrics": {
+        "tokens": 4,
+        "tokens_per_second": 3.26,
+        "first_token_seconds": 0.813,
+        "request_first_token_seconds": 0.813,
+        "total_seconds": 2.031,
+        "request_total_seconds": 2.031,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.1401,
+        "prompt_eval_seconds": 0.4126,
+        "generation_seconds": 1.2257,
+        "provider_total_seconds": 1.7848,
+        "prompt_tokens": 480,
+        "tools_offered": 0
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "app_proposal",
+      "repeat": 1,
+      "profile": "desktop",
+      "tool_calls": [
+        {
+          "id": "call_b5dbb6tu",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 2.83,
+        "first_token_seconds": 18.0,
+        "request_first_token_seconds": 18.0,
+        "total_seconds": 18.359,
+        "request_total_seconds": 18.359,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.0043,
+        "prompt_eval_seconds": 2.8185,
+        "generation_seconds": 15.2015,
+        "provider_total_seconds": 18.0937,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case": "app_proposal",
+      "repeat": 2,
+      "profile": "desktop",
+      "tool_calls": [
+        {
+          "id": "call_9blqzqce",
+          "function": {
+            "index": 0,
+            "name": "alt_propose_action",
+            "arguments": {
+              "tool": "open_app",
+              "app": "Spotify"
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "tokens": 43,
+        "tokens_per_second": 2.84,
+        "first_token_seconds": 15.5,
+        "request_first_token_seconds": 15.5,
+        "total_seconds": 15.859,
+        "request_total_seconds": 15.859,
+        "preparation_seconds": 0,
+        "model_load_seconds": 0.008,
+        "prompt_eval_seconds": 0.4237,
+        "generation_seconds": 15.1401,
+        "provider_total_seconds": 15.5799,
+        "prompt_tokens": 903,
+        "tools_offered": 4
+      },
+      "status": "complete"
+    }
+  ]
+}

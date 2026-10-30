@@ -46,4 +46,8 @@ SQLite/histórico/ações não são criptografados. Não inserir senhas ou token
 
 ## Distribuição
 
+Na branch 0.5, anexos de até 20 MB são lidos localmente. PDF com texto usa extração; páginas sem texto usam PDFium para renderização limitada e OCR do Windows, quando o idioma de reconhecimento está disponível. O helper PowerShell é um arquivo fixo interno: recebe caminhos temporários em JSON por stdin, sem compor comandos com conteúdo/nome do documento. Isso não passa pelo executor `run_command` do modelo. Texto reconhecido continua sendo dado não confiável e pode conter erros. Validar o helper e a DLL PDFium no runtime empacotado antes de distribuir; o teste atual foi em desenvolvimento neste PC.
+
+Imagens JPEG são validadas pelo decoder antes de armazenamento. PDFs protegidos, documentos excessivos e páginas sem texto legível são recusados com motivo. OCR não envia documentos à internet. Envio de anexos à Anthropic continua passando pela prévia de nuvem e pelo recibo; o modo híbrido escolhido pelo usuário ainda não habilita fallback pago automático.
+
 Atualizações locais exigem manifesto Ed25519 verificado pela chave pública embarcada, arquivo/tamanho/hash corretos, versão mais nova e confirmação nativa, com nova verificação antes da execução. Chave privada fora do Git. Não é feed automático, identidade Authenticode nem garantia contra comprometimento da máquina/chave de assinatura. Pipeline Authenticode existe, mas requer certificado/credenciais que ainda não foram configurados. Não desabilitar verificações para contornar falhas.

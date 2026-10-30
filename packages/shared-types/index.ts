@@ -10,6 +10,14 @@ export interface Metrics {
   first_token_seconds: number | null;
   total_seconds: number | null;
   prompt_tokens: number | null;
+  request_first_token_seconds?: number | null;
+  request_total_seconds?: number | null;
+  preparation_seconds?: number | null;
+  model_load_seconds?: number | null;
+  prompt_eval_seconds?: number | null;
+  generation_seconds?: number | null;
+  provider_total_seconds?: number | null;
+  tools_offered?: number;
   verification?: Verification;
 }
 export interface Verification {

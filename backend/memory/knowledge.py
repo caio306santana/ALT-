@@ -50,13 +50,13 @@ def text_sections(text,default='texto'):
     if '\n'.join(lines).strip():sections.append((title,'\n'.join(lines)))
     return sections or [(default,text)]
 
-def extract_document(path):
+def extract_document(path, max_bytes=10_000_000):
     path=Path(path)
     if not path.is_absolute() or str(path).startswith(('\\\\','//')) or path.suffix.lower() not in ('.pdf','.docx','.txt','.md'):raise ValueError('Escolha PDF, DOCX, TXT ou Markdown local.')
     for parent in [path,*path.parents]:
         info=parent.lstat()
         if stat.S_ISLNK(info.st_mode) or getattr(info,'st_file_attributes',0)&0x400:raise ValueError('Importação não aceita links ou junctions.')
-    if not path.is_file() or path.stat().st_size>10_000_000:raise ValueError('Documento deve ter até 10 MB.')
+    if not path.is_file() or path.stat().st_size>max_bytes:raise ValueError(f'Documento deve ter até {max_bytes//1_000_000} MB.')
     sections=[]
     if path.suffix.lower()=='.pdf':
         from pypdf import PdfReader
@@ -64,6 +64,12 @@ def extract_document(path):
         if reader.is_encrypted:raise ValueError('PDF protegido; exporte uma cópia de texto autorizada para importar.')
         if len(reader.pages)>200:raise ValueError('PDF excede 200 páginas.')
         for index,page in enumerate(reader.pages):sections.append((f'página {index+1}',page.extract_text() or ''))
+        missing=[index for index,(_,text) in enumerate(sections) if not text.strip()]
+        if missing:
+            from backend.document_ocr import pdf_ocr
+            recognized=pdf_ocr(path,missing)
+            for index,text in recognized.items():
+                sections[index]=(f'página {index+1} (OCR local; confira números e nomes)',text)
     elif path.suffix.lower()=='.docx':
         from docx import Document
         with zipfile.ZipFile(path) as archive:
@@ -80,7 +86,7 @@ def extract_document(path):
         except UnicodeDecodeError:text=raw.decode('cp1252')
         sections=text_sections(text)
     text='\n'.join(t for _,t in sections)
-    if not text.strip():raise ValueError('Não há texto extraível. PDFs digitalizados precisam de OCR, ainda não incluído.')
+    if not text.strip():raise ValueError('Não foi encontrado texto legível no documento, mesmo após a leitura local. Confira a qualidade das páginas.')
     if len(text)>200_000:raise ValueError('Texto extraído excede 200.000 caracteres.')
     reject_secrets(text)
     return sections

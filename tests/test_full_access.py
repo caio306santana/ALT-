@@ -79,7 +79,7 @@ def test_old_argumentative_default_migrates_but_a_custom_tone_is_kept():
 
 def test_debate_and_irony_rules_follow_the_sliders():
     calm=system_prompt({'personality':{'irony':0,'challenge':0}})
-    assert 'premissas' not in calm and 'ironia leve' not in calm and 'faça-a na hora' in calm
+    assert 'premissas' not in calm and 'ironia leve' not in calm and 'use a ferramenta' in calm
     sharp=system_prompt({'personality':{'irony':80,'challenge':80}})
     assert 'premissas' in sharp and 'ironia leve' in sharp
 

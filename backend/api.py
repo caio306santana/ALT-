@@ -13,7 +13,8 @@ from backend.providers.ollama import Ollama, ProviderError, cancellable
 from backend.security.permissions import PermissionEngine
 from backend.monitoring.system import snapshot
 from backend.monitoring.performance import performance_profile
-from backend.personality import Personality,system_prompt,situational_guidance
+from backend.monitoring.inference import inference_metrics
+from backend.personality import Personality,system_prompt,situational_guidance,CAPABILITY_QUESTION,capability_guidance
 from backend.tools.app_catalog import default_browser
 from backend.memory.library import MemoryLibrary
 from backend.tools.service import ToolService
@@ -267,6 +268,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
             prompt+=tool_context
             profile['tools']=spec
         user_content=body.content
+        if CAPABILITY_QUESTION.search(body.content):
+            capabilities=['vision'] if body.model=='cloud:anthropic' else [] if body.model=='cloud:codex' else await ollama.capabilities(body.model) if hasattr(ollama,'capabilities') else None
+            user_content+=capability_guidance(body.model,capabilities,status['level'],engine.game_mode,definition if spec else [],app.state.voice.installed())
         context_limit=24000 if body.model.startswith('cloud:') else profile['options']['num_ctx']-min(profile['options']['num_predict'],768)-128
         schema_cost=cost(json.dumps(spec,ensure_ascii=False,separators=(',',':'))) if spec else 0
         chars=cost(user_content)+cost(prompt)+schema_cost
@@ -303,7 +307,8 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         for row in documents:
             cap=1500 if profile['effective']=='notebook' and not body.model.startswith('cloud:') else 6000
             block=document_block(row,min(cap,context_limit-chars-256),cost)
-            if block:user_content+=block;chars+=cost(block)
+            if not block:raise ValueError('Sem espaço para ler o anexo neste contexto. Abra uma conversa nova ou reduza o texto da mensagem; o arquivo não foi enviado ao modelo.')
+            user_content+=block;chars+=cost(block)
         context=[]
         recalled=[]
         candidates,recall_mode=await recall_candidates(body,prefs['owner_policy']['memory_recall'])
@@ -375,6 +380,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
 
     @app.post('/chat',dependencies=[Depends(auth)])
     async def chat(body: ChatBody, request: Request):
+        request_start=time.monotonic()
         if not body.content.strip(): raise HTTPException(422,'Mensagem vazia')
         if not store.conversation(body.conversation_id): raise HTTPException(404,'Conversa não encontrada')
         payload,profile,previous_count,context_count,result_truncated,recalled,estimate=await context_for(body)
@@ -403,6 +409,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         async def generate():
             text, status, metrics = '', 'interrupted', None
             start = time.monotonic(); checkpoint = start; first = None
+            preparation=start-request_start
             def line(data): return json.dumps(data,ensure_ascii=False)+'\n'
             try:
                 yield line({'type':'start','message_id':mid,'context_messages':context_count,'context_truncated':context_count<previous_count,'tool_result_truncated':result_truncated,'recalled_memories':recalled})
@@ -446,8 +453,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                         if time.monotonic()-checkpoint > 0.5:
                             store.checkpoint(mid,text,'streaming'); checkpoint=time.monotonic()
                         if chunk.get('done'):
-                            duration = (chunk.get('eval_duration') or 0)/1e9
-                            metrics = {'tokens':chunk.get('eval_count'),'tokens_per_second':round((chunk.get('eval_count') or 0)/duration,2) if duration else None,'first_token_seconds':round(first,2) if first is not None else None,'total_seconds':round(time.monotonic()-start,2),'prompt_tokens':chunk.get('prompt_eval_count')}
+                            offered=profile.get('tools',[])
+                            tool_count=len(offered[0]['function']['parameters']['properties']['tool']['enum']) if offered else 0
+                            metrics=inference_metrics(chunk,first=first,elapsed=time.monotonic()-start,preparation=preparation,tools_offered=tool_count)
                             status='complete'; break
                     if not retry:break
                     corrected=True

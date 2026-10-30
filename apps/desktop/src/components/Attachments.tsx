@@ -1,6 +1,6 @@
 import { FileText, Image as ImageIcon, X } from "lucide-react";
 
-export type Attachment = { id: string; name: string; kind: "image" | "document"; chars: number };
+export type Attachment = { id: string; name: string; kind: "image" | "document"; chars: number; notice?: string };
 const IMAGE = /\.(png|jpe?g|webp|gif|bmp)$/i;
 
 // Images go to the model as JPEG of at most 1344 px: enough to read a screenshot, cheap in context.

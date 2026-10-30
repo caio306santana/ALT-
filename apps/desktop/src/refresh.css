@@ -396,10 +396,13 @@
 }
 
 /* Full access: one click to switch, and the composer glows red while it is on. */
-.full-access-toggle {
+.composer-controls button.full-access-toggle {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 5px;
+  width: auto;
+  height: 30px;
   padding: 4px 10px;
   margin-right: 6px;
   border: 1px solid var(--border);
@@ -407,9 +410,10 @@
   background: transparent;
   color: inherit;
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
-.full-access-toggle.on {
+.composer-controls button.full-access-toggle.on {
   border-color: #ff2a4f;
   background: color-mix(in srgb, #ff2a4f 20%, transparent);
   color: #ff6b84;
@@ -418,8 +422,15 @@
 }
 .approval-control {
   display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
   align-items: center;
 }
+.composer-controls { gap: 8px; }
+.composer-controls > div { flex-wrap: wrap; }
+.composer-controls > div > button,
+.composer-controls .voice-control,
+.approval-control svg { flex-shrink: 0; }
 body.full-access .composer {
   border-color: #ff2a4f;
   box-shadow: 0 0 14px color-mix(in srgb, #ff2a4f 45%, transparent);
