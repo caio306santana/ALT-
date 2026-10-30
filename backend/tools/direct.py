@@ -14,6 +14,12 @@ PATTERN=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:ab
 DOWNLOAD=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:baixa|baixe|baixar|fa[çc]a o download d[eoa]s?)\s+(?:(?:o|a|os|as|um|uma)\s+)?'
     r'(?P<what>.{2,120}?)\s+(?:d[oa]|de|no|na|pelo|pela|em)\s+(?:site\s+(?:d[oa]\s+|de\s+)?)?(?P<site>(?:https://)?[\w-]+(?:\.[\w-]+)+(?:/\S*)?)(?:[ ,]+por favor)?[.!?]*',re.I)
 
+# "abre o youtube e pesquisa lofi", "pesquisa receitas no google": the site opens on its own search page.
+SEARCH_SITES={'youtube':'https://www.youtube.com/results?search_query=','google':'https://www.google.com/search?q='}
+SITE_SEARCH=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:'
+    r'(?:abr[ae]|abrir|entra|entre)\s+(?:o\s+)?(?P<site1>youtube|google)\s+e\s+(?:depois\s+)?(?:pesquis[ae]|procur[ae]|busc[ae])\s+(?:por\s+)?(?P<q1>.+?)'
+    r'|(?:pesquis[ae]|procur[ae]|busc[ae])\s+(?:por\s+)?(?P<q2>.+?)\s+no\s+(?P<site2>youtube|google))[.!?]*',re.I)
+
 def direct_action(content,attachment_ids=(),tool_result_id=''):
     if attachment_ids or tool_result_id:return None
     text=' '.join(unicodedata.normalize('NFKC',content).strip().split())
@@ -21,6 +27,11 @@ def direct_action(content,attachment_ids=(),tool_result_id=''):
     if match:
         app='calculator' if match.group(1).lower() in ('calculadora','calculator') else 'notepad'
         return ToolProposal(tool='open_app',app=app)
+    match=SITE_SEARCH.fullmatch(text)
+    if match:
+        import urllib.parse
+        site=(match.group('site1') or match.group('site2')).lower();query=(match.group('q1') or match.group('q2')).strip()
+        return ToolProposal(tool='open_url',url=SEARCH_SITES[site]+urllib.parse.quote_plus(query))
     match=DOWNLOAD.fullmatch(text)
     # A second step ("e depois abre") stays with the model, which can chain actions.
     if match and not re.search(r'\b(?:e depois|depois|e ent[aã]o|em seguida|e abr|e abra|e abre)',match.group('what'),re.I):
@@ -39,6 +50,8 @@ async def stream(action):
 def reply(action,result):
     from backend.tools.outcome import chat_line
     if result.get('status')!='done':return (result.get('notice') or chat_line(result)) if action.tool=='find_download' else chat_line(result)
+    if action.tool=='open_url':
+        return f"Aberto no navegador: {result.get('opened') or action.url}"
     if action.tool=='find_download':
         from pathlib import Path
         return f"Baixado: {Path(result['path']).name}, de {result.get('site') or 'um site encontrado na pesquisa'}, salvo em {Path(result['path']).parent}. Não abri nem executei o arquivo." 

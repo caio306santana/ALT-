@@ -29,7 +29,7 @@ export function RemotePanel({ onError }: { onError: (e: unknown) => void }) {
   }
   return (
     <section className="remote-panel">
-      <h3>Celular (iPhone, sem App Store)</h3>
+      <h3>Celular e outro computador (pelo Tailscale)</h3>
       {!status ? <p className="setting-note">Verificando o Tailscale…</p> : !status.installed ? (
         <p className="setting-note">
           Instale o Tailscale (grátis) no PC e no iPhone e entre com a mesma conta: tailscale.com/download. Ele cria uma rede
@@ -47,15 +47,15 @@ export function RemotePanel({ onError }: { onError: (e: unknown) => void }) {
             {status.enabled
               ? <><button type="button" className="secondary" disabled={working} onClick={async () => {
                     try { setPairing(await window.alt.request<Pairing>("POST", "/remote/pair")); } catch (e) { onError(e); }
-                  }}>Parear um iPhone</button>
+                  }}>Parear um aparelho</button>
                   <button type="button" className="secondary" disabled={working} onClick={() => act("/remote/disable")}>Desligar acesso pelo celular</button></>
               : <button type="button" className="primary" disabled={working} onClick={() => act("/remote/enable")}>Ligar acesso pelo celular</button>}
           </div>
           {pairing && (
             <div className="pairing">
               <img src={pairing.qr} alt="QR code de pareamento" width={220} height={220} />
-              <p>Abra a câmera do iPhone no QR code, ou entre em {status.url} e digite <b>{pairing.code}</b>. Vale por {left} s e uma vez só.</p>
-              <p className="setting-note">No Safari: Compartilhar → Adicionar à Tela de Início.</p>
+              <p>No iPhone, aponte a câmera para o QR code. No notebook ou em outro aparelho, entre em {status.url} e digite <b>{pairing.code}</b>. Vale por {left} s e uma vez só.</p>
+              <p className="setting-note">No Safari: Compartilhar → Adicionar à Tela de Início. As ações pedidas de lá acontecem neste PC. Guia: docs/PC-SERVIDOR.md.</p>
             </div>
           )}
           {status.devices.length > 0 && <h4>Aparelhos pareados</h4>}

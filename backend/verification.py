@@ -99,6 +99,28 @@ ACTION_CLAIM=re.compile(r'\b(abri|baixei|fechei|digitei|escrevi|salvei|gravei|cl
     r'movi|copiei|renomeei|configurei|ativei|desativei|liguei|desliguei|pausei|aumentei|abaixei|agendei|coloquei)\b'
     r'|\bpronto[,!.]?\s+(?:j[aá]\s+)?(?:est[aá]|t[aá])\s+(?:aberto|aberta|feito|baixado|salvo|fechado)',re.I)
 
+# Which tools can back each claimed verb: "pesquisei" after only opening a site is still a false claim.
+CLAIM_TOOLS=[
+    (r'pesquis|busquei|procurei|executei a pesquisa',{'web_search','find_download','read_webpage','browser_type'}),
+    (r'abri|aberto|aberta',{'open_app','open_url','open_folder','browser_open'}),
+    (r'baixei|baixado',{'find_download','download_file'}),
+    (r'digitei|escrevi',{'windows_type','browser_type','write_text'}),
+    (r'salvei|gravei|salvo|criei',{'write_text','find_download','download_file','reminder_create','routine_create'}),
+    (r'fechei|fechado',{'close_app','windows_keys'}),
+    (r'cliquei',{'windows_invoke','browser_click'}),
+]
+UNBACKED=re.compile(r'\b(?:pesquisei|busquei|procurei|executei a pesquisa|abri|baixei|digitei|escrevi|salvei|gravei|fechei|cliquei|criei)\b',re.I)
+
+def unbacked_claim(text,tools):
+    """A claimed kind of action that none of the tools run in this reply could have done."""
+    for match in UNBACKED.finditer(text or ''):
+        before=text[max(0,match.start()-14):match.start()].casefold()
+        if re.search(r'\bn[aã]o\b|\bnunca\b|\bsem\b',before):continue
+        word=match.group(0).casefold()
+        for pattern,backing in CLAIM_TOOLS:
+            if re.match(pattern,word) and not backing & set(tools):return match.group(0)
+    return None
+
 def claimed_action(text):
     """First-person claims of an action, ignoring negated ones ("não abri")."""
     for match in ACTION_CLAIM.finditer(text or ''):
