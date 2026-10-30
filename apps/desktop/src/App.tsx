@@ -69,6 +69,7 @@ import {
 import { ApprovalMenu } from "./components/ApprovalMenu";
 import { VoiceButton, type VoiceState } from "./components/VoiceButton";
 import { VoicePanel } from "./components/VoicePanel";
+import { ImagesPanel } from "./components/ImagesPanel";
 import { RoutinesPanel } from "./components/RoutinesPanel";
 import { AttachmentChips, upload, type Attachment } from "./components/Attachments";
 import { ChatActionCard, type ChatAction } from "./components/ChatActionCard";
@@ -1968,6 +1969,7 @@ export default function App() {
               ) : tab === "Comportamento" ? (
                 <div className="setting-group">
                   <VoicePanel prefs={prefs} update={update} level={micLevel} onError={report} />
+                  <ImagesPanel onError={report} />
                   <div className="setting-heading">Desempenho</div>
                   <select
                     aria-label="Perfil de desempenho"

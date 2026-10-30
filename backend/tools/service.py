@@ -38,7 +38,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','find_download','run_command','undo',
+    tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','find_download','generate_image','run_command','undo',
         'screen_look','system_volume','system_brightness','media_key','reminder_create','reminder_list','reminder_cancel','memory_recall','routine_create','routine_list']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
@@ -180,6 +180,8 @@ class ToolService:
         if body.tool=='run_command':return False
         # A program or script found on the internet is downloaded only after the owner's card (never executed).
         if body.tool=='download_file' and is_executable(body.url):return False
+        # A paid image is a charge: below full access it waits for the owner's card.
+        if body.tool=='generate_image' and level<4 and getattr(getattr(self,'images',None),'provider',lambda:'')()=='openai':return False
         # After sensitive content was read here, anything that could carry it out waits for the card.
         if conversation_id in self.taint and body.tool in SINKS:return False
         if level in (2,3) and self.remembered.allows(body.tool,body.model_dump()):return True
@@ -343,6 +345,13 @@ class ToolService:
             if body.scope_id!='windows-profile':self.scoped(body.scope_id,body.path or '.')
             payload=body.model_dump()
             preview.update({'query':body.query,'url':body.url,'external_notice':'A ALT pesquisa o arquivo'+(f' em {site_host(body.url)}' if body.url else '')+', escolhe o link e salva em Downloads sem abrir nem executar. Programas (.exe, .msi…) pedem sua aprovação antes de baixar.'})
+        elif body.tool=='generate_image':
+            images=getattr(self,'images',None)
+            if not images or not images.provider():raise ValueError('Escolha como gerar imagens em Configurações → Imagens (no PC, no processador ou pela API).')
+            if not body.content.strip():raise ValueError('Descreva a imagem em content.')
+            reject_secrets(body.content);body.content=body.content.strip()[:1000];payload=body.model_dump()
+            paid=images.provider()=='openai'
+            preview.update({'text':body.content,'external_notice':'Gerada pela API paga da OpenAI: a descrição sai do seu PC e cada imagem é cobrada.' if paid else 'Gerada no seu PC; nada sai dele.'})
         elif body.tool=='calculate':preview['expression']=body.expression;calculate(body.expression)
         elif body.tool in ('open_app','close_app'):
             try:body.app=self.resolve_app(body.app)
@@ -521,6 +530,7 @@ class ToolService:
         if body.tool=='read_webpage':return read_page(body.url)
         if body.tool=='download_file':return download(body.url,self.scoped(body.scope_id,body.path),event)
         if body.tool=='find_download':return self.find_download(body,event)
+        if body.tool=='generate_image':return self.images.generate(body.content,event)
         if body.tool in ('list_files','find_files','read_text','write_text','open_folder'):
             path=self.scoped(body.scope_id,body.path)
             if body.tool=='find_files':
@@ -785,7 +795,7 @@ class ToolService:
         """A file the ALT itself wrote or downloaded, for "show in folder" or "export a copy".
         The path comes from the stored action, never from the renderer, and must still be a regular file."""
         rows=self.store.rows("SELECT tool,result FROM actions WHERE id=? AND status='complete'",(aid,))
-        if not rows or rows[0]['tool'] not in ('write_text','download_file','find_download'):raise ValueError('Arquivo não disponível para esta ação.')
+        if not rows or rows[0]['tool'] not in ('write_text','download_file','find_download','generate_image'):raise ValueError('Arquivo não disponível para esta ação.')
         try:result=json.loads(rows[0]['result'] or '{}')
         except ValueError:result={}
         if not isinstance(result,dict) or not result.get('path'):raise ValueError('Arquivo não disponível para esta ação.')

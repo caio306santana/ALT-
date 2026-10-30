@@ -46,6 +46,7 @@ from backend.maintenance import Maintenance
 from fastapi.responses import Response
 from backend.verification import verify_reply,conversation_urls,claimed_action,unbacked_claim
 from backend.voice.transcriber import install_voice,SAMPLE_RATE,MAX_SECONDS
+from backend.images import install_images
 from backend.attachments import install_attachments,document_excerpt,IMAGE_TOKENS,MAX_BYTES as ATTACHMENT_BYTES
 
 SYSTEM = ('Você é ALT-AI, uma assistente pessoal calma, natural e objetiva. Responda em português brasileiro. '
@@ -197,6 +198,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                 evaluation.task.cancel();await asyncio.gather(evaluation.task,return_exceptions=True)
         app.state.pc_alerts.stop();gpu.stop()
         await asyncio.to_thread(app.state.voice_loop.shutdown)
+        await asyncio.to_thread(app.state.images.stop)
         await asyncio.to_thread(app.state.speaker.shutdown)
         store.close()
 
@@ -247,6 +249,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     tasks,knowledge=install_agent_features(app,auth,store,library,continuity,tools,engine,ollama)
     maintenance=Maintenance(store,data_dir,engine,tools)
     install_voice(app,auth,engine,store,data_dir,tools.catalog.cached_names)
+    tools.images=install_images(app,auth,store,data_dir,engine)
     suggestions=MemorySuggestions(store,library,engine,ollama);app.state.suggestions=suggestions
     summaries=Summaries(store,engine,ollama);app.state.summaries=summaries
     @app.get('/conversations/{cid}/summary',dependencies=[Depends(auth)])
@@ -470,7 +473,7 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         info=await describe(ollama,body.model) if not body.model.startswith('cloud:') else unknown_info()
         if not body.model.startswith('cloud:'):profile=effective_profile(profile,info)
         memory=library.selected(body.memory_ids)
-        status=tools.status();status['windows']=tools.gui.grants();status['browser_page']=bool(desktop.snapshot)
+        status=tools.status();status['windows']=tools.gui.grants();status['browser_page']=bool(desktop.snapshot);status['images']=bool(app.state.images.provider())
         # Codex runs as a CLI without our tool channel; Claude gets the same single function as local models.
         likely=[]
         allowed=lambda name:tools.policy.decision(name)!='deny'

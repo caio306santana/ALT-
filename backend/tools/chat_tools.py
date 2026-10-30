@@ -33,6 +33,7 @@ BRIEF={
     'windows_type':'digita numa janela aberta (window_id = título ou programa, content; target e snapshot_id só se você leu a janela; value=acrescentar para escrever no fim de um texto existente)','list_files':'lista uma pasta (scope_id, path)',
     'read_text':'lê um arquivo de texto (scope_id, path)','write_text':'grava um arquivo de texto (scope_id, path, content)',
     'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo de um link direto já conhecido (url, path)',
+    'generate_image':'gera uma imagem (content: descrição detalhada EM INGLÊS do que desenhar)',
     'find_download':'procura e baixa um arquivo pelo nome (query: o que baixar; url: o site, se o usuário disse, ex.: 7-zip.org)',
     'find_files':'procura arquivos (scope_id, path, query)','open_folder':'abre uma pasta no Explorer (scope_id, path)',
     'screen_look':'captura a tela do usuário para você ver (sem argumentos)','system_volume':'muda o volume (value: 0-100, +10, -10, mudo, desmutar)',
@@ -86,6 +87,7 @@ def route(content,status):
     if any(word in text for word in ('abra','abre','abrir','abri','inici','calculadora','bloco de notas','notepad','programa','aplicativo','app ')):names+=['open_app']
     if any(word in text for word in ('feche','fecha','fechar','encerr')):names+=['close_app']
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
+    if status.get('images') and any(word in text for word in ('imagem','imagens','desenh','ilustra','gere uma foto','gera uma foto','cria uma foto','crie uma foto','wallpaper','papel de parede','logo ')):names+=['generate_image']
     if any(word in text for word in ('baixe','baixar','baixa ','download')):names+=['find_download']+(['download_file'] if 'https://' in text else [])
     if level>=2 and any(word in text for word in ('desfaz','desfazer','desfaça','reverte','reverter','volta como estava')):names+=['undo']
     if level>=2 and any(word in text for word in SCREEN_WORDS):names+=['screen_look']
@@ -116,6 +118,7 @@ def build_spec(names,browser,windows):
     if browser:relevant.add('url')
     if any(name in names for name in ('browser_click','browser_type')):relevant.update(('target','snapshot_id','content'))
     if 'calculate' in names:relevant.add('expression')
+    if 'generate_image' in names:relevant.add('content')
     if 'download_file' in names or 'find_download' in names:relevant.update(('url','path','scope_id','query'))
     if 'run_command' in names:relevant.add('command')
     if 'undo' in names:relevant.add('target')

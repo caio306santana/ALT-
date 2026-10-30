@@ -22,6 +22,7 @@ class Capabilities(BaseModel):
     screen:Decision='ask'
     reminders:Decision='ask'
     memory:Decision='allow'
+    images:Decision='ask'
 
 class OwnerPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -40,7 +41,7 @@ CAPABILITY = {
     'browser_click':'browser_interaction', 'browser_type':'browser_interaction',
     'browser_back':'browser_navigation',
     'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control','windows_keys':'windows_control',
-    'download_file':'downloads','find_download':'downloads','run_command':'shell','undo':'files_write',
+    'download_file':'downloads','find_download':'downloads','generate_image':'images','run_command':'shell','undo':'files_write',
     'screen_look':'screen','system_volume':'apps','system_brightness':'apps','media_key':'apps',
     'reminder_create':'reminders','reminder_list':'reminders','reminder_cancel':'reminders','memory_recall':'memory','routine_create':'reminders','routine_list':'reminders',
 }

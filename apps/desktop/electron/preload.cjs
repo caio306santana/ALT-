@@ -49,4 +49,6 @@ contextBridge.exposeInMainWorld("alt", {
   revealFile: (actionId) => ipcRenderer.invoke("file:reveal", actionId),
   exportFile: (actionId) => ipcRenderer.invoke("file:export", actionId),
   openSource: (actionId, url) => ipcRenderer.invoke("source:open", actionId, url),
+  installImages: () => ipcRenderer.invoke("images:install"),
+  setOpenAIKey: (key) => ipcRenderer.invoke("credentials:openai", key),
 });

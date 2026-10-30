@@ -30,6 +30,7 @@ const labels: Record<string, string> = {
   browser_navigation: "Abrir e ler no navegador ALT",
   browser_interaction: "Clicar e digitar no navegador ALT",
   downloads: "Baixar arquivos da internet",
+  images: "Gerar imagens",
   windows_read: "Ler janelas do Windows autorizadas",
   windows_control: "Clicar e digitar em janelas autorizadas",
   shell: "Comandos do PowerShell (sempre com cartão de aprovação)",

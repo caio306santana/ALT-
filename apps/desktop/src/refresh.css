@@ -684,3 +684,14 @@ body.full-access .composer {
 .chat-action-card .button-row {
   flex-wrap: wrap;
 }
+.generated-image img {
+  display: block;
+  max-width: min(100%, 512px);
+  border-radius: var(--radius, 10px);
+  border: 1px solid var(--border);
+}
+.setting-heading.small {
+  font-size: 12px;
+  margin-top: 10px;
+  opacity: 0.85;
+}

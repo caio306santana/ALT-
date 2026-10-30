@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Shield, Check, Wrench, AlertTriangle, FolderOpen, Download, ExternalLink } from "lucide-react";
 export type ChatAction = {
   id: string;
@@ -259,6 +259,9 @@ function ResultView({ action, onError }: { action: ChatAction; onError: (error: 
       </div>
     );
   }
+  if (tool === "generate_image" && result.image_id) {
+    return <GeneratedImage action={action} result={result} onError={onError} />;
+  }
   if (tool === "find_download" && !result.path) {
     // Not downloaded: several possible files, a program waiting for its own card, or nothing found.
     const candidates = Array.isArray(result.candidates) ? (result.candidates as Data[]) : [];
@@ -320,6 +323,30 @@ function ResultView({ action, onError }: { action: ChatAction; onError: (error: 
     );
   }
   return notice;
+}
+
+// The picture comes from the ALT's own folder through the backend, never from a path the renderer chose.
+function GeneratedImage({ action, result, onError }: { action: ChatAction; result: Data; onError: (error: unknown) => void }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    window.alt.request<{ data: string }>("GET", `/images/${String(result.image_id)}`).then((r) => setSrc(r.data)).catch(() => setSrc(""));
+  }, [result.image_id]);
+  return (
+    <div className="result-view generated-image">
+      {src ? <img src={src} alt={String(result.prompt || "Imagem gerada")} /> : <p className="setting-note">Carregando a imagem…</p>}
+      <p className="setting-note">
+        {String(result.model || "")} · {String(result.device || "")} · {String(result.seconds ?? "")} s
+      </p>
+      <div className="button-row">
+        <button className="secondary" onClick={() => window.alt.revealFile(action.id).catch(onError)}>
+          <FolderOpen size={13} /> Mostrar na pasta
+        </button>
+        <button className="secondary" onClick={() => window.alt.exportFile(action.id).catch(onError)}>
+          <Download size={13} /> Exportar cópia
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function domain(url: string) {

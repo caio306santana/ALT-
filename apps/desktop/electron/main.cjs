@@ -101,6 +101,9 @@ const allowed = [
   ["GET", /^\/(windows\/candidates|windows\/grants|maintenance\/status)$/],
   ["DELETE", /^\/windows\/grants\/[a-f0-9-]+$/],
   ["GET", /^\/voice\/status$/],
+  ["GET", /^\/images\/(status|[a-f0-9-]{36})$/],
+  ["POST", /^\/images\/(install\/cancel|start|stop)$/],
+  ["PUT", /^\/images\/provider$/],
   ["POST", /^\/tools\/(remember|undo)\/[a-f0-9-]+$/],
   ["GET", /^\/approvals\/remembered$/],
   ["GET", /^\/memories\/suggestions$/],
@@ -748,6 +751,40 @@ ipcMain.handle("memory:export", async (event) => {
   if (chosen.canceled) return { saved: false };
   fs.writeFileSync(chosen.filePath, JSON.stringify(data, null, 2), "utf8");
   return { saved: true };
+});
+// Images: the local installer downloads several GB and the OpenAI key is a paid credential,
+// so both go through a native confirmation and never through the generic renderer allowlist.
+ipcMain.handle("images:install", async (event) => {
+  validate(event);
+  const status = await (await request("GET", "/images/status")).json();
+  const confirmation = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Baixar e instalar"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Instalar o gerador de imagens local?",
+    detail:
+      `Placa detectada: ${status.hardware.label} (${status.hardware.cpu_mode ? "modo processador, mais lento" : "usando a placa de vídeo"}).\n\n` +
+      "Serão baixados o ComfyUI oficial (cerca de 1,5 a 2 GB, do GitHub) e o modelo SD-Turbo (5,2 GB, da Hugging Face), ambos conferidos por SHA256. " +
+      `Ocupa cerca de ${status.local.needed_gb} GB. Nada é executado fora da pasta da ALT; o gerador só escuta neste PC.`,
+  });
+  if (confirmation.response !== 1) return status;
+  return (await request("POST", "/images/install")).json();
+});
+ipcMain.handle("credentials:openai", async (event, key) => {
+  validate(event);
+  if (typeof key !== "string" || key.length > 300) throw new Error("Chave inválida");
+  if (!key) return (await request("DELETE", "/credentials/openai")).json();
+  const confirmation = await dialog.showMessageBox(win, {
+    type: "question",
+    buttons: ["Cancelar", "Salvar no cofre"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Salvar a chave da API da OpenAI para gerar imagens?",
+    detail: "A chave fica protegida pelo Windows DPAPI. Cada imagem gerada pela API é cobrada na sua conta OpenAI, e a descrição da imagem sai do seu PC.",
+  });
+  if (confirmation.response !== 1) return (await request("GET", "/images/status")).json();
+  return (await request("PUT", "/credentials/openai", { key })).json();
 });
 ipcMain.handle("credentials:anthropic", async (event, key) => {
   validate(event);

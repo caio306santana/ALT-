@@ -76,6 +76,8 @@ declare global {
       revealFile(actionId: string): Promise<{ shown: boolean }>;
       exportFile(actionId: string): Promise<{ saved: boolean; path?: string }>;
       openSource(actionId: string, url: string): Promise<void>;
+      installImages(): Promise<unknown>;
+      setOpenAIKey(key: string): Promise<unknown>;
       importDocument(
         projectId: string,
       ): Promise<{ id: string; chunks?: number; name?: string; duplicate: boolean } | null>;
