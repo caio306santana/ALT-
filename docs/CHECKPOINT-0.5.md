@@ -1,6 +1,10 @@
 # Checkpoint da ALT 0.5
 
-Branch: `work/0.5`. Pasta de trabalho neste PC: `C:\Users\caios\Downloads\ALT--main\ALT-current`. A pasta irmã `ALT--main` é uma cópia antiga sem Git, e `C:\Users\caios\ALT-` ficou num commit antigo; não usar nenhuma das duas.
+**Estado atual (30/10/2026):** 0.5 integrada em `main`, base funcional `e84df62`, tag `v0.5.0` no mesmo commit. A release está publicada como prévia; ver [STATUS.md](STATUS.md) para a assinatura concluída no notebook e as pendências atuais.
+
+Conferência desta retomada no notebook: SHA256/tamanho do instalador iguais aos do GitHub; manifesto publicado validado com a chave pública original; feed real da 0.5 oferece a atualização assinada para 0.4.2 e não oferece atualização para 0.5.0. Três testes Node de feed/assinatura passaram. O instalador não foi executado e os testes funcionais/hardware do PC principal não foram repetidos aqui.
+
+**Origem deste registro:** desenvolvimento em `work/0.5` no PC principal. Pasta de trabalho naquele PC: `C:\Users\caios\Downloads\ALT--main\ALT-current`. A pasta irmã `ALT--main` é uma cópia antiga sem Git, e `C:\Users\caios\ALT-` ficou num commit antigo; não usar nenhuma das duas.
 
 Plano completo: [PLAN-0.5.md](PLAN-0.5.md). Referências estudadas, só como leitura, sem copiar código: OpenJarvis (Stanford) e Mark-LVI.
 
@@ -42,8 +46,8 @@ Plano completo: [PLAN-0.5.md](PLAN-0.5.md). Referências estudadas, só como lei
 
 - **GPU lenta desde 29/10 às 21:08:** travamento do driver de vídeo (LiveKernelEvent). O 4B caiu de 57 para cerca de 4,5 tok/s. Recomendado reiniciar o PC e medir de novo com `scripts/benchmark_latency.py --cases long`.
 - **Microfone:** o único microfone do Windows é o "WO Mic Device", que só funciona com o app WO Mic conectado. A voz precisa de um microfone de verdade ou do WO Mic ligado.
-- **Chave de atualização:** a chave privada (`.local/update-private-key.pem`) não está neste PC; provavelmente está no notebook onde as releases 0.1 a 0.3 foram geradas. Sem ela, o manifesto da 0.5 não é assinado. O script se recusa, de propósito, a trocar a identidade sozinho.
-- **Assinatura de código (Authenticode):** não dá para fazer daqui. Opções: Azure Trusted Signing (assinatura mensal) ou um certificado OV de uma autoridade certificadora.
+- **Manifesto de atualização — concluído em 30/10 no notebook:** chave original encontrada e conferida com a pública versionada. O instalador publicado foi baixado, conferido e o manifesto Ed25519 da 0.5 foi assinado, validado e anexado à release com o SHA256. A chave permanece fora do Git; não houve troca da identidade nem Authenticode.
+- **Assinatura de código (Authenticode):** continua pendente; precisa de certificado/serviço de assinatura confiável e configuração pelo responsável. Nenhuma contratação foi feita nesta rodada.
 - **iPhone:** o Tailscale ainda não está instalado neste PC; o passo a passo está em IPHONE.md.
 - Interface: os fluxos foram testados por API e testes. Falta uma passada manual na janela (clicar em tudo) com o app rodando.
 

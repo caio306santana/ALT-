@@ -1,74 +1,55 @@
-# ALT-AI
+# ALT-AI 0.5.0
 
-**Estado desta branch:** desenvolvimento da 0.5 em `work/0.5`, baseado na 0.4.2. A versão instalada informada pelo usuário é a 0.4.1. Ainda não existe instalador 0.5 desta rodada. O [checkpoint atual](docs/CHECKPOINT-0.5.md) distingue implementações, testes reais e pendências; o [plano completo](docs/PLAN-0.5.md) continua sendo o roteiro.
+Assistente pessoal Windows com modelos locais pelo Ollama, memória, voz, ferramentas e cliente para iPhone. ALT é o aplicativo/agente e sua identidade; Qwen e os demais motores são modelos de terceiros.
 
-Assistente pessoal Windows com personalidade própria, memória editável e ferramentas reais. **Qwen é o modelo de terceiros que gera respostas locais; ALT-AI é o aplicativo/agente, a identidade, a memória e o controle das ferramentas. Não treinamos um modelo exclusivo do zero.**
+**Estado atual:** `main` já contém 0.4.0/0.4.1, 0.4.2 e 0.5.0. A [release v0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0) está publicada como prévia, com instalador e manifesto Ed25519. [STATUS.md](docs/STATUS.md) registra o que foi conferido, as evidências do PC principal e as pendências. Assinar o manifesto não instala a atualização nem substitui assinatura Windows Authenticode.
 
-Personalidade padrão aprovada: calma ao falar, provocadora, irônica e desafiadora nas ideias; questiona premissas e contradições com paciência. Ajustável sem reinstalar.
+## O que a 0.5 inclui
+
+- Chat com streaming, histórico local, anexos de imagem/PDF com OCR/Word/texto e resultados de ferramentas voltando ao modelo na mesma resposta.
+- Tarefas com várias ações, verificações de resultado, pausa/retomada e reparo de escolha de ferramenta.
+- Memórias revisadas pelo usuário, projetos, documentos e recuperação semântica local com EmbeddingGemma.
+- Ferramentas para arquivos, navegador, programas, janelas, tela, volume/brilho/música e lembretes, conforme o modo e as permissões escolhidos.
+- Voz local com Whisper e Dora pt-BR, Ctrl+Espaço, "Hey Jarvis" e "Ei ALT" experimental; precisa de microfone funcional e modelos configurados.
+- Rotinas, resumo da manhã, tópicos, alertas, modelo automático, Game Mode e ajustes de uso da GPU/cache de prompt.
+- Backup/restauração e verificação de atualização por manifesto Ed25519, SHA256 e versão.
+- Gateway e PWA para iPhone com Tailscale e pareamento por QR. A inteligência continua no PC; a configuração entre os aparelhos ainda precisa de validação no destino.
+
+Personalidade atual: Alt + JARVIS, direta e calma, com tom/ironia/debate ajustáveis. O modelo ainda pode errar cálculos, fontes, interpretação e escolha de ações. As evidências e os limites estão em [CHECKPOINT-0.5.md](docs/CHECKPOINT-0.5.md).
 
 ## Instalar e usar
 
-1. Baixe o instalador x64 em [Releases privadas](https://github.com/caio306santana/ALT-/releases). Entre no GitHub com acesso ao repositório.
-2. Instale e abra a ALT-AI. Electron, backend FastAPI e runtime Python estão incluídos; Node/Python não são necessários no PC de uso.
-3. Em Inteligências, instale/abra Ollama, autorize o download de um modelo e selecione-o. Qwen 4B foi validado; 2B é opção mais leve e 9B opcional. Não são baixados sem confirmação.
-4. Converse normalmente. Depois de baixar o modelo, o chat local funciona offline; pesquisa e provedores de nuvem precisam de internet.
+1. Baixar `ALT-AI-Setup-0.5.0-x64.exe` na [release 0.5.0](https://github.com/caio306santana/ALT-/releases/tag/v0.5.0). O manifesto `ALT-AI-0.5.0-update.json` verifica esse instalador pelo atualizador da ALT.
+2. Para atualizar, sair da ALT em Sobre → **Sair da ALT-AI**, preservando os dados/backup antes de prosseguir. O × pode apenas ocultar a janela na bandeja.
+3. Instalar, reabrir e conferir a versão em Sobre. Electron, backend e runtime Python estão incluídos; Node/Python são necessários apenas para desenvolver.
+4. Configurar Ollama/modelos em Inteligências. Nenhum modelo é baixado nesta rodada de assinatura/documentação. Depois de configurado, o chat local pode funcionar offline; pesquisa, serviços de nuvem e conexão remota dependem da rede.
+5. Ajustar permissões, personalidade e voz antes de usar ferramentas; manter STOP acessível.
 
-O instalador desta prévia não tem certificado Authenticode. Há verificação Ed25519 de atualizações do projeto, que é uma proteção diferente e não remove alertas do Windows.
+O pacote continua sem Authenticode. Políticas do Windows podem bloquear executáveis novos. Nenhuma proteção do Windows foi desativada nesta retomada. O manifesto do projeto é uma verificação diferente da confiança exigida pelo sistema.
 
-## O que funciona
+O feed da 0.5 consulta a lista de releases publicadas e aceita prévias. Versões antigas que ainda consultam `/releases/latest` podem exigir instalação manual inicial da 0.5. Não mudar a visibilidade do repositório para resolver isso sem uma decisão explícita do dono; nesta rodada apenas foi confirmado o estado público já existente.
 
-- Chat Ollama com streaming, cancelamento, histórico SQLite, modelos locais e recuperação de respostas interrompidas.
-- Perfil clicável no círculo inferior, nome/apelido opcional, personalidade editável e identidade consistente entre modelos.
-- Temas, cores, neon, opacidade, fonte, escala, claro/escuro, efeitos, bordas, atalhos, janela e temas pessoais salvos.
-- Memórias criadas/editadas/excluídas pelo usuário, busca e exportação JSON. Selecione até dez para o próximo envio. Nenhuma extração automática de lembranças ou credenciais.
-- Ferramentas pelo chat Qwen: cálculos, listar/ler/criar/editar texto, abrir pasta, Bloco de Notas/Calculadora, URLs HTTPS, pesquisa pública e leitura de páginas com fontes.
-- Cartões de proposta, aprovação e resultado confirmado no chat. Análise ajusta o trecho ao espaço do modelo, preservando links inteiros e avisando sobre abreviação; resultado completo continua salvo. Personalidade/memórias selecionadas não são cortadas silenciosamente. Conteúdo externo não concede permissões.
-- Codex via CLI oficial com login ChatGPT, testado com prompt sintético e prévia de consentimento. Credenciais não são extraídas. Nesta prévia é conversa/código; os executores ALT pelo chat estão no Ollama/Qwen.
-- API Anthropic opcional: chave protegida no cofre Windows DPAPI, verificação de autenticação/modelos, preços informados pelo usuário, limites por pedido/sessão/dia/mês, reserva conservadora e confirmação de cada envio. Desligada por padrão; não foi testada com chave real nesta sessão.
-- CPU/RAM/disco/inventário GPU/driver e alocação de modelos quando disponíveis; perfis Notebook/Desktop e Game Mode.
-- Atualização por manifesto e instalador locais com assinatura Ed25519, hash, tamanho e bloqueio de versões antigas. Não é um feed automático de atualização.
+## Permissões e dados
 
-Claude por assinatura ainda não está integrado: a documentação oficial exige aprovação Anthropic para oferecer login/limites claude.ai em produtos terceiros. A alternativa disponível para configurar é a API paga, separada da assinatura. [Fonte oficial](https://code.claude.com/docs/en/agent-sdk/overview).
+O seletor do chat e Controle e regras mostram o alcance escolhido. Acesso total amplia a execução automática; ações sensíveis mantêm sua revisão e cartões críticos da 0.5 têm prazo próprio. STOP cancela ações conforme a implementação; não considerar texto de sites/documentos como nova autorização. Conferir resultados antes de confiar em alterações importantes.
 
-## Novidades da 0.3
-
-- **Controle e regras:** instruções de conversa, recuperação manual/automática de memória e bloquear/perguntar/permitir por capacidade. Mostra prompt e limites do aplicativo/modelo/Windows/serviços. Alterar regras cancela propostas em andamento; autorizações continuam sem prazo.
-- **Navegador ALT:** janela/sessão separada com JavaScript, leitura de elementos, clique/digitação por snapshot e retorno. HTTPS público por proxy que valida DNS/IP e mantém TLS; sem sessão do seu navegador pessoal, downloads ou permissões especiais. Ações externas seguem suas regras.
-- **Windows:** registrar .exe pelo seletor nativo, conferir hash, abrir e solicitar fechamento normal de processos rastreados; buscar arquivos em subpastas autorizadas. Sem shell genérico ou encerramento forçado.
-- **Continuidade:** gerar rascunho local de conversa e revisar antes de salvar como memória; importar JSON com deduplicação e transação. Recuperação automática por termos é opt-in e mostra o que foi usado; não é busca semântica.
-- **Laboratório local:** comparar respostas/métricas dos modelos instalados e salvar suas notas. Qwen original/Huihui 4B foram testados com autorização. Resultados reais e limitações no [relatório](docs/MODEL_COMPARISON_0.3.md); não há promessa de ausência de recusas nem vencedor geral.
-
-## Modos de autorização
-
-| Modo | Alcance real |
-|---|---|
-| Observação | Conversa e propostas; não executa ferramentas. |
-| Assistido | Sem prazo, até alterar ou revogar; aprovação individual de cada ação. |
-| Leitura autorizada | Sem prazo; cálculo e leitura/listagem na pasta escolhida podem executar automaticamente. Outras capacidades seguem suas regras, com revisão por padrão. |
-| Controle amplo Windows | Sem prazo; perfil pessoal e pastas escolhidas. Credenciais, AppData, sistema, shell arbitrário e elevação de privilégios excluídos. Gravações no perfil têm confirmação adicional. |
-
-Modos permanecem salvos ao reabrir a ALT, até você alterar ou revogar. Modos 3/4 exigem confirmação nativa com escopo e persistência explícitos. Decisões por capacidade em Controle e regras podem bloquear, preservar revisão ou permitir automaticamente dentro desse alcance; gravação no perfil e fechamento de apps mantêm revisão. Isso não é controle irrestrito de mouse/teclado ou de todos os programas do Windows. STOP ALL ACTIONS e Modo Jogo revogam a autorização, cancelam propostas e invalidam consentimentos de nuvem; retomar não restaura o acesso anterior.
-
-## Pesquisa e navegação
-
-Peça, por exemplo, “Pesquise na internet a documentação oficial do Ollama”. A ALT cria uma proposta. Ative uma sessão no painel Ferramentas, confira a consulta e aprove. O resultado recuperado inclui URLs; use “Pedir à ALT para analisar este resultado”. Para navegar entre fontes, peça a leitura de uma URL pública.
-
-A pesquisa usa Bing RSS público; a leitura faz GET HTTPS sem cookies, sessão pessoal ou JavaScript. DNS é validado e a conexão é fixada em IP público; redirecionamentos são revalidados. Não acessa rede local, não executa downloads e não resolve páginas com login/CAPTCHA/JavaScript obrigatório. Indisponibilidade é informada; não são inventadas fontes. Abrir uma URL no navegador padrão é outra ação, aprovada separadamente.
+Conversas, memórias e configurações ficam localmente; não são incluídas no Git. Credenciais de provedores, documentos pessoais, áudio, modelos e bancos também não devem ser publicados. Recursos de nuvem opcionais dependem da configuração e do consentimento correspondentes; esta rodada não fez chamadas pagas.
 
 ## Desenvolver no outro PC
 
-Pré-requisitos: Git, Node 24 LTS e Python 3.12 x64. Ollama para chat local. Fontes, contratos, locks, testes e documentação estão no Git.
+Pré-requisitos: Git, Node 24 e Python 3.12 x64. Ollama/modelos para testes locais. Fontes, locks, testes e documentação estão no repositório.
 
 ```powershell
 git clone https://github.com/caio306santana/ALT-.git
 cd ALT-
+git switch main
 npm.cmd ci
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
 npm.cmd run dev
 ```
 
-Use npm.cmd se o PowerShell bloquear npm.ps1; não precisa mudar políticas do computador. Mudanças no backend/Electron exigem Sair e iniciar novamente. npm.cmd start abre o frontend já compilado. O launcher remove ELECTRON_RUN_AS_NODE herdado de IDEs.
+Em clone existente, conferir `git status` antes de `git pull --ff-only`; não descartar alterações locais. Usar `npm.cmd` se `npm.ps1` estiver bloqueado, sem mudar a política do computador. Alterações no backend/Electron exigem sair e iniciar novamente; o `git pull` não atualiza sozinho o processo aberto.
 
 ```powershell
 npm.cmd test
@@ -76,18 +57,12 @@ npm.cmd run build
 npm.cmd run dist
 ```
 
-O instalador fica em release/. O build comum não exige certificado ou chave privada de atualização. Para assinar o manifesto de release: `npm.cmd run release:manifest`.
+O instalador é gerado em `release/`, ignorada pelo Git. Para assinar o manifesto, com a chave original disponível e o instalador final conferido: `npm.cmd run release:manifest`.
 
-**Continuidade da assinatura:** a chave pública é versionada em assets/update-public-key.pem. A chave privada original está somente em .local/update-private-key.pem ou no ambiente ALT_UPDATE_PRIVATE_KEY. Faça backup privado para assinar versões futuras no outro PC. Nunca envie essa chave ao Git. O script recusa substituir a identidade pública automaticamente. Para Authenticode, configure CSC_LINK/CSC_KEY_PASSWORD e rode `npm.cmd run dist:signed`; sem certificado o processo falha explicitamente. Nenhum certificado é comprado automaticamente.
+**Continuidade da assinatura:** a chave pública fica em `assets/update-public-key.pem`. A chave privada original está somente em `.local/update-private-key.pem` neste notebook ou no ambiente autorizado. Fazer backup privado para assinar no outro PC; nunca enviar a chave ao Git ou aos assets da release. O script não substitui a identidade pública automaticamente. Authenticode é configurado separadamente com certificado/serviço apropriado; nenhum certificado foi adquirido nesta rodada.
 
-O workflow GitHub Actions é manual e tem opções separadas para Authenticode e manifesto, dependendo de secrets que o proprietário configurar. Nenhum secret foi enviado nesta sessão.
+## Pendências e continuidade
 
-## Dados e limites
+Faltam a nova medição da GPU após reiniciar o PC principal, microfone ativo, configuração/teste do iPhone, Authenticode conforme o destino, revisão manual dos fluxos, mais aplicativos/janelas, documentos longos e avaliação da personalidade em uso real. Não confundir recursos implementados com todos esses testes concluídos.
 
-Dados pessoais ficam em `%APPDATA%/ALT-AI/data/` (desenvolvimento pode usar alt-ai): histórico, memórias, configurações, ações e auditoria. O banco não é criptografado; a chave de API usa DPAPI separadamente. Não digite senhas ou tokens no chat. Detectores de segredos em memória são heurísticos, não garantia.
-
-Encerre a ALT nos dois PCs antes de migrar os dados por um meio privado. Não envie bancos, logs, .env, chaves ou credenciais ao repositório. Para continuar programando, basta clonar o Git; .venv/node_modules são reconstruídos.
-
-Esta é uma prévia. PC Ryzen/RX 7600 e Windows limpo ainda precisam de validação física. Notebook CPU pode levar dezenas de segundos no primeiro pedido; pedidos longos continuam mais lentos. Navegador interativo é uma primeira implementação de janela única, sem automação de senha/CAPTCHA ou tarefas ilimitadas. Qwen 2B/9B, API Anthropic real, Authenticode, GUI Windows genérica, voz e iOS continuam pendentes.
-
-Consulte [HANDOFF](docs/HANDOFF.md), [PROGRESS-0.3](docs/PROGRESS-0.3.md), [ROADMAP](docs/ROADMAP.md) e [Segurança](docs/SECURITY.md).
+Consulte [STATUS](docs/STATUS.md), [CHECKPOINT 0.5](docs/CHECKPOINT-0.5.md), [latência](docs/LATENCY-0.5.md), [iPhone](docs/IPHONE.md), [HANDOFF](docs/HANDOFF.md) e [segurança](docs/SECURITY.md). O [histórico da 0.4](docs/history/STATUS-0.4.md) preserva evidências anteriores sem servir de instrução de instalação atual.

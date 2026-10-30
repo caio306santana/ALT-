@@ -1,3 +1,17 @@
+# Continuidade — ALT-AI 0.5.0
+
+Atualizado em 30/10/2026 neste notebook. **Começar por [STATUS.md](STATUS.md)** e [CHECKPOINT-0.5.md](CHECKPOINT-0.5.md). `main` já reúne 0.4.0/0.4.1, 0.4.2 e 0.5; base funcional `e84df62`, igual ao commit da tag `v0.5.0`.
+
+A release 0.5.0 está publicada como prévia. O instalador existente foi baixado e conferido pelo digest do GitHub (216.270.399 bytes, SHA256 `45fb094673c3e23d8d786f4de98fc410a88469993ebda08b4e74172b08ab6061`). A chave original foi encontrada neste notebook, corresponde à pública versionada e assinou o manifesto da 0.5; manifesto e SHA256 foram anexados à release. Não houve rebuild, instalação nem assinatura Windows Authenticode nesta rodada.
+
+O repositório foi encontrado público; o feed da 0.5 usa a lista de releases e inclui prévias. A visibilidade não foi alterada aqui. Não seguir as antigas instruções de publicação/merge/instalação abaixo como se ainda fossem pendentes. Os testes funcionais descritos no checkpoint foram feitos no PC principal; neste notebook foram conferidos Git, artefatos, assinatura e feed.
+
+Pendentes: nova medição da GPU no PC principal após reiniciar; microfone funcional; Tailscale/pareamento real do iPhone; Authenticode conforme a política do destino; revisão manual da janela, mais aplicativos/tarefas de janela, PDFs longos e personalidade. Nenhum desses testes de hardware foi repetido nesta rodada. Preservar a chave privada fora do Git e fazer backup privado.
+
+## Registro histórico das rodadas anteriores
+
+Os estados, versões instaladas, caminhos e bloqueios nas seções abaixo são históricos. O bloqueio 4551 da 0.3.1 não prova bloqueio atual da 0.5.
+
 # Continuidade — ALT-AI 0.3.1 / desenvolvimento 0.4
 
 **Ponto de retomada:** [STATUS.md](STATUS.md) reúne o que foi feito, evidências, estado do instalador e pendências das etapas 2–6. O checkpoint de documentação não representa novos testes ou instalação da atualização.
