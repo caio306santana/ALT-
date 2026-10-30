@@ -1,5 +1,7 @@
 # Continuidade — ALT-AI 0.5.1
 
+**Planejamento seguinte:** [PLANO-ACAO-DRAEL.md](PLANO-ACAO-DRAEL.md) contém sequência, dependências, critérios de aceitação e evidências exigidas por etapa. Foi criado após a 0.5.1 e ainda não executa as melhorias futuras. Começar pelas validações da base e pela rodada de capacidades/cartões/continuidade; não declarar uma etapa concluída apenas pela tela/API.
+
 Entrega de 30/10/2026 neste notebook: **0.5.1 publicada como prévia**, tag `750e2a0`, instalador de 219.521.408 bytes, SHA256 `3aaf630aacd05d722ca008fc045d2ec006488ad6248fe0c154f604d927434092`. Manifesto original Ed25519, digest GitHub e feed público conferidos. Código/renderer/backend empacotado aprovados (233 Python, 5 Node, 1 ignorado). [Validação e próximos passos](RELEASE-0.5.1.md).
 
 Automático usa o tokenizer real, dados auxiliares têm orçamento, ferramentas formatadas são reservadas. Há ações diretas exatas para Notepad/Calculadora, catálogo Hermes 3B/8B (pesos deixados para depois pelo dono), tokenizers Hermes fixados e encerramento de trabalhadores antes do banco. Resposta real Huihui confirmada no Notebook, mas lenta sob carga; não é benchmark. Não afirmar Hermes real testado, abertura real de janela ou atualização instalada. Próximo: instalar/conferir versão, testar a janela; baixar Hermes quando escolhido; medir PC principal e validar hardware/iPhone conforme STATUS. A seção abaixo é o registro da release base 0.5.0, preservada sem alterações.

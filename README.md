@@ -67,6 +67,8 @@ O instalador é gerado em `release/`, ignorada pelo Git. Para assinar o manifest
 
 O [estudo do Drael](docs/DRAEL_REVIEW.md) compara recursos públicos com a ALT, registra uma melhoria de pesquisa aplicada após a release 0.5.0 e propõe os próximos ajustes. Nenhum modelo ou código privado do serviço foi extraído.
 
+O [plano de ação das melhorias](docs/PLANO-ACAO-DRAEL.md) define ordem, dependências e critérios de conclusão para capacidades, resultados, contexto, desempenho, ferramentas, execução isolada e cofre. É planejamento; as etapas futuras ainda não foram implementadas.
+
 Faltam a nova medição da GPU após reiniciar o PC principal, microfone ativo, configuração/teste do iPhone, Authenticode conforme o destino, revisão manual dos fluxos, mais aplicativos/janelas, documentos longos e avaliação da personalidade em uso real. Não confundir recursos implementados com todos esses testes concluídos.
 
 Consulte [STATUS](docs/STATUS.md), [CHECKPOINT 0.5](docs/CHECKPOINT-0.5.md), [latência](docs/LATENCY-0.5.md), [iPhone](docs/IPHONE.md), [HANDOFF](docs/HANDOFF.md) e [segurança](docs/SECURITY.md). O [histórico da 0.4](docs/history/STATUS-0.4.md) preserva evidências anteriores sem servir de instrução de instalação atual.

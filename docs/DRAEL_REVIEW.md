@@ -1,5 +1,7 @@
 # Drael como referência para a ALT
 
+**Atualização da entrega:** a distinção entre pesquisa vazia e erro técnico abaixo já está no instalador **0.5.1**. As observações sobre “posterior à 0.5.0” descrevem o momento do estudo original. O [plano de ação atual](PLANO-ACAO-DRAEL.md) separa o que foi entregue das melhorias futuras, com dependências e critérios de conclusão.
+
 Análise em 30/10/2026 da página solicitada, `https://drael.sh/pt`, da documentação oficial e dos arquivos públicos que `/pt` e `/chat` carregam. Objetivo: identificar melhorias para a ALT, preservando sua identidade e o processamento local.
 
 ## Escopo e confiança

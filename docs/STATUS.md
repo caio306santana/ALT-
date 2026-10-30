@@ -35,6 +35,8 @@ O checkpoint registra testes automatizados, testes reais de ferramentas no PC pr
 
 ## Pendências reais
 
+As melhorias inspiradas no Drael têm um [plano de ação próprio](PLANO-ACAO-DRAEL.md), preparado em 30/10/2026: capacidades, cartões, continuidade/contexto, modos rápido/aprofundado, catálogo de ferramentas, execução isolada e cofre opcional. São etapas planejadas; este registro não representa implementação dessas entregas.
+
 | Pendência | Próxima ação / condição para concluir |
 | --- | --- |
 | GPU do PC principal | Depois de reiniciar o PC em momento apropriado, repetir `scripts/benchmark_latency.py --cases long` e comparar com [LATENCY-0.5.md](LATENCY-0.5.md). O checkpoint relata queda de ~57 para ~4,5 tok/s após eventos do driver; não há nova medição desse PC neste notebook. |
