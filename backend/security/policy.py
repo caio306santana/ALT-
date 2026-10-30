@@ -21,6 +21,7 @@ class Capabilities(BaseModel):
     shell:Decision='ask'
     screen:Decision='ask'
     reminders:Decision='ask'
+    memory:Decision='allow'
 
 class OwnerPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -39,7 +40,7 @@ CAPABILITY = {
     'windows_read':'windows_read','windows_invoke':'windows_control','windows_type':'windows_control','windows_keys':'windows_control',
     'download_file':'downloads','run_command':'shell','undo':'files_write',
     'screen_look':'screen','system_volume':'apps','system_brightness':'apps','media_key':'apps',
-    'reminder_create':'reminders','reminder_list':'reminders','reminder_cancel':'reminders',
+    'reminder_create':'reminders','reminder_list':'reminders','reminder_cancel':'reminders','memory_recall':'memory',
 }
 
 class Policy:

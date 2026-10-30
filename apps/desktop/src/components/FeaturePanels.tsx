@@ -327,6 +327,43 @@ export function AdvancedAppearance({
   );
 }
 
+type Suggestion = { id: string; fact: string; flagged: string; created: string };
+// Facts the ALT noticed in conversations: nothing becomes a memory until the owner approves it.
+function MemorySuggestionsPanel({ notify, onError, onSaved }: Feedback & { onSaved: () => void }) {
+  const [items, setItems] = useState<Suggestion[]>([]);
+  const [enabled, setEnabled] = useState(false);
+  const load = () => api<Suggestion[]>("GET", "/memories/suggestions").then(setItems).catch(onError);
+  useEffect(() => {
+    load();
+    api<{ memory_suggestions?: boolean }>("GET", "/settings").then((s) => setEnabled(!!s.memory_suggestions)).catch(() => {});
+  }, []);
+  async function toggle() {
+    try {
+      const settings = await api<Record<string, unknown>>("GET", "/settings");
+      await api("PUT", "/settings", { ...settings, memory_suggestions: !enabled });
+      setEnabled(!enabled);
+    } catch (e) { onError(e); }
+  }
+  return (
+    <section className="memory-suggestions">
+      <div className="setting-heading">Aprendidas nas conversas</div>
+      <label className="toggle-line">
+        <input type="checkbox" checked={enabled} onChange={toggle} />
+        <span>Sugerir fatos sobre mim depois das conversas (eu aprovo cada um)</span>
+      </label>
+      {items.length === 0 ? <p className="setting-note">Nenhuma sugestão pendente.</p> : items.map((item) => (
+        <div key={item.id} className="suggestion-row">
+          <span>{item.fact}{item.flagged && <small className="voice-error"> · {item.flagged}</small>}</span>
+          <button type="button" className="secondary" onClick={async () => {
+            try { await api("POST", `/memories/suggestions/${item.id}/approve`); notify("Memória salva."); onSaved(); load(); } catch (e) { onError(e); }
+          }}>Guardar</button>
+          <button type="button" className="secondary" onClick={() => api("DELETE", `/memories/suggestions/${item.id}`).then(load).catch(onError)}>Descartar</button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export function MemoryPanel({
   selected,
   onSelect,
@@ -390,6 +427,7 @@ export function MemoryPanel({
   }
   return (
     <div className="page-scroll">
+      <MemorySuggestionsPanel notify={notify} onError={onError} onSaved={() => refresh().catch(onError)} />
       <ProjectsPanel
         conversationId={conversationId}
         model={model}

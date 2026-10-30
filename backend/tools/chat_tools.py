@@ -17,6 +17,7 @@ KEY_WORDS=('atalho','tecla','aperte','pressione','ctrl','alt+','fecha a aba','fe
 SCREEN_WORDS=('minha tela','na tela','da tela','olha isso','olhe isso','o que tem aqui','o que aparece','print da tela','lê isso aqui','leia isso aqui','o que estou vendo')
 VOLUME_WORDS=('volume','som ','mudo','silencia','desmut','aumenta o som','abaixa o som','mais alto','mais baixo')
 MEDIA_WORDS=('pausa','pause','despausa','próxima música','proxima musica','música anterior','musica anterior','pula a música','pula essa','volta a música','toca a música','continua a música')
+MEMORY_WORDS=('lembra','lembrar','você sabe','voce sabe','vc sabe','sobre mim','o que eu te disse','o que eu falei','anotou','minhas preferências','meu aniversário')
 REMINDER_WORDS=('lembre','lembrete','me avise','me avisa','me lembra','alarme','avisa às','avise às')
 
 # Stable set for modes 2-4, core first and capped at 14 like Mark LVI's local budget. The same list every
@@ -35,7 +36,7 @@ BRIEF={
     'screen_look':'captura a tela do usuário para você ver (sem argumentos)','system_volume':'muda o volume (value: 0-100, +10, -10, mudo, desmutar)',
     'system_brightness':'muda o brilho do monitor (value: 0-100, +10, -10)','media_key':'tocar/pausar ou trocar de música (value: playpause, next, previous)',
     'reminder_create':'cria um lembrete que toca mesmo com a ALT fechada (content: texto, value: 2026-10-30T15:00 ou "em 10 minutos")',
-    'reminder_list':'lista os lembretes','reminder_cancel':'cancela um lembrete (target: id ou parte do texto)',
+    'reminder_list':'lista os lembretes','memory_recall':'procura nas memórias salvas do usuário (query)','reminder_cancel':'cancela um lembrete (target: id ou parte do texto)',
     'calculate':'calcula uma expressão (expression)','undo':'desfaz a última gravação ou download da ALT (target vazio = última)','browser_open':'abre site no navegador ALT (url)','browser_read':'lê a página do navegador ALT',
     'browser_back':'volta uma página no navegador ALT','browser_click':'clica no navegador ALT (target, snapshot_id)',
     'browser_type':'digita no navegador ALT (target, snapshot_id, content)',
@@ -88,6 +89,7 @@ def route(content,status):
     if level>=2 and any(word in text+' ' for word in VOLUME_WORDS):names+=['system_volume']
     if level>=2 and 'brilho' in text:names+=['system_brightness']
     if level>=2 and any(word in text for word in MEDIA_WORDS):names+=['media_key']
+    if any(word in text for word in MEMORY_WORDS):names+=['memory_recall']
     if level>=2 and any(word in text for word in REMINDER_WORDS):
         names+=['reminder_create','reminder_list']
         if any(word in text for word in ('cancel','apaga','remove','tira o lembrete')):names+=['reminder_cancel']

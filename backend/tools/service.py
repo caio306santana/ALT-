@@ -38,7 +38,7 @@ SENSITIVE={'.env','.ssh','.codex','.claude','.aws','.azure','.git','credentials'
 class ToolProposal(BaseModel):
     model_config=ConfigDict(extra='forbid')
     tool:Literal['calculate','list_files','find_files','read_text','write_text','open_folder','open_app','close_app','open_url','web_search','read_webpage','browser_open','browser_read','browser_back','browser_click','browser_type','windows_read','windows_invoke','windows_type','windows_keys','download_file','run_command','undo',
-        'screen_look','system_volume','system_brightness','media_key','reminder_create','reminder_list','reminder_cancel']
+        'screen_look','system_volume','system_brightness','media_key','reminder_create','reminder_list','reminder_cancel','memory_recall']
     scope_id:str=Field(default='',max_length=64)
     path:str=Field(default='',max_length=500)
     content:str=Field(default='',max_length=30000)
@@ -91,7 +91,7 @@ class ToolService:
         self.policy=Policy(store);self.desktop=desktop;self.launched={};self.launch_lock=threading.RLock()
         self.gui=WindowsUI(store);self.catalog=AppCatalog()
         self.remembered=RememberedApprovals(store);self.undo=Undo(store);self.taint={}
-        self.reminders=Reminders(store,data_dir);self.captures={}
+        self.reminders=Reminders(store,data_dir);self.captures={};self.memory_search=lambda query:[]
         self.setters={'system_volume':system.set_volume_state,'system_brightness':system.set_brightness}
         self.level=1;self.pending={};self.previews={};self.critical_confirmed=set();self.auto_scopes=set()
         self.workspace=(data_dir/'workspace').resolve();self.workspace.mkdir(parents=True,exist_ok=True)
@@ -152,6 +152,8 @@ class ToolService:
     def can_auto(self,body,conversation_id=''):
         level=self.status()['level']
         decision=self.policy.decision(body.tool)
+        # Reading the owner's own memories and reminders is part of conversation, at any level.
+        if body.tool in ('memory_recall','reminder_list'):return decision!='deny'
         if level<2 or decision=='deny':return False
         # A command is free-form code: it always waits for the owner's approval card.
         if body.tool=='run_command':return False
@@ -325,6 +327,9 @@ class ToolService:
             if not body.content.strip():raise ValueError('Diga o texto do lembrete.')
             preview.update({'due':due.isoformat(),'text':body.content.strip()[:300]})
         elif body.tool=='reminder_cancel':preview['target']=body.target or body.content
+        elif body.tool=='memory_recall':
+            if not body.query.strip():raise ValueError('Diga o que procurar na memória.')
+            preview['query']=body.query
         elif body.tool=='undo':
             target=body.target or self.undo.last()
             if not target or not self.undo.available(target):raise ValueError('Não há ação recente da ALT para desfazer.')
@@ -409,7 +414,8 @@ class ToolService:
         return result
 
     async def approve(self,aid):
-        if self.status()['level']<2:raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
+        pending=self.pending.get(aid)
+        if self.status()['level']<2 and (not pending or pending[1]['tool'] not in ('memory_recall','reminder_list')):raise PermissionError('Ative uma sessão autorizada para aprovar esta ação.')
         preview=self.describe(aid)
         self.policy.check(self.pending[aid][1]['tool'])
         if preview.get('critical') and aid not in self.critical_confirmed:raise PermissionError('Gravação ampla exige confirmação adicional na janela nativa.')
@@ -519,6 +525,9 @@ class ToolService:
         if body.tool=='media_key':return system.media_key(body.value)
         if body.tool=='reminder_create':return self.reminders.create(body.content,body.value)
         if body.tool=='reminder_list':return self.reminders.list()
+        if body.tool=='memory_recall':
+            found=self.memory_search(body.query)[:5]
+            return outcome('done' if found else 'unverified',memories=[{'title':m['title'],'content':m['content'][:600]} for m in found],notice='' if found else 'Nada salvo sobre isso.')
         if body.tool=='reminder_cancel':return self.reminders.cancel(body.target or body.content)
         if body.tool=='open_app':
             if os.name!='nt':raise ValueError('Aplicativos disponíveis no Windows.')

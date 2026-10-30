@@ -565,3 +565,24 @@ body.full-access .composer {
   min-width: 120px;
   height: 10px;
 }
+
+/* Facts waiting for review in Memórias. */
+.memory-suggestions {
+  margin-bottom: 18px;
+}
+.suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #ffffff12;
+}
+.suggestion-row > span {
+  flex: 1;
+}
+.toggle-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
