@@ -9,7 +9,7 @@ Plano completo: [PLAN-0.5.md](PLAN-0.5.md). Referências estudadas, só como lei
 | Etapa | O que faz |
 | --- | --- |
 | 0 — fechar o aberto | Anexos (imagem, PDF com OCR, Word, texto), voz pelo Whisper, atalhos de teclado nas janelas, Claude com ferramentas, Game Mode pela CPU, rodada de correção de ferramenta. |
-| 0.5 — velocidade | Diagnóstico em [LATENCY-0.5.md](LATENCY-0.5.md); velocidade de referência por modelo com aviso; placa ocupada leva ao modo leve; instrução de sistema fixa e contexto do turno no fim; ferramentas fixas (cache reaproveitado, 10/10 no smoke); pré-carga, 30 min carregado, embeddings na CPU, resumo só com o chat parado, até 1024 tokens; interface em lotes de 50 ms. |
+| 0.5 — velocidade | Diagnóstico em [LATENCY-0.5.md](LATENCY-0.5.md); velocidade de referência por modelo com aviso; placa ocupada leva ao modo leve; instrução de sistema fixa e contexto do turno no fim; ferramentas fixas (cache reaproveitado, 16/16 no smoke); pré-carga, 30 min carregado, embeddings na CPU, resumo só com o chat parado, até 1024 tokens; interface em lotes de 50 ms. |
 | 1 — confiabilidade | Resultado com estado (feito, não confirmado, falhou, pergunta); abrir traz para a frente o que já está aberto e confirma o processo; fechar pontua, pergunta em empate e nunca mira a ALT nem o Ollama; conteúdo de fora entre marcadores neutralizados; `/no_think` ignorado; trava contra loop. |
 | 2 — permissões | "Sempre permitir" para programas, sites e pastas; conversa protegida depois de ler segredo, CPF, cartão ou tokens de chat; desfazer gravação e download; cartões críticos expiram em 90 s; exemplos aprendidos (desligado). |
 | 3 — ferramentas | Ver a tela e responder sobre ela; volume, brilho e música com leitura antes e depois; lembretes pelo Agendador do Windows (testado de verdade). |
@@ -31,7 +31,12 @@ Plano completo: [PLAN-0.5.md](PLAN-0.5.md). Referências estudadas, só como lei
   - "Hey Jarvis" detectado em áudio sintético;
   - clima do Open-Meteo;
   - gateway do celular servindo a PWA e recusando acesso sem pareamento.
-- Smoke real de ferramentas, Qwen 3.5 4B: `docs/full-access-smoke*.json`.
+- Smoke real de ferramentas, Qwen 3.5 4B com ferramentas fixas: **16/16** (`docs/full-access-smoke-stable.json`). As 14 ações foram certas, e as 2 conversas ficaram curtas e sem chamar ferramenta. Para chegar lá, entraram três reparos:
+  - ferramenta chamada pelo próprio nome;
+  - "abre o youtube" quando o modelo abre só o navegador;
+  - lista de janelas só quando uma ferramenta de janela é provável.
+
+  Cerca de 10 s por ação por causa da GPU degradada (veja abaixo).
 
 ## Achados e pendências que dependem do usuário
 
