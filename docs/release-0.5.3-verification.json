@@ -1,0 +1,23 @@
+{
+  "version": "0.5.3",
+  "built_source": "785b81060de1d88809e40f6a1912df6b065014a9",
+  "installer": {
+    "version": "0.5.3",
+    "file": "ALT-AI-Setup-0.5.3-x64.exe",
+    "sha256": "8d27a10214544e00083defb78a8997ff097f0605c82c0925fad4bd5f4a0b39d3",
+    "size": 219547803
+  },
+  "public_release": "https://github.com/caio306santana/ALT-/releases/tag/v0.5.3",
+  "prerelease": true,
+  "draft": false,
+  "published_on_owner_request": "Owner asked to publish despite the blocked packaged smoke; release notes carry the warning.",
+  "github_digest": "matches local installer",
+  "published_manifest_signature": "downloaded manifest verified against the local installer with the original public key",
+  "updater_from_0_5_2": "offers 0.5.3, downloadable",
+  "updater_from_0_5_3": "no newer release",
+  "asar_scan": "4712 files; no .local, private key, database, .env or .venv; only assets/update-public-key.pem",
+  "packaged_backend": "NOT RUN: Windows Smart App Control blocked the new unsigned alt-backend.exe (WinError 4551) twice on this notebook; protection not changed",
+  "rollback": "Reinstalling 0.5.2 keeps data: schema version unchanged; the new conversation_summaries table is created on demand and ignored by 0.5.2",
+  "tests": {"python_passed": 254, "python_skipped": 1, "node_passed": 5, "renderer": "synthetic UI smoke passed"},
+  "authenticode": false
+}

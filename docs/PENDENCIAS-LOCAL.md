@@ -7,7 +7,7 @@ Atualizado em **30/10/2026**. Decisão mais recente do dono: **manter a ALT loca
 | Item | Estado |
 | --- | --- |
 | Release instalável publicada | **0.5.2** (prévia, [RELEASE-0.5.2.md](RELEASE-0.5.2.md)); 0.5.1 preservada. Instalar/atualizar no destino ainda precisa de confirmação. |
-| Pacote 0.5.3 (etapas 2 e 3) | Gerado do commit `785b810`, **não publicado**: o Controle Inteligente de Aplicativos bloqueou o backend novo sem assinatura (WinError 4551). Ver [CHECKPOINT-0.5.3.md](CHECKPOINT-0.5.3.md). |
+| Pacote 0.5.3 (etapas 2 e 3) | [Publicado como prévia](https://github.com/caio306santana/ALT-/releases/tag/v0.5.3) a pedido do dono, a partir do commit `785b810`, com aviso: o Controle Inteligente de Aplicativos bloqueou o backend novo sem assinatura (WinError 4551). Ver [CHECKPOINT-0.5.3.md](CHECKPOINT-0.5.3.md). |
 | Código desta rodada | **0.5.2 em desenvolvimento**, com capacidades reais dos modelos e melhorias do gateway/PWA. Código compilado/testado, ainda sem instalador/release 0.5.2. |
 | Etapa 1 do plano Drael | Implementada no código: metadados, contexto declarado/ativo, atualização de cache e aplicação das capacidades ao envio. Testes de API/UI e metadados reais registrados. Validação do pacote final/instalação permanece aberta. |
 | Hermes | Hermes 3B foi encontrado instalado nesta rodada; **não foi baixado por este trabalho**. Metadados reais conferidos. Isso não substitui uma avaliação de suas respostas/velocidade. |

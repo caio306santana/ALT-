@@ -71,7 +71,21 @@ Arquivos sintéticos com um fato na primeira página ("AURORA-17") e outro na ú
   - `test_continuity_summaries.py`: rótulo, segredo, desligar e cancelamento;
   - cobertura de anexo em `test_attachments.py`.
 
-## Pacote 0.5.3 — gerado, NÃO publicado
+## Release 0.5.3 — publicada a pedido do dono, com aviso
+
+Depois do registro abaixo, o dono pediu para publicar mesmo assim. A [v0.5.3](https://github.com/caio306santana/ALT-/releases/tag/v0.5.3) saiu como prévia, com tag no commit `785b810`.
+
+**Verificado:**
+- instalador de 219.547.803 bytes, SHA256 `8d27a102…39d3`, igual ao digest do GitHub;
+- manifesto Ed25519 conferido depois de baixar da release;
+- feed: a 0.5.2 recebe a oferta da 0.5.3, e a 0.5.3 não recebe nada;
+- ASAR sem arquivos proibidos.
+
+**Não verificado:** o backend empacotado, bloqueado neste notebook.
+
+As notas da release avisam do bloqueio e de como voltar para a 0.5.2 sem perder dados. Registro: [release-0.5.3-verification.json](release-0.5.3-verification.json).
+
+## Pacote 0.5.3 — situação antes do pedido de publicação
 
 O instalador foi gerado a partir do commit limpo `785b810` (`release/ALT-AI-Setup-0.5.3-x64.exe`, local, fora do Git).
 
