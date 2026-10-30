@@ -86,6 +86,11 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
         tools.pending.pop(aid,None);store.write("UPDATE actions SET status='rejected' WHERE id=? AND status='proposed'",(aid,));return {'ok':True}
     @router.get('/tools/history')
     async def tool_history():return tools.history()
+    # Main-process only (not in the renderer allowlist): reveal/export a file the ALT produced.
+    @router.get('/tools/artifact/{aid}')
+    async def tool_artifact(aid:str):return tools.artifact(aid)
+    @router.get('/tools/sources/{aid}')
+    async def tool_sources(aid:str):return tools.sources(aid)
     @router.get('/conversations/{cid}/actions')
     async def conversation_actions(cid:str):return tools.conversation_actions(cid)
     @router.get('/audit')

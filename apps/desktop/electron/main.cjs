@@ -527,6 +527,37 @@ ipcMain.handle("backup:export", async (event) => {
   fs.writeFileSync(chosen.filePath, data);
   return { saved: true, path: chosen.filePath, bytes: data.length };
 });
+// Result cards: the file or link comes from the stored action (backend), never from the renderer.
+const ACTION_ID = /^[a-f0-9-]{36}$/;
+async function producedFile(actionId) {
+  if (!ACTION_ID.test(String(actionId))) throw new Error("Ação inválida");
+  return (await request("GET", "/tools/artifact/" + actionId)).json();
+}
+ipcMain.handle("file:reveal", async (event, actionId) => {
+  validate(event);
+  const file = await producedFile(actionId);
+  shell.showItemInFolder(file.path);
+  return { shown: true };
+});
+ipcMain.handle("file:export", async (event, actionId) => {
+  validate(event);
+  const file = await producedFile(actionId);
+  const chosen = await dialog.showSaveDialog(win, {
+    title: "Exportar cópia",
+    defaultPath: path.join(app.getPath("documents"), file.name),
+  });
+  if (chosen.canceled || !chosen.filePath) return { saved: false };
+  if (path.resolve(chosen.filePath) === path.resolve(file.path)) return { saved: false };
+  fs.copyFileSync(file.path, chosen.filePath);
+  return { saved: true, path: chosen.filePath };
+});
+ipcMain.handle("source:open", async (event, actionId, url) => {
+  validate(event);
+  if (!ACTION_ID.test(String(actionId))) throw new Error("Ação inválida");
+  const { urls } = await (await request("GET", "/tools/sources/" + actionId)).json();
+  if (typeof url !== "string" || !urls.includes(url)) throw new Error("Este link não veio desta pesquisa.");
+  return shell.openExternal(url);
+});
 const IMAGE_FILES = ["png", "jpg", "jpeg", "webp", "gif", "bmp"];
 const DOCUMENT_FILES = ["pdf", "docx", "txt", "md", "csv", "json", "log"];
 // The native picker returns bytes; the renderer converts images to JPEG (max 1344 px) and uploads.

@@ -46,4 +46,7 @@ contextBridge.exposeInMainWorld("alt", {
   transcribe: (pcm) => ipcRenderer.invoke("voice:transcribe", pcm),
   chooseFiles: () => ipcRenderer.invoke("chat:choose-files"),
   attach: (name, data) => ipcRenderer.invoke("chat:attach", name, data),
+  revealFile: (actionId) => ipcRenderer.invoke("file:reveal", actionId),
+  exportFile: (actionId) => ipcRenderer.invoke("file:export", actionId),
+  openSource: (actionId, url) => ipcRenderer.invoke("source:open", actionId, url),
 });

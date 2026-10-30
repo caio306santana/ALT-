@@ -87,6 +87,23 @@ app.whenReady().then(async()=>{
   assert.equal(await js(`document.querySelector('button[aria-label="Enviar mensagem"]').disabled`),false);
   await js(`document.querySelector('button[aria-label="Enviar mensagem"]').click()`);
   await until(`window.chatFixture.calls()===3`);
+  // Result cards: badges follow the observed outcome, sources and files open only through the bridge.
+  await js(`document.querySelector('.app').classList.remove('light');window.chatFixture.showCards();document.querySelector('.sidebar .side-item.recent').click()`);
+  await until(`!!document.querySelector('.source-list')`);
+  const badges=await js(`Array.from(document.querySelectorAll('.chat-action-card .small-tag')).map(t=>t.textContent)`);
+  assert.deepEqual(badges,['Concluído','Sem resultados','Concluído','Não confirmado','Falhou','Interrompida']);
+  assert.equal(await js(`document.body.textContent.includes('CONFIRMADO')`),false,'No card may claim a confirmation it did not observe');
+  assert.ok(await js(`document.querySelector('.source-list').textContent.includes('example.com') && document.querySelector('.source-list').textContent.includes('example.org')`));
+  await js(`document.querySelector('.source-list .link-button').click()`);
+  await js(`Array.from(document.querySelectorAll('.file-result button')).find(b=>b.textContent.includes('Mostrar na pasta')).click()`);
+  await until(`window.chatFixture.opened().length===2`);
+  assert.deepEqual(await js(`window.chatFixture.opened()`),[['source','00000000-0000-0000-0000-00000000c001','https://example.com/tempo/curitiba'],['reveal','00000000-0000-0000-0000-00000000c003']]);
+  assert.ok(await js(`document.body.textContent.includes('Código de saída 1') && document.body.textContent.includes('Dados técnicos')`));
+  await js(`document.querySelector('.source-list').scrollIntoView({block:'start'})`);await shot('ui-cards.png');
+  win.setContentSize(460,860);await delay(300);
+  assert.ok(await js(`Array.from(document.querySelectorAll('.chat-action-card')).every(card=>card.scrollWidth<=card.clientWidth+1)`),'Cards must not overflow a narrow window');
+  await shot('ui-cards-narrow.png');
+  console.log(JSON.stringify({result_cards:'ok',badges,narrow_window_no_overflow:true}));
   console.log(JSON.stringify({chat_ui:'ok',sidebar_views:true,permission_label_matches_mode:true,approval_mode_change:true,draft_restored_on_transport_rejection:true,oversize_shown_before_send:true,settings_closed_on_start:true,direct_launch_skips_model_routing:true,hermes_3b_8b_catalog:true,screenshots:'synthetic hidden renderer only'}));
  }finally{win.destroy();app.quit();}
 }).catch(error=>{console.error(error);app.exit(1);});

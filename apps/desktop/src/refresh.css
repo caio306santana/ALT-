@@ -618,3 +618,69 @@ body.full-access .composer {
 .pairing p {
   flex: 1 1 220px;
 }
+
+/* Result cards (Drael plan, stage 2): the badge follows what the tool observed. */
+.app .small-tag.outcome-ok {
+  color: #3ddc97;
+  border-color: color-mix(in srgb, #3ddc97 45%, transparent);
+}
+.app .small-tag.outcome-warn {
+  color: #ffc35c;
+  border-color: color-mix(in srgb, #ffc35c 45%, transparent);
+}
+.app .small-tag.outcome-bad {
+  color: #ff6b84;
+  border-color: color-mix(in srgb, #ff6b84 45%, transparent);
+}
+.app .small-tag.outcome-muted {
+  color: var(--text-muted);
+}
+.result-view {
+  margin: 8px 0;
+  min-width: 0;
+}
+.source-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+.source-list li p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--secondary, #00c9f5);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.source-domain {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.file-result .setting-note {
+  overflow-wrap: anywhere;
+}
+.light .small-tag.outcome-ok {
+  color: #0f8a5f;
+}
+.light .small-tag.outcome-warn {
+  color: #a26100;
+}
+.chat-action-card .button-row {
+  flex-wrap: wrap;
+}

@@ -432,7 +432,7 @@ class ToolService:
         self.store.write('INSERT INTO actions VALUES(?,?,?,?,?,?,?)',(aid,body.tool,json.dumps(payload), 'proposed',None,now(),now()))
         self.store.write('INSERT INTO action_context VALUES(?,?)',(aid,conversation_id))
         self.store.write('INSERT INTO action_reviews VALUES(?,?,?)',(aid,json.dumps(preview,ensure_ascii=False),fingerprint))
-        return {'id':aid,'preview':preview,'expires_in':None,'requires_approval':True}
+        return {'id':aid,'preview':preview,'expires_in':90 if preview['critical'] else None,'requires_approval':True}
 
     def renew(self,aid):
         rows=self.store.rows('SELECT payload,status FROM actions WHERE id=?',(aid,))
@@ -718,6 +718,27 @@ class ToolService:
 
     def history(self):
         return self.store.rows('SELECT id,tool,status,result,created,updated FROM actions ORDER BY created DESC LIMIT 100')
+
+    def artifact(self,aid):
+        """A file the ALT itself wrote or downloaded, for "show in folder" or "export a copy".
+        The path comes from the stored action, never from the renderer, and must still be a regular file."""
+        rows=self.store.rows("SELECT tool,result FROM actions WHERE id=? AND status='complete'",(aid,))
+        if not rows or rows[0]['tool'] not in ('write_text','download_file'):raise ValueError('Arquivo não disponível para esta ação.')
+        try:result=json.loads(rows[0]['result'] or '{}')
+        except ValueError:result={}
+        if not isinstance(result,dict) or not result.get('path'):raise ValueError('Arquivo não disponível para esta ação.')
+        path=Path(result['path'])
+        if path.is_symlink() or not path.is_file():raise ValueError('O arquivo foi movido ou apagado desde a ação.')
+        return {'path':str(path.resolve()),'name':path.name,'bytes':path.stat().st_size,'sha256':result.get('sha256')}
+
+    def sources(self,aid):
+        """HTTPS links a completed search or page read returned; a source link opens only if it is one of them."""
+        rows=self.store.rows("SELECT tool,result FROM actions WHERE id=? AND status='complete'",(aid,))
+        if not rows or rows[0]['tool'] not in ('web_search','read_webpage'):raise ValueError('Fontes não disponíveis para esta ação.')
+        try:result=json.loads(rows[0]['result'] or '{}')
+        except ValueError:result={}
+        urls=[row.get('url') for row in result.get('results',[]) if isinstance(row,dict)] if rows[0]['tool']=='web_search' else [result.get('url')]
+        return {'urls':[url for url in urls if isinstance(url,str) and url.startswith('https://')]}
 
     def conversation_actions(self,cid):
         rows=self.store.rows('SELECT a.* FROM actions a JOIN action_context c ON c.id=a.id WHERE c.conversation_id=? ORDER BY a.created DESC LIMIT 100',(cid,))

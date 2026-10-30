@@ -73,6 +73,9 @@ declare global {
       transcribe(pcm: Uint8Array): Promise<{ text: string; seconds: number; audio_seconds: number }>;
       chooseFiles(): Promise<{ name: string; data: Uint8Array }[]>;
       attach(name: string, data: Uint8Array): Promise<{ id: string; name: string; kind: "image" | "document"; chars: number; notice?: string }>;
+      revealFile(actionId: string): Promise<{ shown: boolean }>;
+      exportFile(actionId: string): Promise<{ saved: boolean; path?: string }>;
+      openSource(actionId: string, url: string): Promise<void>;
       importDocument(
         projectId: string,
       ): Promise<{ id: string; chunks?: number; name?: string; duplicate: boolean } | null>;
