@@ -170,6 +170,39 @@ class WindowsUI:
             self.snapshots.pop(gid,None)
         return {'keys_sent':keys,'observation':self.read(gid)}
 
+    @staticmethod
+    def write_value(control,kind,content,append=False):
+        # SetValue replaces everything: a document with text (an owner's unsaved note) is never overwritten.
+        current=str(control.iface_value.CurrentValue)
+        if kind=='Document' and current.strip() and not append:
+            raise ValueError('Esse documento já tem texto; não escrevo por cima. Peça para eu acrescentar no final, ou abra um documento novo.')
+        text=(current.rstrip('\r\n')+'\n'+content) if append and current.strip() else content
+        control.iface_value.SetValue(text)
+        # Some Win32 edits report a trailing line break; compare the text itself.
+        if str(control.iface_value.CurrentValue).rstrip('\r\n')!=text.rstrip('\r\n'):raise ValueError('O aplicativo não confirmou o texto solicitado.')
+        return {'appended':bool(append and current.strip())}
+
+    def type_text(self,gid,content,append=False):
+        '''Type into the window's main text area without a prior read: a Document (editor) first, else the
+        focused or first text box. Small models failed the read -> pick target -> type chain.'''
+        with self.lock:
+            window=self.window(gid);fields=[]
+            for control in window.descendants(depth=6):
+                try:
+                    sig=self.signature(control)
+                    if sig['control_type'] not in ('Document','Edit') or not control.is_visible() or not control.is_enabled():continue
+                    if bool(control.element_info._element.CurrentIsPassword) or SECRET.search(sig['name']+' '+sig['automation_id']):continue
+                    if control.iface_value.CurrentIsReadOnly:continue
+                    focused=bool(control.element_info._element.CurrentHasKeyboardFocus)
+                    fields.append((sig['control_type']!='Document',not focused,control,sig))
+                except Exception:continue
+            if not fields:raise ValueError('Não achei um campo de texto nessa janela.')
+            fields.sort(key=lambda row:row[:2])
+            _,_,control,sig=fields[0]
+            written=self.write_value(control,sig['control_type'],content,append)
+            self.snapshots.pop(gid,None)
+            return {'typed':True,'field':sig['name'] or sig['control_type'],**written,'window':window.window_text()[:80]}
+
     def describe_target(self,gid,sid,target):
         cached=self.snapshots.get(gid)
         if not cached or cached['public']['snapshot_id']!=sid or not re.fullmatch(r'w\d+',target):raise ValueError('Leia a janela novamente antes de interagir.')
@@ -193,9 +226,7 @@ class WindowsUI:
                 try:readonly=matched.iface_value.CurrentIsReadOnly
                 except Exception:raise ValueError('Este campo não aceita texto por automação; digite manualmente.')
                 if readonly:raise ValueError('Campo somente leitura.')
-                matched.iface_value.SetValue(body.content)
-                # Some Win32 edits report a trailing line break; compare the text itself.
-                if str(matched.iface_value.CurrentValue).rstrip('\r\n')!=body.content.rstrip('\r\n'):raise ValueError('O aplicativo não confirmou o texto solicitado.')
+                self.write_value(matched,expected['control_type'],body.content,body.value=='acrescentar')
             elif body.tool=='windows_invoke':
                 if expected['control_type'] in ('CheckBox','RadioButton'):
                     matched.select() if expected['control_type']=='RadioButton' else matched.toggle()

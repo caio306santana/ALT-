@@ -14,6 +14,9 @@ PATTERN=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:ab
 DOWNLOAD=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:baixa|baixe|baixar|fa[çc]a o download d[eoa]s?)\s+(?:(?:o|a|os|as|um|uma)\s+)?'
     r'(?P<what>.{2,120}?)\s+(?:d[oa]|de|no|na|pelo|pela|em)\s+(?:site\s+(?:d[oa]\s+|de\s+)?)?(?P<site>(?:https://)?[\w-]+(?:\.[\w-]+)+(?:/\S*)?)(?:[ ,]+por favor)?[.!?]*',re.I)
 
+# "abre o bloco de notas e digita olá mundo": a new Notepad document with the text, no model needed.
+OPEN_TYPE=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:abra|abre|abrir)\s+(?:o\s+)?(?:bloco de notas|bloco notas|notepad)\s+e\s+(?:depois\s+)?(?:digit[ae]|escrev[ae]|coloc[ae])\s+(?:o texto\s+|isso:?\s+)?(?P<text>.{1,2000}?)[.!]?',re.I|re.S)
+
 # "abre o youtube e pesquisa lofi", "pesquisa receitas no google": the site opens on its own search page.
 SEARCH_SITES={'youtube':'https://www.youtube.com/results?search_query=','google':'https://www.google.com/search?q='}
 SITE_SEARCH=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:'
@@ -27,6 +30,9 @@ def direct_action(content,attachment_ids=(),tool_result_id=''):
     if match:
         app='calculator' if match.group(1).lower() in ('calculadora','calculator') else 'notepad'
         return ToolProposal(tool='open_app',app=app)
+    match=OPEN_TYPE.fullmatch(text)
+    if match:
+        return ToolProposal(tool='windows_type',app='notepad',content=match.group('text').strip().strip('"“”\''))
     match=SITE_SEARCH.fullmatch(text)
     if match:
         import urllib.parse
@@ -49,7 +55,9 @@ async def stream(action):
 
 def reply(action,result):
     from backend.tools.outcome import chat_line
-    if result.get('status')!='done':return (result.get('notice') or chat_line(result)) if action.tool=='find_download' else chat_line(result)
+    if result.get('status')!='done':return (result.get('notice') or chat_line(result)) if action.tool in ('find_download','windows_type') else chat_line(result)
+    if action.tool=='windows_type':
+        return f"Bloco de Notas aberto e texto digitado: \"{action.content[:80]}\"."
     if action.tool=='open_url':
         return f"Aberto no navegador: {result.get('opened') or action.url}"
     if action.tool=='find_download':

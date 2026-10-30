@@ -30,7 +30,7 @@ BRIEF={
     'web_search':'pesquisa na internet (query)','close_app':'fecha um programa (app)','read_webpage':'lê o texto de uma página (url)',
     'windows_keys':'envia um atalho de teclado a uma janela (window_id = título ou programa, keys)',
     'windows_read':'lê os elementos de uma janela aberta (window_id)','windows_invoke':'clica num elemento lido (window_id, target, snapshot_id)',
-    'windows_type':'digita num campo lido (window_id, target, snapshot_id, content)','list_files':'lista uma pasta (scope_id, path)',
+    'windows_type':'digita numa janela aberta (window_id = título ou programa, content; target e snapshot_id só se você leu a janela; value=acrescentar para escrever no fim de um texto existente)','list_files':'lista uma pasta (scope_id, path)',
     'read_text':'lê um arquivo de texto (scope_id, path)','write_text':'grava um arquivo de texto (scope_id, path, content)',
     'run_command':'executa PowerShell depois da aprovação do usuário (command)','download_file':'baixa um arquivo de um link direto já conhecido (url, path)',
     'find_download':'procura e baixa um arquivo pelo nome (query: o que baixar; url: o site, se o usuário disse, ex.: 7-zip.org)',

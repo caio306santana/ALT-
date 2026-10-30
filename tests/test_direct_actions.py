@@ -12,7 +12,7 @@ def test_exact_launch_intent(text,app):assert direct_action(text).app==app
 
 @pytest.mark.parametrize('text',[
     'não abra o bloco de notas','como abrir o bloco de notas?',
-    'explique "abra o bloco de notas"','abra o bloco de notas e escreva oi',
+    'explique "abra o bloco de notas"','abra o bloco de notas e me explique como usar',
     'abra o bloco de notas https://example.com','abra meu programa','reabra o bloco de notas',
     'quero falar sobre o bloco de notas',
 ])

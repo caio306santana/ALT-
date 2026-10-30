@@ -385,6 +385,11 @@ class ToolService:
             if not command:raise ValueError('Informe o comando do PowerShell.')
             reject_secrets(command);body.command=command;body.content='';payload=body.model_dump()
             preview.update({'command':command,'external_notice':'Comando do PowerShell com os direitos do seu usuário Windows (sem administrador). Confira o comando inteiro antes de aprovar.'})
+        elif body.tool=='windows_type' and body.app=='notepad' and not body.window_id:
+            # "Abre o bloco de notas e digita X": a new Notepad document, then the text (never an existing note).
+            reject_secrets(body.content)
+            if self.status()['level']<2:raise PermissionError('Ative um modo com ações para abrir e digitar.')
+            preview.update({'app':'notepad','text':body.content,'external_notice':'Abre um Bloco de Notas novo e digita o texto nele. Documentos que já têm texto não são sobrescritos.'})
         elif body.tool.startswith('windows_'):
             grant=next((g for g in self.gui.grants() if g['id']==body.window_id),None)
             if not grant and self.status()['level']==4 and body.window_id:
@@ -396,6 +401,10 @@ class ToolService:
             if body.tool=='windows_keys':
                 body.keys=parse_keys(body.keys)[0];payload=body.model_dump();preview['keys']=body.keys
                 if body.keys.split('*')[0] in CLOSING:preview['notice']='Este atalho fecha a janela ou o programa; ele pode pedir para salvar.'
+            elif body.tool=='windows_type' and not body.target and not body.snapshot_id:
+                # Typing without a prior read: the window's main text area is chosen when it runs.
+                reject_secrets(body.content);preview['text']=body.content;preview['element']={'label':'campo de texto principal','type':'Document/Edit'}
+                preview['external_notice']='Escreve no campo de texto principal desta janela. Um documento que já tem texto não é sobrescrito.'
             elif body.tool!='windows_read':
                 cached,index=self.gui.describe_target(body.window_id,body.snapshot_id,body.target)
                 preview['element']=cached['public']['elements'][index]
@@ -501,6 +510,8 @@ class ToolService:
         self.policy.check(body.tool)
         if body.tool.startswith('windows_'):
             if body.tool=='windows_keys':return self.gui.press(body.window_id,body.keys)
+            if body.tool=='windows_type' and body.app=='notepad' and not body.window_id:return self.open_and_type(body,fingerprint,event)
+            if body.tool=='windows_type' and not body.target and not body.snapshot_id:return self.gui.type_text(body.window_id,body.content,body.value=='acrescentar')
             return self.gui.read(body.window_id) if body.tool=='windows_read' else self.gui.act(body)
         if body.tool.startswith('browser_'):
             if not self.desktop:raise ValueError('Abra o aplicativo desktop.')
@@ -613,6 +624,22 @@ class ToolService:
             if not opened:raise ValueError('O sistema não confirmou a abertura do navegador.')
             return self.confirm_browser(body.url)
         raise ValueError('Ferramenta indisponível.')
+
+    def open_and_type(self,body,fingerprint,event):
+        opened=self.run(ToolProposal(tool='open_app',app='notepad'),fingerprint,event)
+        if opened.get('status')!='done':return opened
+        # Windows 11 Notepad may open the new document as a tab of a window already open: wait for the
+        # front Notepad window and type only if its current document is empty.
+        deadline=time.monotonic()+6;last=None
+        while time.monotonic()<deadline:
+            try:
+                gid=self.gui.find('bloco de notas notepad')
+                return outcome('done',app='Bloco de Notas',opened=True,**self.gui.type_text(gid,body.content))
+            except ValueError as exc:
+                last=exc
+                if 'já tem texto' in str(exc):return outcome('ask',app='Bloco de Notas',opened=True,notice=str(exc))
+            time.sleep(.5)
+        return outcome('unverified',app='Bloco de Notas',opened=True,notice=f'Abri o Bloco de Notas, mas não consegui digitar: {last}')
 
     def undo_setters(self):
         """Inverse operations for system settings, filled in by the system tools."""
