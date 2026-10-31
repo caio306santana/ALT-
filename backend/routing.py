@@ -23,6 +23,16 @@ def complexity(text):
     if text.count('?')>2:score+=.15;reasons.append('várias perguntas')
     return round(min(score,1.0),2),reasons
 
+def preference(model):
+    """Qwen 3.5 first: it calls the ALT's tools reliably; Hermes 3B answered an action with the call as text."""
+    name=model.get('name','').casefold()
+    return (0 if 'qwen3.5' in name and 'abliterated' not in name else 1 if 'qwen' in name else 2,model.get('size',0))
+
+def default_local(models):
+    """The model "Automático" means when no request is there to judge (briefing, routines)."""
+    usable=[m for m in models if not m.get('remote_host') and not m.get('remote_model') and 'cloud' not in m.get('name','').lower() and 'embed' not in m.get('name','').lower()]
+    return sorted(usable,key=preference)[0]['name'] if usable else ''
+
 def band(score):return 'simples' if score<.25 else 'médio' if score<.55 else 'complexo'
 
 class ModelRouter:
@@ -44,7 +54,9 @@ class ModelRouter:
     async def choose(self,content):
         local=await self.local_models()
         if not local:return {'model':'','reason':'Nenhum modelo local instalado.','score':0,'band':'simples'}
-        small,large=local[0]['name'],local[-1]['name']
+        # Same family for both bands when possible: the smallest and largest of the preferred family.
+        ranked=sorted(local,key=preference);family=[m for m in ranked if preference(m)[0]==preference(ranked[0])[0]]
+        small,large=family[0]['name'],family[-1]['name']
         score,reasons=complexity(content);name=band(score)
         if ACTION.search(content or '') and name!='complexo':name,reasons='simples',['ação direta']
         if self.engine.game_mode:return {'model':small,'reason':'Game Mode: o modelo menor, no processador.','score':score,'band':name}

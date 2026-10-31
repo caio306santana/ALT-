@@ -243,6 +243,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
     async def denied(request,exc):return JSONResponse({'detail':str(exc)},403)
     @app.exception_handler(OSError)
     async def io_error(request,exc):return JSONResponse({'detail':'Falha de acesso local. Confira o escopo e se o recurso está disponível.'},400)
+    # The Ollama message reaches the screen instead of a bare "Falha na comunicação local".
+    @app.exception_handler(ProviderError)
+    async def provider_error(request,exc):return JSONResponse({'detail':str(exc)},503)
 
     install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,ollama,receipts)
     continuity=install_workspace_features(app,auth,store,library,tools,engine,ollama,receipts,desktop)
@@ -329,8 +332,10 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
         app.state.voice_loop.configure()
         return body.model_dump()
 
+    # Not named "system": that shadowed backend.tools.system, and every notification (briefing, routines,
+    # PC alerts) failed with "'function' object has no attribute 'toast'".
     @app.get('/system',dependencies=[Depends(auth)])
-    async def system():
+    async def system_status():
         data = await asyncio.to_thread(snapshot,data_dir)
         data['running_models'] = await ollama.running()
         data['performance'] = performance_profile(store.settings().get('performance','auto'),engine.game_mode)
@@ -798,7 +803,9 @@ def create_app(data_dir: Path, token: str, provider=None,codex_provider=None):
                                 if engine.stopped:raise PermissionError('Ações suspensas.')
                                 reason=tool_error(exc)
                                 # One correction round: the model sees why the call failed (e.g. a similar program name).
-                                if not corrected and not body.model.startswith('cloud:'):retry=(call,reason);break
+                                # A setup the owner has to do (images not configured) is said directly, not retried.
+                                setup=isinstance(arguments,dict) and arguments.get('tool')=='generate_image'
+                                if not corrected and not setup and not body.model.startswith('cloud:'):retry=(call,reason);break
                                 proposed=True;delta+=('\n' if text or delta else '')+'Não consegui executar: '+reason
                                 if speech:speaker.say('Não consegui fazer isso. Detalhes na tela.')
                             else:

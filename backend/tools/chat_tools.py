@@ -87,7 +87,9 @@ def route(content,status):
     if any(word in text for word in ('abra','abre','abrir','abri','inici','calculadora','bloco de notas','notepad','programa','aplicativo','app ')):names+=['open_app']
     if any(word in text for word in ('feche','fecha','fechar','encerr')):names+=['close_app']
     if any(word in text for word in ('calcule','quanto é','quanto e','calcular')):names+=['calculate']
-    if status.get('images') and any(word in text for word in ('imagem','imagens','desenh','ilustra','gere uma foto','gera uma foto','cria uma foto','crie uma foto','wallpaper','papel de parede','logo ')):names+=['generate_image']
+    # Offered even before images are set up: the tool then answers how to turn it on, instead of the model
+    # trying to open some drawing program ("gere uma imagem de gato" opened nothing for 12 s).
+    if any(word in text for word in ('imagem','imagens','desenh','ilustra','gere uma foto','gera uma foto','cria uma foto','crie uma foto','wallpaper','papel de parede','logo ')):names+=['generate_image']
     if any(word in text for word in ('baixe','baixar','baixa ','download')):names+=['find_download']+(['download_file'] if 'https://' in text else [])
     if level>=2 and any(word in text for word in ('desfaz','desfazer','desfaça','reverte','reverter','volta como estava')):names+=['undo']
     if level>=2 and any(word in text for word in SCREEN_WORDS):names+=['screen_look']

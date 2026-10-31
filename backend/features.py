@@ -113,6 +113,10 @@ def install_features(app,auth,store,library,tools,codex,anthropic,vault,engine,o
         import asyncio
         engine.stop();engine.game_mode=True;tools.revoke();receipts.revoke_all();store.audit('game_mode_enabled')
         model=store.settings().get('model','')
+        if model=='auto':
+            from backend.routing import default_local
+            try:model=default_local(await ollama.models())
+            except Exception:model=''
         unloaded=False;message='Gerações interrompidas. Nenhum modelo selecionado para descarregar.'
         if model and not model.startswith('cloud:'):
             for _ in range(30):

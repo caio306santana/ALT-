@@ -8,18 +8,21 @@ import re
 import unicodedata
 from backend.tools.service import ToolProposal
 
-PATTERN=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:abra|abre|abrir|inicie|inicia)(?:\s+(?:o|a|um|uma))?\s+(bloco de notas|bloco notas|notepad|calculadora|calculator)(?:[ ,]+por favor)?[.!?]*',re.I)
+# "alt, você consegue abrir…?": asked as a question, meant as a request.
+PREFIX=r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:(?:voc[eê]|vc)\s+)?(?:(?:consegue|pode|poderia|d[aá] pra|d[aá] para)\s+)?'
+
+PATTERN=re.compile(PREFIX+r'(?:abra|abre|abrir|abri|inicie|inicia)(?:\s+(?:o|a|um|uma))?\s+(bloco de notas|bloco notas|notepad|calculadora|calculator)(?:[ ,]+por favor)?[.!?]*',re.I)
 
 # "baixa o manual do 7-Zip do site 7-zip.org": what to fetch and an explicit domain, nothing else.
-DOWNLOAD=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:baixa|baixe|baixar|fa[çc]a o download d[eoa]s?)\s+(?:(?:o|a|os|as|um|uma)\s+)?'
+DOWNLOAD=re.compile(PREFIX+r'(?:baixa|baixe|baixar|fa[çc]a o download d[eoa]s?)\s+(?:(?:o|a|os|as|um|uma)\s+)?'
     r'(?P<what>.{2,120}?)\s+(?:d[oa]|de|no|na|pelo|pela|em)\s+(?:site\s+(?:d[oa]\s+|de\s+)?)?(?P<site>(?:https://)?[\w-]+(?:\.[\w-]+)+(?:/\S*)?)(?:[ ,]+por favor)?[.!?]*',re.I)
 
 # "abre o bloco de notas e digita olá mundo": a new Notepad document with the text, no model needed.
-OPEN_TYPE=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:abra|abre|abrir)\s+(?:o\s+)?(?:bloco de notas|bloco notas|notepad)\s+e\s+(?:depois\s+)?(?:digit[ae]|escrev[ae]|coloc[ae])\s+(?:o texto\s+|isso:?\s+)?(?P<text>.{1,2000}?)[.!]?',re.I|re.S)
+OPEN_TYPE=re.compile(PREFIX+r'(?:abra|abre|abrir|abri)\s+(?:o\s+)?(?:bloco de notas|bloco notas|notepad)\s+e\s+(?:depois\s+)?(?:digit(?:[ae]|ar)|escrev(?:[ae]|er)|coloc(?:[ae]|ar))\s+(?:o texto\s+|isso:?\s+)?(?P<text>.{1,2000}?)\s*[.!?]*',re.I|re.S)
 
 # "abre o youtube e pesquisa lofi", "pesquisa receitas no google": the site opens on its own search page.
 SEARCH_SITES={'youtube':'https://www.youtube.com/results?search_query=','google':'https://www.google.com/search?q='}
-SITE_SEARCH=re.compile(r'(?:(?:alt(?:-ai)?|chat)[ ,:]+)?(?:(?:por favor)[ ,]+)?(?:'
+SITE_SEARCH=re.compile(PREFIX+r'(?:'
     r'(?:abr[ae]|abrir|entra|entre)\s+(?:o\s+)?(?P<site1>youtube|google)\s+e\s+(?:depois\s+)?(?:pesquis[ae]|procur[ae]|busc[ae])\s+(?:por\s+)?(?P<q1>.+?)'
     r'|(?:pesquis[ae]|procur[ae]|busc[ae])\s+(?:por\s+)?(?P<q2>.+?)\s+no\s+(?P<site2>youtube|google))[.!?]*',re.I)
 

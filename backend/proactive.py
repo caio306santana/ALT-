@@ -138,12 +138,19 @@ class Proactive:
     async def generate(self,system,content,limit=220):
         """One short text from the selected local model; None when there is none (cloud never runs alone)."""
         model=self.settings().get('model','')
+        if model=='auto':
+            from backend.routing import default_local
+            try:model=default_local(await self.ollama.models())
+            except Exception:return None
         if not model or model.startswith('cloud:'):return None
         from backend.monitoring.performance import performance_profile
         profile=performance_profile(self.settings().get('performance','auto'),self.engine.game_mode);profile['options']['num_predict']=limit
         text=''
-        async for chunk in self.ollama.stream(model,[{'role':'system','content':system},{'role':'user','content':content}],asyncio.Event(),profile):
-            text+=chunk.get('message',{}).get('content','')
+        from backend.providers.ollama import ProviderError
+        try:
+            async for chunk in self.ollama.stream(model,[{'role':'system','content':system},{'role':'user','content':content}],asyncio.Event(),profile):
+                text+=chunk.get('message',{}).get('content','')
+        except ProviderError:return None  # the caller uses its fact-only template
         return re.sub(r'<think>.*?</think>','',text,flags=re.S).strip()
 
     def deliver(self,title,text,speak=True):

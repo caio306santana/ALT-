@@ -133,3 +133,19 @@ def test_the_chat_tool_generates_and_paid_images_wait_for_a_card(tmp_path):
         app.state.store.set_settings({'image_provider': 'openai'})
         tools.level = 3
         assert not tools.can_auto(ToolProposal(tool='generate_image', content='x'))
+
+
+def test_an_image_request_before_setup_says_how_to_turn_it_on(tmp_path):
+    app, local, _, client = fixture_client(tmp_path)
+    calls = []
+    async def model_stream(model, messages, cancel, profile=None):
+        calls.append(profile.get('tools'))
+        yield {'message': {'tool_calls': [{'function': {'name': 'alt_propose_action', 'arguments': {'tool': 'generate_image', 'content': 'a cat'}}}]}}
+        yield {'done': True, 'eval_count': 3}
+    local.stream = model_stream
+    with client:
+        scope = client.get('/permissions').json()['scopes'][0]['id']
+        client.post('/permissions/grant', json={'level': 4, 'scope_ids': [scope]})
+        data = events(client.post('/chat', json={'conversation_id': conversation(client), 'model': 'fixture:4b', 'content': 'gere uma imagem de gato'}))
+        assert 'generate_image' in json.dumps(calls[0]) and len(calls) == 1
+        assert 'Configurações → Imagens' in ''.join(e.get('text', '') for e in data if e['type'] == 'delta')
